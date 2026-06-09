@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* ─── Taskrel Brand Tokens ────────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --tr-navy: #0F172A;
+  --tr-orange: #F97316;
+  --tr-orange-hover: #EA6C0A;
+
+  /* Neutral */
+  --tr-bg: #F8FAFC;
+  --tr-surface: #FFFFFF;
+  --tr-border: #E2E8F0;
+  --tr-muted: #94A3B8;
+  --tr-text: #0F172A;
+  --tr-text-secondary: #475569;
+
+  /* Semantic */
+  --tr-success: #22C55E;
+  --tr-warning: #EAB308;
+  --tr-error: #EF4444;
+
+  /* UI */
+  --background: var(--tr-bg);
+  --foreground: var(--tr-text);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  /* Prevent font scaling in landscape on iOS */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100%;
+  background: var(--tr-bg);
+  color: var(--tr-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Mobile touch targets ────────────────────────────────────────────────── */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ─── Safe area insets (iPhone notch / home bar) ──────────────────────────── */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
