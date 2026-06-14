@@ -103,6 +103,14 @@ export interface QuoteLineItem {
   total: number;
 }
 
+export interface QuoteAssistantMetadata {
+  suggested_addons?: { label: string; price: number; reason: string }[];
+  assistant_notes?: string[];
+  assumptions?: string[];
+  risk_flags?: string[];
+  terms_suggestion?: string;
+}
+
 export interface Quote {
   id: string;
   contractor_id: string;

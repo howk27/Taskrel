@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { BottomNav } from "@/components/layout/bottom-nav";
+import { AppShell } from "@/components/layout/app-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -8,12 +8,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
+  const { data: contractor } = await supabase
+    .from("contractors")
+    .select("business_name, email, trade, primary_trade")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#0F172A] text-white">
-      <main className="flex-1 pb-20">
-        {children}
-      </main>
-      <BottomNav />
-    </div>
+    <AppShell contractor={contractor}>
+      {children}
+    </AppShell>
   );
 }

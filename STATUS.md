@@ -51,7 +51,7 @@ src/
     api/
       quotes/route.ts               GET list / POST create
       quotes/[id]/route.ts          GET one / PATCH update
-      quotes/generate/route.ts      POST → Claude API → returns line items JSON
+      quotes/generate/route.ts      POST → OpenAI API → returns line items JSON
       quotes/send/route.ts          POST → SendGrid + Twilio + auto-creates client
       jobs/route.ts                 GET (with date range) / POST create
       invoices/route.ts             GET list / POST create (or convert from quote)
@@ -81,7 +81,7 @@ src/
       server.ts                     server client
       middleware.ts                 session refresh helper
     actions/auth.ts                 server actions: login, signup, logout, completeOnboarding
-    prompts/quote-prompts.ts        trade-specific Claude system prompts (7 trades)
+    prompts/quote-prompts.ts        trade-specific OpenAI system prompts (7 trades)
     stripe.ts                       Stripe client singleton
 
   middleware.ts (deleted)           replaced by proxy.ts
@@ -102,7 +102,7 @@ supabase/
 cd C:\Users\DEIVI\Desktop\Taskrel
 pnpm install
 ```
-New packages added: `@anthropic-ai/sdk`, `@sendgrid/mail`, `stripe`, `twilio`
+New packages added: `openai`, `@sendgrid/mail`, `stripe`, `twilio`
 
 ### Step 2 — Run the DB migration
 1. Go to [supabase.com](https://supabase.com) → your project → SQL Editor
@@ -117,7 +117,9 @@ Copy `.env.local.example` → `.env.local` and fill in:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Settings → API |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same |
 | `SUPABASE_SERVICE_ROLE_KEY` | Same (keep secret) |
-| `ANTHROPIC_API_KEY` | console.anthropic.com |
+| `OPENAI_API_KEY` | platform.openai.com/api-keys |
+| `TASKREL_AI_DEFAULT_MODEL` | Defaults to `gpt-5.4-mini` |
+| `TASKREL_AI_COMPLEX_MODEL` | Defaults to `gpt-5.5` |
 | `STRIPE_SECRET_KEY` | dashboard.stripe.com → Developers → API keys |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Same |
 | `STRIPE_WEBHOOK_SECRET` | After setting up webhook (see below) |

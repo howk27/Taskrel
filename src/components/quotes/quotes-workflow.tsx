@@ -9,6 +9,7 @@ import { CalendarBlank, DeviceMobile, EnvelopeSimple, FileText, MagnifyingGlass,
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { ChartCard, PipelineDonut, ValueBarChart } from "@/components/charts/taskrel-charts";
 
 type QuoteListItem = Pick<
   Quote,
@@ -75,22 +76,41 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
         .some(value => String(value).toLowerCase().includes(term));
     });
   }, [filter, quotes, search]);
+  const selectedQuote = filteredQuotes[0] ?? quotes[0];
+  const pipelineData = useMemo(() => {
+    return ["draft", "sent", "approved", "rejected", "expired"].map(status => ({
+      label: status[0].toUpperCase() + status.slice(1),
+      value: quotes.filter(quote => quote.status === status).reduce((sum, quote) => sum + Number(quote.total ?? 0), 0),
+      secondary: quotes.filter(quote => quote.status === status).length,
+    }));
+  }, [quotes]);
+  const stageCountData = pipelineData.map(point => ({ ...point, value: point.secondary ?? 0 }));
 
   return (
-    <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
+    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
+        eyebrow="Quote workflow"
         title="Quotes"
-        subtitle="Draft, send, follow up, and convert contractor quotes."
+        subtitle="Track quote value, follow up with clients, and move approved work toward invoices."
         action={(
           <Link
             href="/quotes/new"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#F97316] px-3.5 text-sm font-semibold text-white hover:bg-[#EA6C0A]"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff]"
           >
             <Plus size={18} weight="bold" />
             New
           </Link>
         )}
       />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Quote value by stage" subtitle="Where money is sitting in the pipeline">
+          <PipelineDonut data={pipelineData} />
+        </ChartCard>
+        <ChartCard title="Quote count by stage" subtitle="How many work items need attention">
+          <ValueBarChart data={stageCountData} currency={false} />
+        </ChartCard>
+      </div>
 
       <Surface className="p-3">
         <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-700 bg-[#0F172A] px-3">
@@ -110,7 +130,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
               onClick={() => setFilter(item.key)}
               className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                 filter === item.key
-                  ? "bg-[#F97316] text-white"
+                  ? "bg-[var(--tr-blue)] text-[#09204f]"
                   : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
               }`}
             >
@@ -121,14 +141,15 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
       </Surface>
 
       {filteredQuotes.length > 0 ? (
-        <div className="space-y-3">
-          {filteredQuotes.map(quote => (
-            <Link key={quote.id} href={`/quotes/${quote.id}`} className="block">
-              <Surface className="p-4 transition-colors hover:border-slate-500/80 hover:bg-[#1B2940]">
+        <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
+          <div className="space-y-3">
+            {filteredQuotes.map(quote => (
+              <Link key={quote.id} href={`/quotes/${quote.id}`} className="block">
+                <Surface className="p-4 transition-colors hover:border-slate-500/80 hover:bg-[#1B2940]">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <FileText size={18} weight="duotone" className="shrink-0 text-[#F97316]" />
+                      <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-blue)]" />
                       <p className="truncate text-sm font-semibold text-white">{quote.client_name}</p>
                     </div>
                     {quote.client_address && (
@@ -154,9 +175,27 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
                     value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"}
                   />
                 </div>
-              </Surface>
-            </Link>
-          ))}
+                </Surface>
+              </Link>
+            ))}
+          </div>
+          {selectedQuote && (
+            <Surface className="hidden h-fit p-5 xl:block">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-text-faint)]">Selected quote</p>
+              <h2 className="mt-3 text-2xl font-black text-white">{selectedQuote.client_name}</h2>
+              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{selectedQuote.client_address ?? "No address saved"}</p>
+              <p className="mt-6 text-4xl font-black tracking-tight text-white">{formatCurrency(selectedQuote.total)}</p>
+              <div className="mt-3"><Badge variant={statusVariant(selectedQuote.status)}>{selectedQuote.status}</Badge></div>
+              <div className="mt-6 space-y-3">
+                <Meta icon={<EnvelopeSimple size={15} weight="duotone" />} label="Delivery" value={deliveryMethod(selectedQuote.sent_via)} />
+                <Meta icon={<CalendarBlank size={15} weight="duotone" />} label="Created" value={formatDate(selectedQuote.created_at)} />
+                <Meta icon={<DeviceMobile size={15} weight="duotone" />} label="Next action" value={nextAction(selectedQuote.status)} strong />
+              </div>
+              <Link href={`/quotes/${selectedQuote.id}`} className="mt-6 flex h-11 items-center justify-center rounded-xl bg-[var(--tr-blue)] text-sm font-bold text-[#09204f]">
+                Open quote
+              </Link>
+            </Surface>
+          )}
         </div>
       ) : (
         <Surface className="p-8 text-center">
@@ -165,7 +204,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
           <p className="mt-1 text-sm text-slate-400">Create a quote or switch filters to see other work.</p>
           <Link
             href="/quotes/new"
-            className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[#F97316] px-4 text-sm font-semibold text-white hover:bg-[#EA6C0A]"
+            className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
           >
             <Plus size={18} weight="bold" />
             New Quote
@@ -192,7 +231,7 @@ function Meta({
       <span className="mt-0.5 shrink-0 text-slate-500">{icon}</span>
       <span className="min-w-0">
         <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-        <span className={`block truncate ${strong ? "font-semibold text-[#F97316]" : "text-slate-300"}`}>{value}</span>
+        <span className={`block truncate ${strong ? "font-semibold text-[var(--tr-blue)]" : "text-slate-300"}`}>{value}</span>
       </span>
     </div>
   );

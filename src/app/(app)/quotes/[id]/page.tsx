@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CalendarBlank, DeviceMobile, EnvelopeSimple, FileText, Receipt } from "@/components/ui/icons";
+import { ArrowLeft, CalendarBlank, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
@@ -89,7 +90,7 @@ export default function QuoteDetailPage() {
     : "";
 
   return (
-    <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
+    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
       <div className="flex items-start gap-3">
         <button
           onClick={() => router.back()}
@@ -99,119 +100,151 @@ export default function QuoteDetailPage() {
           <span className="sr-only">Back</span>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#F97316]">Quote</p>
-          <h1 className="truncate text-xl font-bold text-white">{quote.client_name}</h1>
-          <p className="text-xs text-slate-400">Created {formatDate(quote.created_at)}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-blue)]">Quote</p>
+          <h1 className="truncate text-2xl font-bold text-white md:text-3xl">{quote.client_name}</h1>
+          <p className="text-sm text-[var(--tr-text-muted)]">Created {formatDate(quote.created_at)}</p>
         </div>
         <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Surface className="p-4">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <FileText size={15} weight="duotone" />
-            Total
-          </p>
-          <p className="mt-1 text-xl font-bold text-white">{formatCurrency(quote.total)}</p>
-        </Surface>
-        <Surface className="p-4">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <CalendarBlank size={15} weight="duotone" />
-            Scheduled
-          </p>
-          <p className="mt-1 text-sm font-semibold text-white">{quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"}</p>
-        </Surface>
-      </div>
+      <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+        <aside className="space-y-4 lg:order-2">
+          <Surface className="p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Quote total</p>
+            <p className="mt-2 text-4xl font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <SummaryMeta icon={<FileText size={15} weight="duotone" />} label="Status" value={quote.status} />
+              <SummaryMeta icon={<CalendarBlank size={15} weight="duotone" />} label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
+              <SummaryMeta icon={<EnvelopeSimple size={15} weight="duotone" />} label="Delivery" value={quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready"} />
+              <SummaryMeta icon={<DeviceMobile size={15} weight="duotone" />} label="Contact" value={quote.client_phone ? "Phone saved" : quote.client_email ? "Email saved" : "Missing"} />
+            </div>
+          </Surface>
 
-      <Surface className="p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Delivery</p>
-            <p className="mt-1 text-sm text-white">
-              {quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready to send"}
-            </p>
-          </div>
-          <div className="flex gap-2 text-slate-500">
-            <EnvelopeSimple size={20} weight="duotone" />
-            <DeviceMobile size={20} weight="duotone" />
-          </div>
-        </div>
-      </Surface>
+          <Surface className="p-5">
+            <h2 className="text-lg font-bold text-white">Actions</h2>
+            <div className="mt-4 space-y-3">
+              {["draft", "sent", "approved"].includes(quote.status) && (
+                <Button className="w-full" onClick={handleConvertToInvoice} loading={converting}>
+                  <Receipt size={18} weight="duotone" />
+                  {quote.status === "approved" ? "Create Invoice" : "Approve & Convert"}
+                </Button>
+              )}
+              {quote.status === "draft" && (
+                <Button className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
+                  <EnvelopeSimple size={18} weight="duotone" />
+                  Send Quote
+                </Button>
+              )}
+              {quote.status === "sent" && (
+                <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
+                  <EnvelopeSimple size={18} weight="duotone" />
+                  Resend Quote
+                </Button>
+              )}
+              {sendVia.length === 0 && (
+                <p className="text-sm text-[var(--tr-text-muted)]">Add an email or phone to send this quote.</p>
+              )}
+            </div>
+          </Surface>
 
-      <Surface className="overflow-hidden">
-        <div className="border-b border-slate-700/70 px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line items</p>
-        </div>
-        <div className="divide-y divide-slate-700/50">
-          {quote.line_items.map((item, index) => (
-            <div key={index} className="flex items-start justify-between gap-4 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white">{item.description}</p>
-                <p className="text-xs text-slate-500">{item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}</p>
+          <Surface className="p-5">
+            <h2 className="text-lg font-bold text-white">Client</h2>
+            <div className="mt-3 space-y-2 text-sm text-[var(--tr-text-muted)]">
+              {quote.client_email && <p>{quote.client_email}</p>}
+              {quote.client_phone && <p>{quote.client_phone}</p>}
+              {quote.client_address && (
+                <p className="flex items-start gap-2">
+                  <MapPin size={16} weight="duotone" className="mt-0.5 shrink-0 text-slate-500" />
+                  <span>{quote.client_address}</span>
+                </p>
+              )}
+            </div>
+          </Surface>
+        </aside>
+
+        <main className="space-y-5 lg:order-1">
+          <Surface className="overflow-hidden">
+            <div className="border-b border-slate-700/70 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line items</p>
+            </div>
+            <div className="divide-y divide-slate-700/50">
+              {quote.line_items.map((item, index) => (
+                <div key={index} className="flex items-start justify-between gap-4 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white">{item.description}</p>
+                    <p className="text-xs text-slate-500">{item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1 border-t border-slate-700/70 px-4 py-3">
+              <div className="flex justify-between text-sm text-slate-400">
+                <span>Subtotal</span><span>{formatCurrency(quote.subtotal)}</span>
               </div>
-              <p className="shrink-0 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+              {quote.tax_amount > 0 && (
+                <div className="flex justify-between text-sm text-slate-400">
+                  <span>Tax</span><span>{formatCurrency(quote.tax_amount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-bold text-[var(--tr-amber)]">
+                <span>Total</span><span>{formatCurrency(quote.total)}</span>
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="space-y-1 border-t border-slate-700/70 px-4 py-3">
-          <div className="flex justify-between text-sm text-slate-400">
-            <span>Subtotal</span><span>{formatCurrency(quote.subtotal)}</span>
-          </div>
-          {quote.tax_amount > 0 && (
-            <div className="flex justify-between text-sm text-slate-400">
-              <span>Tax</span><span>{formatCurrency(quote.tax_amount)}</span>
-            </div>
+          </Surface>
+
+          {quote.notes && (
+            <Surface className="p-4">
+              <p className="mb-1 text-sm font-semibold text-white">Client note</p>
+              <p className="text-sm leading-6 text-[var(--tr-text-muted)]">{quote.notes}</p>
+            </Surface>
           )}
-          <div className="flex justify-between text-base font-bold text-[#F97316]">
-            <span>Total</span><span>{formatCurrency(quote.total)}</span>
-          </div>
-        </div>
-      </Surface>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client preview</h2>
-          <div className="flex rounded-lg bg-slate-800 p-1">
-            {presets.map(preset => (
-              <button
-                key={preset.value}
-                onClick={() => setPreviewPreset(preset.value)}
-                className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
-                  previewPreset === preset.value ? "bg-[#F97316] text-white" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="overflow-hidden rounded-lg border border-slate-700 bg-white">
-          <div className="max-h-[620px] overflow-auto p-3">
-            <div dangerouslySetInnerHTML={{ __html: documentHtml }} />
-          </div>
-        </div>
-      </section>
-
-      <div className="space-y-3 pt-1">
-        {["draft", "sent", "approved"].includes(quote.status) && (
-          <Button className="w-full" onClick={handleConvertToInvoice} loading={converting}>
-            <Receipt size={18} weight="duotone" />
-            {quote.status === "approved" ? "Create Invoice" : "Approve & Convert"}
-          </Button>
-        )}
-        {quote.status === "draft" && (
-          <Button className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
-            <EnvelopeSimple size={18} weight="duotone" />
-            Send Quote
-          </Button>
-        )}
-        {quote.status === "sent" && (
-          <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
-            <EnvelopeSimple size={18} weight="duotone" />
-            Resend Quote
-          </Button>
-        )}
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client preview</h2>
+              <div className="flex rounded-lg bg-slate-800 p-1">
+                {presets.map(preset => (
+                  <button
+                    key={preset.value}
+                    onClick={() => setPreviewPreset(preset.value)}
+                    className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
+                      previewPreset === preset.value ? "bg-[var(--tr-blue)] text-[#09204f]" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-slate-700 bg-white">
+              <div className="max-h-[720px] overflow-auto p-3">
+                <div dangerouslySetInnerHTML={{ __html: documentHtml }} />
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
+    </div>
+  );
+}
+
+function SummaryMeta({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold capitalize text-white">{value}</p>
     </div>
   );
 }

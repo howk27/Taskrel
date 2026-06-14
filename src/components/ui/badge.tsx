@@ -1,11 +1,11 @@
 type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
 
 const variants: Record<BadgeVariant, string> = {
-  default:  "bg-slate-700 text-slate-300",
-  success:  "bg-green-900/50 text-green-400",
-  warning:  "bg-yellow-900/50 text-yellow-400",
-  error:    "bg-red-900/50 text-red-400",
-  info:     "bg-blue-900/50 text-blue-400",
+  default:  "bg-slate-700/70 text-slate-200 ring-1 ring-white/10",
+  success:  "bg-emerald-400/12 text-emerald-200 ring-1 ring-emerald-300/25",
+  warning:  "bg-amber-400/14 text-amber-200 ring-1 ring-amber-300/25",
+  error:    "bg-red-400/12 text-red-200 ring-1 ring-red-300/25",
+  info:     "bg-sky-400/12 text-sky-200 ring-1 ring-sky-300/25",
 };
 
 export function Badge({
@@ -16,7 +16,7 @@ export function Badge({
   variant?: BadgeVariant;
 }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variants[variant]}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${variants[variant]}`}>
       {children}
     </span>
   );

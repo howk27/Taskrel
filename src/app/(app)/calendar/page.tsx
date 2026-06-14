@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Job } from "@/types";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { CalendarBlank, CaretLeft, CaretRight, MapPin } from "@/components/ui/icons";
@@ -70,17 +71,18 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
-      <PageHeader title="Calendar" subtitle="Scheduled and in-progress work by day." />
+    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
+      <PageHeader eyebrow="Schedule" title="Calendar" subtitle="Scheduled and in-progress work by day." />
 
-      <Surface className="p-3">
+      <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
+        <Surface className="p-3">
         <div className="flex items-center justify-between pb-3">
           <button onClick={prevMonth} className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-white">
             <CaretLeft size={20} weight="bold" />
             <span className="sr-only">Previous month</span>
           </button>
           <div className="flex items-center gap-2">
-            <CalendarBlank size={20} weight="duotone" className="text-[#F97316]" />
+            <CalendarBlank size={20} weight="duotone" className="text-[var(--tr-green)]" />
             <h1 className="text-base font-semibold text-white">{monthName} {year}</h1>
           </div>
           <button onClick={nextMonth} className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-white">
@@ -99,7 +101,8 @@ export default function CalendarPage() {
           {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
-            const hasJobs = !!jobsByDay[day];
+            const jobCount = jobsByDay[day]?.length ?? 0;
+            const hasJobs = jobCount > 0;
             const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
             const isSelected = day === selectedDay;
 
@@ -109,24 +112,28 @@ export default function CalendarPage() {
                 onClick={() => setSelectedDay(day)}
                 className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
                   isSelected
-                    ? "bg-[#F97316] text-white shadow-sm shadow-orange-950/40"
+                    ? "bg-[var(--tr-green)] text-[#052112] shadow-sm shadow-emerald-950/40"
+                    : hasJobs
+                      ? "border border-[var(--tr-green)]/40 bg-[var(--tr-green)]/10 text-emerald-100 ring-1 ring-[var(--tr-green)]/15"
                     : isToday
-                      ? "bg-[#F97316]/15 text-[#F97316]"
+                      ? "bg-[var(--tr-green)]/15 text-[var(--tr-green)]"
                       : "text-slate-300 hover:bg-slate-700/50"
                 }`}
               >
                 {day}
                 {hasJobs && !isSelected && (
-                  <span className="absolute bottom-1.5 h-1.5 w-1.5 rounded-full bg-[#F97316]" />
+                  <span className="absolute bottom-1.5 rounded-full bg-[var(--tr-green)] px-1.5 py-0.5 text-[9px] font-black leading-none text-[#052112]">
+                    {jobCount}
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
-      </Surface>
+        </Surface>
 
-      {selectedDay && (
-        <section>
+        {selectedDay && (
+        <section className="xl:pt-1">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               {monthName} {selectedDay}
@@ -153,6 +160,11 @@ export default function CalendarPage() {
                           <span>{job.address}</span>
                         </p>
                       )}
+                      {job.quote_id && (
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                          Open quote
+                        </Link>
+                      )}
                     </div>
                     <Badge variant={statusVariant(job.status)}>{job.status.replace("_", " ")}</Badge>
                   </div>
@@ -168,7 +180,8 @@ export default function CalendarPage() {
             </Surface>
           )}
         </section>
-      )}
+        )}
+      </div>
     </div>
   );
 }

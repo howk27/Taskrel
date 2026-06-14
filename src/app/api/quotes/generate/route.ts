@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { buildQuoteSystemPrompt, buildQuoteUserPrompt } from "@/lib/prompts/quote-prompts";
 import type { Trade } from "@/types";
-import { getConfiguredEnv } from "@/lib/env";
+import { createOpenAIClient, taskrelDefaultModel } from "@/lib/openai";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -32,29 +31,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Job description is required" }, { status: 400 });
   }
 
-  const apiKey = getConfiguredEnv("ANTHROPIC_API_KEY");
-  if (!apiKey) {
+  const openai = createOpenAIClient();
+  if (!openai) {
     return NextResponse.json(
-      { error: "AI quote generation is not configured. Set ANTHROPIC_API_KEY." },
+      { error: "AI quote generation is not configured. Set OPENAI_API_KEY." },
       { status: 503 }
     );
   }
 
   try {
-    const anthropic = new Anthropic({ apiKey });
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: buildQuoteSystemPrompt(trade),
-      messages: [
-        {
-          role: "user",
-          content: buildQuoteUserPrompt(jobDescription, additionalDetails),
-        },
-      ],
-    });
+    const response = await openai.responses.create({
+      model: taskrelDefaultModel(),
+      instructions: buildQuoteSystemPrompt(trade),
+      input: buildQuoteUserPrompt(jobDescription, additionalDetails),
+      text: {
+        format: { type: "json_object" },
+        verbosity: "low",
+      },
+      reasoning: { effort: "low" },
+    } as never);
 
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
+    const text = response.output_text ?? "";
 
     let quoteData;
     try {
@@ -65,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(quoteData);
   } catch (err) {
-    console.error("Claude API error:", err);
+    console.error("OpenAI quote generation error:", err);
     return NextResponse.json({ error: "AI generation failed" }, { status: 500 });
   }
 }
