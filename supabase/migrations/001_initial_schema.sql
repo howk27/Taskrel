@@ -28,17 +28,44 @@ create table contractors (
   id                        uuid primary key default gen_random_uuid(),
   user_id                   uuid references auth.users(id) on delete cascade not null unique,
   business_name             text not null default '',
+  business_type             text check (business_type in (
+                              'home_improvement','mechanical_services',
+                              'outdoor_services','general_contracting','other'
+                            )),
   trade                     text check (trade in (
                               'painting','roofing','flooring','landscaping',
                               'hvac','plumbing','electrical'
                             )),
+  primary_trade             text check (primary_trade in (
+                              'painting','roofing','flooring','landscaping',
+                              'hvac','plumbing','electrical'
+                            )),
+  trades                    text[] not null default '{}',
   phone                     text,
   email                     text not null,
+  logo_url                  text,
+  business_phone            text,
+  business_website          text,
+  license_text              text,
+  quote_default_terms       text,
+  quote_default_note        text,
+  quote_template_preset     text not null default 'classic' check (
+                              quote_template_preset in ('classic','modern','compact')
+                            ),
   stripe_customer_id        text unique,
   stripe_connect_account_id text unique,
   subscription_status       text check (subscription_status in (
                               'trialing','active','past_due','canceled'
                             )),
+  google_sheets_sync_enabled boolean not null default false,
+  google_sheets_refresh_token text,
+  google_sheets_sheet_id     text,
+  google_sheets_last_synced_at timestamptz,
+  google_sheets_status       text not null default 'disconnected' check (
+                              google_sheets_status in (
+                                'disconnected','connected','error'
+                              )
+                            ),
   onboarding_complete       boolean not null default false,
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now()
@@ -59,18 +86,22 @@ create policy "contractors: own row only"
 -- Defined here (after contractors table) so PostgreSQL can validate the query.
 create or replace function auth_contractor_id()
 returns uuid as $$
-  select id from contractors where user_id = auth.uid()
-$$ language sql security definer stable;
+  select id from public.contractors where user_id = auth.uid()
+$$ language sql security definer stable set search_path = public, auth;
 
 -- Auto-create contractor row on signup
 create or replace function handle_new_user()
 returns trigger as $$
 begin
-  insert into contractors (user_id, email)
-  values (new.id, new.email);
+  insert into public.contractors (user_id, email, business_name)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'business_name', '')
+  );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public, auth;
 
 create trigger on_auth_user_created
   after insert on auth.users
@@ -131,6 +162,12 @@ create table quotes (
 
   notes          text,
   valid_until    date,
+  scheduled_start timestamptz,
+  scheduled_end   timestamptz,
+  business_snapshot jsonb,
+  template_preset text not null default 'classic' check (
+                   template_preset in ('classic','modern','compact')
+                 ),
   sent_via       text[] not null default '{}',        -- ['email','sms']
 
   created_at     timestamptz not null default now(),

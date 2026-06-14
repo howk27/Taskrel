@@ -22,11 +22,12 @@ export default function SignupPage() {
 
         <form action={action} className="space-y-4">
           <Input
-            label="Business name"
-            name="business_name"
+            label="Name"
+            name="name"
             type="text"
             placeholder="ABC Painting LLC"
             autoComplete="organization"
+            defaultValue={state?.values?.name ?? ""}
             required
           />
           <Input
@@ -35,17 +36,26 @@ export default function SignupPage() {
             type="email"
             placeholder="you@example.com"
             autoComplete="email"
+            defaultValue={state?.values?.email ?? ""}
             required
           />
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            placeholder="Min. 8 characters"
-            autoComplete="new-password"
-            minLength={8}
-            required
-          />
+          <div className="space-y-1">
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              placeholder="Min. 8 characters"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={72}
+              pattern="[a-zA-Z0-9]+"
+              title="Letters and numbers only — no special characters"
+              required
+            />
+            <p className="text-xs text-slate-500">
+              Letters and numbers only. No special characters.
+            </p>
+          </div>
 
           {state?.error && (
             <p className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-4 py-3">

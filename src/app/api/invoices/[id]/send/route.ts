@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getMissingEnv } from "@/lib/env";
+import { getStripe } from "@/lib/stripe";
+import twilio from "twilio";
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,8 +29,11 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   // Create Stripe payment link if Connect account exists
   let paymentLink = invoice.stripe_payment_link;
   if (!paymentLink && contractor?.stripe_connect_account_id) {
+    const stripe = getStripe();
+    if (!stripe) {
+      console.warn("Stripe payment link skipped: STRIPE_SECRET_KEY is not configured.");
+    } else {
     try {
-      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
       const product = await stripe.products.create(
         { name: `Invoice ${invoice.invoice_number} — ${invoice.client_name}` },
         { stripeAccount: contractor.stripe_connect_account_id }
@@ -45,10 +51,15 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     } catch (err) {
       console.error("Stripe payment link error:", err);
     }
+    }
   }
 
   // Send email
   if (invoice.client_email) {
+    const missingEmailEnv = getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]);
+    if (missingEmailEnv.length > 0) {
+      console.warn(`Invoice email skipped: missing ${missingEmailEnv.join(", ")}.`);
+    } else {
     try {
       const sgMail = (await import("@sendgrid/mail")).default;
       sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
@@ -71,17 +82,22 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     } catch (err) {
       console.error("SendGrid error:", err);
     }
+    }
   }
 
   // Send SMS
   if (invoice.client_phone) {
+    const missingSmsEnv = getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]);
+    if (missingSmsEnv.length > 0) {
+      console.warn(`Invoice SMS skipped: missing ${missingSmsEnv.join(", ")}.`);
+    } else {
     try {
-      const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       const msg = paymentLink
         ? `Invoice ${invoice.invoice_number} from ${contractor?.business_name}: $${invoice.total.toFixed(2)}. Pay here: ${paymentLink}`
         : `Invoice ${invoice.invoice_number} from ${contractor?.business_name}: $${invoice.total.toFixed(2)}.`;
 
-      await twilio.messages.create({
+      await twilioClient.messages.create({
         body: msg,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: invoice.client_phone,
@@ -89,6 +105,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       sent.push("sms");
     } catch (err) {
       console.error("Twilio error:", err);
+    }
     }
   }
 
@@ -99,5 +116,6 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       .eq("id", id);
   }
 
-  return NextResponse.json({ sent });
+  const status = sent.length === 0 ? 503 : 200;
+  return NextResponse.json({ sent }, { status });
 }

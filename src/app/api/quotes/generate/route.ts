@@ -3,8 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { buildQuoteSystemPrompt, buildQuoteUserPrompt } from "@/lib/prompts/quote-prompts";
 import type { Trade } from "@/types";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { getConfiguredEnv } from "@/lib/env";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -13,26 +12,40 @@ export async function POST(request: NextRequest) {
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("trade")
+    .select("trade, primary_trade, trades")
     .eq("user_id", user.id)
     .single();
 
-  if (!contractor?.trade) {
+  if (!contractor?.trade && !contractor?.primary_trade) {
     return NextResponse.json({ error: "Trade not set" }, { status: 400 });
   }
 
   const body = await request.json();
   const { jobDescription, additionalDetails } = body;
+  const requestedTrade = body.trade as Trade | undefined;
+  const availableTrades = Array.isArray(contractor.trades) ? contractor.trades as Trade[] : [];
+  const trade = requestedTrade && availableTrades.includes(requestedTrade)
+    ? requestedTrade
+    : (contractor.primary_trade ?? contractor.trade) as Trade;
 
   if (!jobDescription?.trim()) {
     return NextResponse.json({ error: "Job description is required" }, { status: 400 });
   }
 
+  const apiKey = getConfiguredEnv("ANTHROPIC_API_KEY");
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "AI quote generation is not configured. Set ANTHROPIC_API_KEY." },
+      { status: 503 }
+    );
+  }
+
   try {
+    const anthropic = new Anthropic({ apiKey });
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 2048,
-      system: buildQuoteSystemPrompt(contractor.trade as Trade),
+      system: buildQuoteSystemPrompt(trade),
       messages: [
         {
           role: "user",

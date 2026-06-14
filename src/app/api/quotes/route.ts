@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("id, trade")
+    .select("id, trade, primary_trade, trades, quote_template_preset")
     .eq("user_id", user.id)
     .single();
 
@@ -16,12 +16,19 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+  const requestedTrade = body.trade ?? contractor.primary_trade ?? contractor.trade;
+  const availableTrades = Array.isArray(contractor.trades) ? contractor.trades : [];
+  const trade = availableTrades.length === 0 || availableTrades.includes(requestedTrade)
+    ? requestedTrade
+    : contractor.primary_trade ?? contractor.trade;
+
   const { data, error } = await supabase
     .from("quotes")
     .insert({
-      contractor_id: contractor.id,
-      trade: contractor.trade,
       ...body,
+      contractor_id: contractor.id,
+      trade,
+      template_preset: body.template_preset ?? contractor.quote_template_preset ?? "classic",
     })
     .select()
     .single();

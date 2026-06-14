@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getMissingEnv } from "@/lib/env";
+import { buildBusinessSnapshot, renderQuoteDocumentHtml } from "@/lib/quote-document";
+import type { QuoteTemplatePreset } from "@/types";
+import twilio from "twilio";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -9,92 +13,65 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { quoteId, via } = body; // via: ['email'] | ['sms'] | ['email','sms']
 
+  const { data: contractor } = await supabase
+    .from("contractors")
+    .select("id, business_name, email, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!contractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
+
   const { data: quote } = await supabase
     .from("quotes")
     .select("*")
     .eq("id", quoteId)
+    .eq("contractor_id", contractor.id)
     .single();
 
   if (!quote) return NextResponse.json({ error: "Quote not found" }, { status: 404 });
 
-  const { data: contractor } = await supabase
-    .from("contractors")
-    .select("business_name, email")
-    .eq("user_id", user.id)
-    .single();
-
+  const businessSnapshot = quote.business_snapshot ?? buildBusinessSnapshot(contractor);
+  const templatePreset = (quote.template_preset ?? contractor.quote_template_preset ?? "classic") as QuoteTemplatePreset;
   const errors: string[] = [];
   const sent: string[] = [];
 
   if (via.includes("email") && quote.client_email) {
+    const missingEmailEnv = getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]);
+    if (missingEmailEnv.length > 0) {
+      errors.push("email_config");
+    } else {
     try {
       const sgMail = (await import("@sendgrid/mail")).default;
       sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
-
-      const lineItemsHtml = quote.line_items
-        .map((item: { description: string; quantity: number; unit?: string; unit_price: number; total: number }) =>
-          `<tr>
-            <td style="padding:8px 0;border-bottom:1px solid #334155">${item.description}</td>
-            <td style="padding:8px 0;border-bottom:1px solid #334155;text-align:right">${item.quantity} ${item.unit ?? ""}</td>
-            <td style="padding:8px 0;border-bottom:1px solid #334155;text-align:right">$${item.unit_price.toFixed(2)}</td>
-            <td style="padding:8px 0;border-bottom:1px solid #334155;text-align:right">$${item.total.toFixed(2)}</td>
-          </tr>`
-        )
-        .join("");
 
       await sgMail.send({
         to: quote.client_email,
         from: process.env.SENDGRID_FROM_EMAIL!,
         subject: `Quote from ${contractor?.business_name ?? "Your Contractor"}`,
-        html: `
-          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#0F172A;color:#fff;padding:32px;border-radius:12px">
-            <h1 style="font-size:24px;font-weight:800;margin:0 0 4px">task<span style="color:#F97316">rel</span></h1>
-            <p style="color:#94A3B8;margin:0 0 32px">Quote from ${contractor?.business_name}</p>
-
-            <h2 style="font-size:18px;margin:0 0 16px">Hi ${quote.client_name},</h2>
-            <p style="color:#CBD5E1">Please find your quote below.</p>
-
-            <table style="width:100%;border-collapse:collapse;margin:24px 0">
-              <thead>
-                <tr style="color:#94A3B8;font-size:12px;text-transform:uppercase">
-                  <th style="padding:8px 0;text-align:left">Description</th>
-                  <th style="padding:8px 0;text-align:right">Qty</th>
-                  <th style="padding:8px 0;text-align:right">Unit Price</th>
-                  <th style="padding:8px 0;text-align:right">Total</th>
-                </tr>
-              </thead>
-              <tbody>${lineItemsHtml}</tbody>
-            </table>
-
-            <div style="text-align:right;margin-top:16px">
-              <p style="color:#94A3B8;margin:4px 0">Subtotal: $${quote.subtotal.toFixed(2)}</p>
-              ${quote.tax_amount > 0 ? `<p style="color:#94A3B8;margin:4px 0">Tax: $${quote.tax_amount.toFixed(2)}</p>` : ""}
-              <p style="font-size:20px;font-weight:700;color:#F97316;margin:8px 0">Total: $${quote.total.toFixed(2)}</p>
-            </div>
-
-            ${quote.notes ? `<p style="color:#CBD5E1;margin-top:24px;padding-top:24px;border-top:1px solid #334155">${quote.notes}</p>` : ""}
-
-            <p style="color:#64748B;font-size:12px;margin-top:32px">Sent via Taskrel</p>
-          </div>
-        `,
+        html: renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset }),
       });
       sent.push("email");
     } catch (err) {
       console.error("SendGrid error:", err);
       errors.push("email");
     }
+    }
   }
 
   if (via.includes("sms") && quote.client_phone) {
+    const missingSmsEnv = getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]);
+    if (missingSmsEnv.length > 0) {
+      errors.push("sms_config");
+    } else {
     try {
-      const twilio = require("twilio")(
+      const twilioClient = twilio(
         process.env.TWILIO_ACCOUNT_SID,
         process.env.TWILIO_AUTH_TOKEN
       );
 
       const msg = `Hi ${quote.client_name}, ${contractor?.business_name} sent you a quote for $${quote.total.toFixed(2)}. Reply QUOTE to request details.`;
 
-      await twilio.messages.create({
+      await twilioClient.messages.create({
         body: msg,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: quote.client_phone,
@@ -104,13 +81,19 @@ export async function POST(request: NextRequest) {
       console.error("Twilio error:", err);
       errors.push("sms");
     }
+    }
   }
 
   // Update quote status and sent_via
   if (sent.length > 0) {
     await supabase
       .from("quotes")
-      .update({ status: "sent", sent_via: sent })
+      .update({
+        status: "sent",
+        sent_via: sent,
+        business_snapshot: businessSnapshot,
+        template_preset: templatePreset,
+      })
       .eq("id", quoteId);
 
     // Auto-create or update client record
@@ -150,5 +133,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sent, errors });
+  const status = sent.length === 0 && errors.length > 0 ? 503 : 200;
+  return NextResponse.json({ sent, errors }, { status });
 }

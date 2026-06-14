@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ArrowLeft } from "@/components/ui/icons";
 import type { QuoteLineItem } from "@/types";
 
 type Step = "form" | "generating" | "review";
@@ -30,6 +31,8 @@ export default function NewQuotePage() {
   const [clientAddress, setClientAddress] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [additionalDetails, setAdditionalDetails] = useState("");
+  const [scheduledStart, setScheduledStart] = useState("");
+  const [scheduledEnd, setScheduledEnd] = useState("");
 
   // Generated quote
   const [quote, setQuote] = useState<GeneratedQuote | null>(null);
@@ -70,6 +73,8 @@ export default function NewQuotePage() {
           client_email: clientEmail || null,
           client_phone: clientPhone || null,
           client_address: clientAddress || null,
+          scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
+          scheduled_end: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
           ...quote,
           status: "draft",
         }),
@@ -93,15 +98,13 @@ export default function NewQuotePage() {
     }
   }
 
-  // ── Form step ──────────────────────────────────────────────────────────────
+  // Form step
   if (step === "form") {
     return (
       <div className="px-4 py-6 max-w-lg mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => router.back()} className="text-slate-400 hover:text-white">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
+            <ArrowLeft size={24} weight="bold" />
           </button>
           <h1 className="text-lg font-semibold text-white">New Quote</h1>
         </div>
@@ -114,6 +117,24 @@ export default function NewQuotePage() {
               <Input label="Email" type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="client@email.com" />
               <Input label="Phone" type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="(305) 555-0100" />
               <Input label="Address" value={clientAddress} onChange={e => setClientAddress(e.target.value)} placeholder="123 Main St, Miami FL" />
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Schedule</h2>
+            <div className="space-y-3">
+              <Input
+                label="Job start"
+                type="datetime-local"
+                value={scheduledStart}
+                onChange={e => setScheduledStart(e.target.value)}
+              />
+              <Input
+                label="Job end"
+                type="datetime-local"
+                value={scheduledEnd}
+                onChange={e => setScheduledEnd(e.target.value)}
+              />
             </div>
           </div>
 
@@ -154,29 +175,24 @@ export default function NewQuotePage() {
     );
   }
 
-  // ── Generating step ────────────────────────────────────────────────────────
+  // Generating step
   if (step === "generating") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 gap-4">
-        <svg className="animate-spin h-10 w-10 text-[#F97316]" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-        </svg>
-        <p className="text-white font-medium">Generating your quote…</p>
-        <p className="text-slate-400 text-sm">Usually takes 5–10 seconds</p>
+        <span className="h-10 w-10 animate-spin rounded-full border-4 border-[#F97316] border-r-transparent" />
+        <p className="text-white font-medium">Generating your quote...</p>
+        <p className="text-slate-400 text-sm">Usually takes 5-10 seconds</p>
       </div>
     );
   }
 
-  // ── Review step ────────────────────────────────────────────────────────────
+  // Review step
   if (step === "review" && quote) {
     return (
       <div className="px-4 py-6 max-w-lg mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setStep("form")} className="text-slate-400 hover:text-white">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
+            <ArrowLeft size={24} weight="bold" />
           </button>
           <h1 className="text-lg font-semibold text-white">Review Quote</h1>
         </div>
@@ -186,6 +202,12 @@ export default function NewQuotePage() {
           <p className="text-sm text-slate-400">Client</p>
           <p className="text-white font-medium">{clientName}</p>
           {clientAddress && <p className="text-slate-400 text-sm">{clientAddress}</p>}
+          {scheduledStart && (
+            <p className="text-slate-400 text-sm">
+              {new Date(scheduledStart).toLocaleString()}
+              {scheduledEnd && ` - ${new Date(scheduledEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+            </p>
+          )}
         </div>
 
         {/* Line items */}
@@ -198,7 +220,7 @@ export default function NewQuotePage() {
               <div key={i} className="px-4 py-3 flex justify-between items-start gap-4">
                 <div className="flex-1">
                   <p className="text-white text-sm">{item.description}</p>
-                  <p className="text-slate-500 text-xs">{item.quantity} {item.unit ?? "unit"} × ${item.unit_price.toFixed(2)}</p>
+                  <p className="text-slate-500 text-xs">{item.quantity} {item.unit ?? "unit"} x ${item.unit_price.toFixed(2)}</p>
                 </div>
                 <p className="text-white font-medium text-sm whitespace-nowrap">${item.total.toFixed(2)}</p>
               </div>

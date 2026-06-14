@@ -27,6 +27,7 @@ export default function LoginPage() {
             type="email"
             placeholder="you@example.com"
             autoComplete="email"
+            defaultValue={state?.values?.email ?? ""}
             required
           />
           <Input

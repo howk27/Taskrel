@@ -1,9 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { NextResponse } from "next/server";
+import { getStripe } from "@/lib/stripe";
+import { getConfiguredEnv, getMissingEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 // Start Stripe Connect onboarding for the contractor
-export async function POST(request: NextRequest) {
+export async function POST() {
+  const stripe = getStripe();
+  const missingEnv = getMissingEnv(["STRIPE_SECRET_KEY", "NEXT_PUBLIC_APP_URL"]);
+  if (!stripe || missingEnv.length > 0) {
+    return NextResponse.json(
+      { error: "Stripe Connect is not configured.", missing: missingEnv },
+      { status: 503 }
+    );
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -35,8 +45,8 @@ export async function POST(request: NextRequest) {
   // Generate onboarding link
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?connect=refresh`,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?connect=success`,
+    refresh_url: `${getConfiguredEnv("NEXT_PUBLIC_APP_URL")}/settings/billing?connect=refresh`,
+    return_url: `${getConfiguredEnv("NEXT_PUBLIC_APP_URL")}/settings/billing?connect=success`,
     type: "account_onboarding",
   });
 

@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import type { Job } from "@/types";
 import { Badge, statusVariant } from "@/components/ui/badge";
+import { CalendarBlank, CaretLeft, CaretRight, MapPin } from "@/components/ui/icons";
+import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
+import { formatTime } from "@/lib/format";
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -32,98 +36,138 @@ export default function CalendarPage() {
   const monthName = new Date(year, month).toLocaleString("default", { month: "long" });
 
   const jobsByDay: Record<number, Job[]> = {};
-  jobs.forEach(job => {
-    const d = new Date(job.scheduled_start).getDate();
-    if (!jobsByDay[d]) jobsByDay[d] = [];
-    jobsByDay[d].push(job);
-  });
+  jobs
+    .filter(job => ["scheduled", "in_progress"].includes(job.status))
+    .forEach(job => {
+      const day = new Date(job.scheduled_start).getDate();
+      if (!jobsByDay[day]) jobsByDay[day] = [];
+      jobsByDay[day].push(job);
+    });
 
   const selectedJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
+  const selectedDate = selectedDay ? new Date(year, month, selectedDay) : null;
+  const isSelectedToday = !!selectedDate
+    && selectedDate.getDate() === today.getDate()
+    && selectedDate.getMonth() === today.getMonth()
+    && selectedDate.getFullYear() === today.getFullYear();
 
   function prevMonth() {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
+    if (month === 0) {
+      setMonth(11);
+      setYear(y => y - 1);
+    } else {
+      setMonth(m => m - 1);
+    }
   }
 
   function nextMonth() {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
+    if (month === 11) {
+      setMonth(0);
+      setYear(y => y + 1);
+    } else {
+      setMonth(m => m + 1);
+    }
   }
 
   return (
-    <div className="px-4 py-6 max-w-lg mx-auto space-y-4">
-      {/* Month nav */}
-      <div className="flex items-center justify-between">
-        <button onClick={prevMonth} className="p-2 text-slate-400 hover:text-white">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-semibold text-white">{monthName} {year}</h1>
-        <button onClick={nextMonth} className="p-2 text-slate-400 hover:text-white">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-          </svg>
-        </button>
-      </div>
+    <div className="px-4 py-6 max-w-lg mx-auto space-y-5">
+      <PageHeader title="Calendar" subtitle="Scheduled and in-progress work by day." />
 
-      {/* Day headers */}
-      <div className="grid grid-cols-7 text-center">
-        {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
-          <div key={d} className="text-xs font-medium text-slate-500 py-1">{d}</div>
-        ))}
-      </div>
+      <Surface className="p-3">
+        <div className="flex items-center justify-between pb-3">
+          <button onClick={prevMonth} className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-white">
+            <CaretLeft size={20} weight="bold" />
+            <span className="sr-only">Previous month</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <CalendarBlank size={20} weight="duotone" className="text-[#F97316]" />
+            <h1 className="text-base font-semibold text-white">{monthName} {year}</h1>
+          </div>
+          <button onClick={nextMonth} className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-white">
+            <CaretRight size={20} weight="bold" />
+            <span className="sr-only">Next month</span>
+          </button>
+        </div>
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const hasJobs = !!jobsByDay[day];
-          const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-          const isSelected = day === selectedDay;
-          return (
-            <button
-              key={day}
-              onClick={() => setSelectedDay(day)}
-              className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-colors relative
-                ${isSelected ? "bg-[#F97316] text-white" : isToday ? "bg-[#F97316]/20 text-[#F97316]" : "text-slate-300 hover:bg-slate-700/50"}`}
-            >
-              {day}
-              {hasJobs && !isSelected && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[#F97316]" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+        <div className="grid grid-cols-7 text-center">
+          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
+            <div key={day} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{day}</div>
+          ))}
+        </div>
 
-      {/* Selected day jobs */}
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const hasJobs = !!jobsByDay[day];
+            const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+            const isSelected = day === selectedDay;
+
+            return (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day)}
+                className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
+                  isSelected
+                    ? "bg-[#F97316] text-white shadow-sm shadow-orange-950/40"
+                    : isToday
+                      ? "bg-[#F97316]/15 text-[#F97316]"
+                      : "text-slate-300 hover:bg-slate-700/50"
+                }`}
+              >
+                {day}
+                {hasJobs && !isSelected && (
+                  <span className="absolute bottom-1.5 h-1.5 w-1.5 rounded-full bg-[#F97316]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Surface>
+
       {selectedDay && (
-        <div>
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
-            {monthName} {selectedDay}
-          </h2>
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {monthName} {selectedDay}
+            </h2>
+            <span className="text-xs text-slate-500">
+              {selectedJobs.length} {selectedJobs.length === 1 ? "job" : "jobs"}
+            </span>
+          </div>
+
           {selectedJobs.length > 0 ? (
-            <div className="rounded-xl bg-[#1E293B] divide-y divide-slate-700/50">
+            <div className="space-y-3">
               {selectedJobs.map(job => (
-                <div key={job.id} className="px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-white text-sm font-medium">{job.title}</p>
-                    <p className="text-slate-500 text-xs">
-                      {new Date(job.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      {job.scheduled_end && ` – ${new Date(job.scheduled_end).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-                    </p>
-                    {job.address && <p className="text-slate-500 text-xs">{job.address}</p>}
+                <Surface key={job.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">{job.title}</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatTime(job.scheduled_start)}
+                        {job.scheduled_end && ` - ${formatTime(job.scheduled_end)}`}
+                      </p>
+                      {job.address && (
+                        <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-500">
+                          <MapPin size={14} weight="duotone" className="mt-0.5 shrink-0 text-slate-500" />
+                          <span>{job.address}</span>
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant={statusVariant(job.status)}>{job.status.replace("_", " ")}</Badge>
                   </div>
-                  <Badge variant={statusVariant(job.status)}>{job.status}</Badge>
-                </div>
+                </Surface>
               ))}
             </div>
           ) : (
-            <p className="text-slate-500 text-sm text-center py-4">No jobs scheduled.</p>
+            <Surface className="p-8 text-center">
+              <CalendarBlank size={30} weight="duotone" className="mx-auto mb-3 text-slate-500" />
+              <p className="text-sm font-medium text-white">
+                {isSelectedToday ? "No scheduled jobs for today." : "No jobs scheduled for this day."}
+              </p>
+            </Surface>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

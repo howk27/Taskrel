@@ -8,13 +8,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect("/login");
 
-  // Redirect to onboarding if not complete (except when already on onboarding)
-  const { data: contractor } = await supabase
-    .from("contractors")
-    .select("onboarding_complete")
-    .eq("user_id", user.id)
-    .single();
-
   return (
     <div className="flex flex-col min-h-screen bg-[#0F172A] text-white">
       <main className="flex-1 pb-20">

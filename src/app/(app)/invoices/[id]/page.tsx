@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "@/components/ui/icons";
 import type { Invoice } from "@/types";
 
 export default function InvoiceDetailPage() {
@@ -28,10 +29,7 @@ export default function InvoiceDetailPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <svg className="animate-spin h-8 w-8 text-[#F97316]" viewBox="0 0 24 24" fill="none">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-      </svg>
+      <span className="h-8 w-8 animate-spin rounded-full border-4 border-[#F97316] border-r-transparent" />
     </div>
   );
 
@@ -41,9 +39,7 @@ export default function InvoiceDetailPage() {
     <div className="px-4 py-6 max-w-lg mx-auto space-y-4">
       <div className="flex items-center gap-3 mb-2">
         <button onClick={() => router.back()} className="text-slate-400 hover:text-white">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
+          <ArrowLeft size={24} weight="bold" />
         </button>
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-white">{invoice.client_name}</h1>
@@ -62,7 +58,7 @@ export default function InvoiceDetailPage() {
             <div key={i} className="px-4 py-3 flex justify-between items-start gap-4">
               <div className="flex-1">
                 <p className="text-white text-sm">{item.description}</p>
-                <p className="text-slate-500 text-xs">{item.quantity} × ${item.unit_price.toFixed(2)}</p>
+                <p className="text-slate-500 text-xs">{item.quantity} x ${item.unit_price.toFixed(2)}</p>
               </div>
               <p className="text-white font-medium text-sm">${item.total.toFixed(2)}</p>
             </div>
