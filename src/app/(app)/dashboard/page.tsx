@@ -1,12 +1,15 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
+import { ChartCard, PipelineDonut, RevenueAreaChart, ValueBarChart } from "@/components/charts/taskrel-charts";
+import { DashboardWorkQueue } from "@/components/dashboard/dashboard-work-queue";
+import { CalendarBlank, FileText, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
-import { CalendarBlank, FileText, Plus, Receipt } from "@/components/ui/icons";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { TRADE_LABELS, type Trade } from "@/types";
+import { buildTaskrelInsights } from "@/lib/insights";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -15,137 +18,160 @@ export default async function DashboardPage() {
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("id, business_name, trade, primary_trade, onboarding_complete")
+    .select("id, onboarding_complete")
     .eq("user_id", user.id)
     .single();
 
   if (!contractor?.onboarding_complete) redirect("/onboarding");
 
-  const [activeQuotesResult, upcomingJobsResult, unpaidInvoicesResult] = await Promise.all([
+  const [quotesResult, jobsResult, invoicesResult, clientsResult] = await Promise.all([
     supabase
       .from("quotes")
-      .select("id, client_name, total, status, created_at, scheduled_start")
+      .select("id, client_name, client_address, total, subtotal, tax_amount, status, line_items, notes, created_at, scheduled_start, scheduled_end, sent_via, template_preset")
       .eq("contractor_id", contractor.id)
-      .in("status", ["draft", "sent"])
-      .order("created_at", { ascending: false })
-      .limit(5),
+      .order("created_at", { ascending: false }),
     supabase
       .from("jobs")
-      .select("id, title, scheduled_start, scheduled_end, status")
+      .select("id, title, quote_id, address, scheduled_start, scheduled_end, status")
       .eq("contractor_id", contractor.id)
-      .in("status", ["scheduled", "in_progress"])
-      .gte("scheduled_start", new Date().toISOString())
-      .order("scheduled_start", { ascending: true })
-      .limit(3),
+      .order("scheduled_start", { ascending: true }),
     supabase
       .from("invoices")
-      .select("id", { count: "exact" })
+      .select("id, client_name, total, amount_paid, status, due_date, paid_at, created_at")
       .eq("contractor_id", contractor.id)
-      .in("status", ["draft", "sent", "overdue"]),
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("clients")
+      .select("id, name, email, phone")
+      .eq("contractor_id", contractor.id),
   ]);
 
-  const activeQuotes = activeQuotesResult.data ?? [];
-  const upcomingJobs = upcomingJobsResult.data ?? [];
-  const unpaidInvoiceCount = unpaidInvoicesResult.count ?? 0;
-  const trade = (contractor.primary_trade ?? contractor.trade) as Trade | null;
+  const quotes = quotesResult.data ?? [];
+  const jobs = jobsResult.data ?? [];
+  const invoices = invoicesResult.data ?? [];
+  const clients = clientsResult.data ?? [];
+  const insights = buildTaskrelInsights({ quotes, jobs, invoices, clients });
+  const activeQuotes = quotes.filter(quote => ["draft", "sent", "approved"].includes(quote.status));
+  const upcomingJobs = jobs
+    .filter(job => ["scheduled", "in_progress"].includes(job.status))
+    .filter(job => new Date(job.scheduled_start) >= new Date())
+    .slice(0, 4);
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
-        title={contractor.business_name || "Dashboard"}
-        subtitle={trade ? TRADE_LABELS[trade] : "Contractor workspace"}
-        action={
-          <Link
-            href="/quotes/new"
-            className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#F97316] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#EA6C0A] active:scale-[0.98]"
-          >
-            <Plus size={18} weight="bold" />
-            New
-          </Link>
-        }
+        title="Dashboard"
+        subtitle="Quotes, schedule, and payments that need attention."
       />
 
-      <div className="grid grid-cols-3 gap-2">
-        <Surface className="p-3">
-          <FileText size={18} className="text-[#F97316]" />
-          <p className="mt-2 text-lg font-semibold text-white">{activeQuotes.length}</p>
-          <p className="text-xs text-slate-400">Active quotes</p>
-        </Surface>
-        <Surface className="p-3">
-          <CalendarBlank size={18} className="text-[#F97316]" />
-          <p className="mt-2 text-lg font-semibold text-white">{upcomingJobs.length}</p>
-          <p className="text-xs text-slate-400">Scheduled</p>
-        </Surface>
-        <Surface className="p-3">
-          <Receipt size={18} className="text-[#F97316]" />
-          <p className="mt-2 text-lg font-semibold text-white">{unpaidInvoiceCount}</p>
-          <p className="text-xs text-slate-400">Unpaid</p>
-        </Surface>
-      </div>
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-300">Active Quotes</h2>
-          <Link href="/quotes" className="text-xs font-medium text-[#F97316]">See all</Link>
-        </div>
-        {activeQuotes.length > 0 ? (
-          <div className="space-y-2">
-            {activeQuotes.map((quote) => (
-              <Link key={quote.id} href={`/quotes/${quote.id}`}>
-                <Surface className="p-4 transition-colors hover:border-slate-700">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">{quote.client_name}</p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Created {formatDate(quote.created_at)}
-                        {quote.scheduled_start ? ` · Scheduled ${formatDate(quote.scheduled_start)}` : ""}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-white">{formatCurrency(quote.total)}</p>
-                      <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
-                    </div>
-                  </div>
-                </Surface>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <Surface className="p-6 text-center">
-            <FileText size={28} className="mx-auto text-slate-500" />
-            <p className="mt-3 text-sm font-medium text-white">No active quotes</p>
-            <p className="mt-1 text-sm text-slate-400">Draft and sent quotes will show up here.</p>
-          </Surface>
-        )}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Metric icon={<FileText size={21} />} label="Active quotes" value={formatCurrency(insights.summaryMetrics.activeQuoteValue)} />
+        <Metric icon={<CalendarBlank size={21} />} label="Scheduled jobs" value={String(insights.summaryMetrics.scheduledJobsCount)} />
+        <Metric icon={<Receipt size={21} />} label="Unpaid invoices" value={formatCurrency(insights.summaryMetrics.unpaidInvoiceValue)} tone="amber" />
+        <Metric icon={<Receipt size={21} />} label="Paid this month" value={formatCurrency(insights.summaryMetrics.paidThisMonth)} tone="green" />
       </section>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-300">Upcoming Jobs</h2>
-          <Link href="/calendar" className="text-xs font-medium text-[#F97316]">Calendar</Link>
-        </div>
-        {upcomingJobs.length > 0 ? (
-          <div className="space-y-2">
-            {upcomingJobs.map((job) => (
-              <Surface key={job.id} className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{job.title}</p>
-                    <p className="mt-1 text-xs text-slate-400">{formatDate(job.scheduled_start)}</p>
-                  </div>
-                  <Badge variant={statusVariant(job.status)}>{job.status}</Badge>
-                </div>
-              </Surface>
-            ))}
+      <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
+        <Surface className="p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">Active quotes</h2>
+              <p className="text-sm text-[var(--tr-text-muted)]">Expand a quote to see what was sent and what to do next.</p>
+            </div>
+            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View all</Link>
           </div>
-        ) : (
-          <Surface className="p-6 text-center">
-            <CalendarBlank size={28} className="mx-auto text-slate-500" />
-            <p className="mt-3 text-sm font-medium text-white">No scheduled jobs</p>
-            <p className="mt-1 text-sm text-slate-400">Approved quotes with a job date will appear here.</p>
+          <DashboardWorkQueue quotes={activeQuotes} />
+        </Surface>
+
+        <div className="space-y-4">
+          <Surface className="p-5">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-lg font-bold text-white">Scheduled work</h2>
+              <Link href="/jobs" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View jobs</Link>
+            </div>
+            {upcomingJobs.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingJobs.map(job => (
+                  <div key={job.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white">{job.title}</p>
+                        <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{formatDate(job.scheduled_start)}</p>
+                        {job.quote_id && (
+                          <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                            Open quote
+                          </Link>
+                        )}
+                      </div>
+                      <Badge variant={statusVariant(job.status)}>{job.status.replace("_", " ")}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center text-sm text-[var(--tr-text-muted)]">
+                No scheduled jobs yet. Approved quotes with dates will show here.
+              </p>
+            )}
           </Surface>
-        )}
+
+          <Surface className="p-5">
+            <h2 className="text-lg font-bold text-white">Needs attention</h2>
+            <div className="mt-4 space-y-3">
+              {insights.risks.length > 0 ? insights.risks.map(risk => (
+                <Link key={risk.id} href={risk.href ?? "#"} className="block rounded-xl border border-white/10 bg-white/[0.03] p-4 hover:bg-white/[0.06]">
+                  <p className="text-sm font-bold text-white">{risk.title}</p>
+                  <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{risk.body}</p>
+                  {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{risk.actionLabel}</p>}
+                </Link>
+              )) : (
+                <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">
+                  No urgent risks found in quotes, invoices, jobs, or clients.
+                </p>
+              )}
+            </div>
+          </Surface>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-white">Business snapshot</h2>
+          <p className="text-sm text-[var(--tr-text-muted)]">Trends that help you understand the work queue.</p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <ChartCard title="Revenue trend" subtitle="Paid invoices over the last six months">
+            <RevenueAreaChart data={insights.charts.revenueTrend} />
+          </ChartCard>
+          <ChartCard title="Quote pipeline" subtitle="Value by current quote status">
+            <PipelineDonut data={insights.charts.quotePipeline} />
+          </ChartCard>
+          <ChartCard title="Invoice aging" subtitle="Unpaid balance by due date">
+            <ValueBarChart data={insights.charts.invoiceAging} />
+          </ChartCard>
+        </div>
       </section>
     </div>
+  );
+}
+
+function Metric({
+  icon,
+  label,
+  value,
+  tone = "blue",
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  tone?: "blue" | "green" | "amber";
+}) {
+  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-blue)]";
+  return (
+    <Surface className="p-4">
+      <div className={`mb-3 ${toneClass}`}>{icon}</div>
+      <p className="text-xl font-black tracking-tight text-white">{value}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--tr-text-faint)]">{label}</p>
+    </Surface>
   );
 }

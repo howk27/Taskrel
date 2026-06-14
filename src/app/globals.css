@@ -1,26 +1,24 @@
 @import "tailwindcss";
 
-/* ─── Taskrel Brand Tokens ────────────────────────────────────────────────── */
 :root {
-  /* Brand */
-  --tr-navy: #0F172A;
-  --tr-orange: #F97316;
-  --tr-orange-hover: #EA6C0A;
-
-  /* Neutral */
-  --tr-bg: #F8FAFC;
-  --tr-surface: #FFFFFF;
-  --tr-border: #E2E8F0;
-  --tr-muted: #94A3B8;
-  --tr-text: #0F172A;
-  --tr-text-secondary: #475569;
-
-  /* Semantic */
-  --tr-success: #22C55E;
-  --tr-warning: #EAB308;
-  --tr-error: #EF4444;
-
-  /* UI */
+  --tr-bg: #0b1326;
+  --tr-bg-soft: #101827;
+  --tr-shell: #151922;
+  --tr-surface: #172235;
+  --tr-surface-2: #1e2b42;
+  --tr-surface-3: #26344f;
+  --tr-border: #2d3748;
+  --tr-border-soft: rgba(148, 163, 184, 0.22);
+  --tr-text: #f5f7fb;
+  --tr-text-muted: #b9c1d4;
+  --tr-text-faint: #7c879d;
+  --tr-blue: #8fb3ff;
+  --tr-blue-strong: #4f8cff;
+  --tr-green: #66d19e;
+  --tr-amber: #f5b86b;
+  --tr-orange: #f28c52;
+  --tr-violet: #a78bfa;
+  --tr-red: #f87171;
   --background: var(--tr-bg);
   --foreground: var(--tr-text);
 }
@@ -30,7 +28,6 @@
   --color-foreground: var(--foreground);
 }
 
-/* ─── Base ────────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -38,21 +35,21 @@
 }
 
 html {
-  height: 100%;
-  /* Prevent font scaling in landscape on iOS */
+  min-height: 100%;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
   min-height: 100%;
-  background: var(--tr-bg);
+  background:
+    radial-gradient(circle at top left, rgba(79, 140, 255, 0.14), transparent 34rem),
+    linear-gradient(135deg, var(--tr-bg) 0%, #101827 58%, #11151f 100%);
   color: var(--tr-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Mobile touch targets ────────────────────────────────────────────────── */
 button,
 a,
 [role="button"] {
@@ -60,10 +57,49 @@ a,
   min-width: 44px;
 }
 
-/* ─── Safe area insets (iPhone notch / home bar) ──────────────────────────── */
+::selection {
+  background: rgba(143, 179, 255, 0.32);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
+
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tr-card {
+  border: 1px solid var(--tr-border-soft);
+  background: linear-gradient(180deg, rgba(30, 43, 66, 0.96), rgba(23, 34, 53, 0.96));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+
+.tr-input {
+  border: 1px solid var(--tr-border);
+  background: rgba(11, 19, 38, 0.82);
+  color: var(--tr-text);
+}
+
+.tr-input:focus {
+  border-color: transparent;
+  outline: 2px solid rgba(143, 179, 255, 0.75);
+  outline-offset: 0;
 }

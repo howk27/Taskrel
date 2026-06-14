@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { login } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(login, undefined);
@@ -13,8 +14,8 @@ export default function LoginPage() {
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm space-y-8">
         <div>
-          <Link href="/" className="text-2xl font-black tracking-tight text-white">
-            task<span className="text-[#F97316]">rel</span>
+          <Link href="/" aria-label="Taskrel home">
+            <TaskrelWordmark size="sm" />
           </Link>
           <h1 className="mt-4 text-xl font-semibold text-white">Welcome back</h1>
           <p className="mt-1 text-sm text-slate-400">Log in to your account</p>

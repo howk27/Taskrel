@@ -1,7 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
+import { ChartCard, ValueBarChart } from "@/components/charts/taskrel-charts";
+import { CalendarBlank, FileText, Receipt } from "@/components/ui/icons";
+import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
+import { formatCurrency, formatDate } from "@/lib/format";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function InvoicesPage() {
   const supabase = await createClient();
@@ -20,35 +25,109 @@ export default async function InvoicesPage() {
     .eq("contractor_id", contractor?.id)
     .order("created_at", { ascending: false });
 
-  return (
-    <div className="px-4 py-6 max-w-lg mx-auto">
-      <h1 className="text-lg font-semibold text-white mb-6">Invoices</h1>
+  const invoiceRows = invoices ?? [];
+  const outstanding = invoiceRows.reduce((sum, invoice) => {
+    if (invoice.status === "paid") return sum;
+    return sum + Math.max(Number(invoice.total ?? 0) - Number(invoice.amount_paid ?? 0), 0);
+  }, 0);
+  const paid = invoiceRows.reduce((sum, invoice) => sum + Number(invoice.amount_paid ?? 0), 0);
+  const overdueCount = invoiceRows.filter(invoice => invoice.status === "overdue").length;
+  const statusData = ["draft", "sent", "paid", "overdue"].map(status => ({
+    label: status[0].toUpperCase() + status.slice(1),
+    value: invoiceRows.filter(invoice => invoice.status === status).length,
+  }));
 
-      {invoices && invoices.length > 0 ? (
-        <div className="rounded-xl bg-[#1E293B] divide-y divide-slate-700/50">
-          {invoices.map(inv => (
-            <Link key={inv.id} href={`/invoices/${inv.id}`} className="flex items-start justify-between px-4 py-4 hover:bg-slate-700/30 transition-colors">
-              <div>
-                <p className="text-white text-sm font-medium">{inv.client_name}</p>
-                <p className="text-slate-500 text-xs">{inv.invoice_number}</p>
-                {inv.due_date && <p className="text-slate-500 text-xs">Due {new Date(inv.due_date).toLocaleDateString()}</p>}
-              </div>
-              <div className="flex flex-col items-end gap-1 ml-3 shrink-0">
-                <p className="text-white font-semibold text-sm">${inv.total.toFixed(2)}</p>
-                <Badge variant={statusVariant(inv.status)}>{inv.status}</Badge>
-              </div>
+  return (
+    <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
+      <PageHeader
+        eyebrow="Cash flow"
+        title="Invoices"
+        subtitle="See what is paid, what is due, and where follow-up is needed."
+      />
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <InvoiceMetric label="Outstanding" value={formatCurrency(outstanding)} tone="attention" />
+        <InvoiceMetric label="Paid so far" value={formatCurrency(paid)} tone="success" />
+        <InvoiceMetric label="Overdue" value={String(overdueCount)} tone="risk" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_390px]">
+        <ChartCard title="Invoice status" subtitle="Counts by current payment state">
+          <ValueBarChart data={statusData} currency={false} />
+        </ChartCard>
+
+        <Surface className="p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--tr-green)]/15 text-[var(--tr-green)]">
+              <Receipt size={24} weight="duotone" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-white">Payment workflow</h2>
+              <p className="text-sm text-[var(--tr-text-muted)]">Approved quotes can become invoices.</p>
+            </div>
+          </div>
+          <Link
+            href="/quotes"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+          >
+            Review quotes
+          </Link>
+        </Surface>
+      </div>
+
+      {invoiceRows.length > 0 ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {invoiceRows.map(invoice => (
+            <Link key={invoice.id} href={`/invoices/${invoice.id}`} className="block">
+              <Surface className="p-4 transition-colors hover:border-slate-500/80 hover:bg-[#1B2940]">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-green)]" />
+                      <p className="truncate text-sm font-semibold text-white">{invoice.client_name}</p>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{invoice.invoice_number}</p>
+                    {invoice.due_date && (
+                      <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--tr-text-muted)]">
+                        <CalendarBlank size={14} weight="duotone" />
+                        Due {formatDate(invoice.due_date)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-base font-bold text-white">{formatCurrency(invoice.total)}</p>
+                    <Badge variant={statusVariant(invoice.status)}>{invoice.status}</Badge>
+                  </div>
+                </div>
+              </Surface>
             </Link>
           ))}
         </div>
       ) : (
-        <div className="rounded-xl bg-[#1E293B] p-10 text-center">
-          <p className="text-white font-medium mb-1">No invoices yet</p>
-          <p className="text-slate-400 text-sm">Approve a quote to convert it into an invoice.</p>
-          <Link href="/quotes" className="inline-block mt-4 text-[#F97316] text-sm font-medium">
-            View quotes →
+        <Surface className="p-10 text-center">
+          <Receipt size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
+          <p className="font-semibold text-white">No invoices yet</p>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approve a quote to convert it into an invoice.</p>
+          <Link href="/quotes" className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+            View quotes
           </Link>
-        </div>
+        </Surface>
       )}
     </div>
+  );
+}
+
+function InvoiceMetric({ label, value, tone }: { label: string; value: string; tone: "attention" | "success" | "risk" }) {
+  const toneClass = {
+    attention: "text-[var(--tr-amber)]",
+    success: "text-[var(--tr-green)]",
+    risk: "text-red-300",
+  }[tone];
+
+  return (
+    <Surface className="p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">{label}</p>
+      <p className={`mt-2 text-2xl font-black ${toneClass}`}>{value}</p>
+    </Surface>
   );
 }

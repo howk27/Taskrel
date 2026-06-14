@@ -12,13 +12,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
+  "inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-[#F97316] text-white hover:bg-[#EA6C0A]",
+    "bg-[var(--tr-blue)] text-[#09204f] hover:bg-[#a9c6ff]",
   secondary:
-    "bg-[#1E293B] text-white hover:bg-[#334155]",
+    "border border-[var(--tr-border)] bg-[var(--tr-surface-2)] text-white hover:bg-[var(--tr-surface-3)]",
   ghost:
     "bg-transparent text-slate-300 hover:text-white hover:bg-white/10",
   destructive:

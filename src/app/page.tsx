@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
 import { CalendarBlank, CheckCircle, DeviceMobile, FileText, Receipt } from "@/components/ui/icons";
 
 const features = [
@@ -28,9 +29,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0F172A] flex flex-col">
       <nav className="flex items-center justify-between px-6 py-5">
-        <span className="text-xl font-black tracking-tight text-white">
-          task<span className="text-[#F97316]">rel</span>
-        </span>
+        <TaskrelWordmark size="sm" />
         <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-white">
           Log in
         </Link>

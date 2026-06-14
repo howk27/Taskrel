@@ -132,9 +132,10 @@ Taskrel must be mobile-first at 390px width before desktop polish is considered.
 
 Visual direction:
 
-- Dark shell with restrained slate surfaces.
-- Orange primary action color.
+- Dark shell with restrained slate surfaces and a friendlier multi-color status palette.
+- Soft blue for primary actions, green for schedule/payment progress, amber/orange for attention, and violet for AI-related moments.
 - Clean Phosphor icons instead of emoji or custom inline SVG icons where practical.
+- Operational charts for quote pipeline, revenue trend, invoice aging, and schedule density.
 - Compact page headers, metric strips, segmented controls, strong empty states, and professional work-item cards.
 - Utility-first contractor feel: clear, direct, and operational.
 - Avoid decorative gradients, orbs, novelty illustrations, and marketing-style dashboard clutter.
@@ -206,7 +207,7 @@ When a quote is sent, Taskrel snapshots business and template settings into the 
 - **Framework:** Next.js App Router and TypeScript.
 - **Styling:** Tailwind CSS with mobile-first layouts.
 - **Database/Auth:** Supabase PostgreSQL and Supabase Auth.
-- **AI:** Claude API for trade-specific quote generation.
+- **AI:** OpenAI API for trade-specific quote generation and internal workflow assistance. Default model is configured with `TASKREL_AI_DEFAULT_MODEL`; complex future assistant work can use `TASKREL_AI_COMPLEX_MODEL`.
 - **Payments:** Stripe for subscriptions and Stripe Connect for contractor-client payments.
 - **SMS:** Twilio.
 - **Email:** SendGrid.

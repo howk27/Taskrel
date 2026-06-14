@@ -1,11 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { logout } from "@/lib/actions/auth";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { DownloadSimple, FileText, Gear, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 import { QuoteDocumentSettingsForm } from "@/components/settings/quote-document-settings-form";
-import Link from "next/link";
+import { logout } from "@/lib/actions/auth";
+import { createClient } from "@/lib/supabase/server";
 
 function googleNotice(status?: string) {
   switch (status) {
@@ -37,152 +39,151 @@ export default async function SettingsPage({
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("business_name, trade, email, subscription_status, stripe_connect_account_id, onboarding_complete, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset")
+    .select("business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset")
     .eq("user_id", user.id)
     .single();
 
   return (
-    <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
+        eyebrow="Workspace"
         title="Settings"
         subtitle="Account, quote documents, billing, and exports."
       />
 
-      {/* Account */}
-      <section>
-        <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          <Gear size={16} weight="duotone" className="text-[#F97316]" />
-          Account
-        </h2>
-        <div className="rounded-lg border border-slate-700/70 bg-[#172235] divide-y divide-slate-700/50">
-          <div className="px-4 py-3">
-            <p className="text-xs text-slate-400">Business</p>
-            <p className="text-white text-sm">{contractor?.business_name}</p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs text-slate-400">Email</p>
-            <p className="text-white text-sm">{contractor?.email}</p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs text-slate-400">Trade</p>
-            <p className="text-white text-sm capitalize">{contractor?.trade}</p>
-          </div>
-        </div>
-      </section>
+      <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
+        <div className="space-y-6">
+          <section>
+            <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-blue)]" />
+            <Surface className="divide-y divide-slate-700/50 overflow-hidden">
+              <SettingRow label="Business" value={contractor?.business_name ?? "Taskrel business"} />
+              <SettingRow label="Email" value={contractor?.email ?? user.email ?? ""} />
+              <SettingRow label="Trade" value={contractor?.trade ?? "Not set"} capitalize />
+            </Surface>
+          </section>
 
-      {/* Quote documents */}
-      <section>
-        <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          <FileText size={16} weight="duotone" className="text-[#F97316]" />
-          Quote documents
-        </h2>
-        {contractor && (
-          <QuoteDocumentSettingsForm
-            contractor={{
-              logo_url: contractor.logo_url,
-              business_phone: contractor.business_phone,
-              business_website: contractor.business_website,
-              license_text: contractor.license_text,
-              quote_default_terms: contractor.quote_default_terms,
-              quote_default_note: contractor.quote_default_note,
-              quote_template_preset: contractor.quote_template_preset,
-            }}
-          />
-        )}
-      </section>
-
-      {/* Billing */}
-      <section>
-        <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          <Receipt size={16} weight="duotone" className="text-[#F97316]" />
-          Billing
-        </h2>
-        <div className="rounded-lg border border-slate-700/70 bg-[#172235] divide-y divide-slate-700/50">
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-white text-sm">Taskrel subscription</p>
-              <p className="text-slate-400 text-xs">$19/month</p>
-            </div>
-            {contractor?.subscription_status ? (
-              <Badge variant={statusVariant(contractor.subscription_status)}>
-                {contractor.subscription_status}
-              </Badge>
-            ) : (
-              <Link href="/settings/billing" className="text-[#F97316] text-sm font-medium">
-                Subscribe
-              </Link>
+          <section>
+            <SectionTitle icon={<FileText size={17} weight="duotone" />} label="Quote documents" tone="text-[var(--tr-amber)]" />
+            {contractor && (
+              <QuoteDocumentSettingsForm
+                contractor={{
+                  logo_url: contractor.logo_url,
+                  business_phone: contractor.business_phone,
+                  business_website: contractor.business_website,
+                  license_text: contractor.license_text,
+                  quote_default_terms: contractor.quote_default_terms,
+                  quote_default_note: contractor.quote_default_note,
+                  quote_template_preset: contractor.quote_template_preset,
+                }}
+              />
             )}
-          </div>
-          <div className="px-4 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-white text-sm">Payment processing</p>
-              <p className="text-slate-400 text-xs">Stripe Connect — accept client payments</p>
-            </div>
-            {contractor?.stripe_connect_account_id ? (
-              <Badge variant="success">Connected</Badge>
-            ) : (
-              <Link href="/settings/billing" className="text-[#F97316] text-sm font-medium">
-                Set up
-              </Link>
-            )}
-          </div>
+          </section>
         </div>
-      </section>
 
-      {/* Export */}
-      <section>
-        <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          <DownloadSimple size={16} weight="duotone" className="text-[#F97316]" />
-          Export
-        </h2>
-        <div className="rounded-lg border border-slate-700/70 bg-[#172235] divide-y divide-slate-700/50">
-          <Link href="/api/export/csv" className="flex items-center justify-between px-4 py-3 hover:bg-slate-700/30 transition-colors">
-            <p className="text-white text-sm">Download CSV</p>
-            <DownloadSimple size={18} className="text-slate-400" />
-          </Link>
-          <div className="px-4 py-3 space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-white text-sm">Google Sheets sync</p>
-                <p className="text-slate-400 text-xs">
-                  {contractor?.google_sheets_last_synced_at
-                    ? `Last synced ${new Date(contractor.google_sheets_last_synced_at).toLocaleString()}`
-                    : "Optional live spreadsheet export"}
-                </p>
+        <div className="space-y-6">
+          <section>
+            <SectionTitle icon={<Receipt size={17} weight="duotone" />} label="Billing" tone="text-[var(--tr-green)]" />
+            <Surface className="divide-y divide-slate-700/50 overflow-hidden">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <p className="text-sm text-white">Taskrel subscription</p>
+                  <p className="text-xs text-slate-400">$19/month</p>
+                </div>
+                {contractor?.subscription_status ? (
+                  <Badge variant={statusVariant(contractor.subscription_status)}>
+                    {contractor.subscription_status}
+                  </Badge>
+                ) : (
+                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
+                    Subscribe
+                  </Link>
+                )}
               </div>
-              <Badge variant={contractor?.google_sheets_status === "connected" ? "success" : contractor?.google_sheets_status === "error" ? "error" : "default"}>
-                {contractor?.google_sheets_status ?? "disconnected"}
-              </Badge>
-            </div>
-            {googleMessage && <p className="text-xs text-slate-300">{googleMessage}</p>}
-            {contractor?.google_sheets_sync_enabled && contractor.google_sheets_sheet_id ? (
-              <div className="grid grid-cols-2 gap-2">
-                <form action="/api/google-sheets/sync" method="post">
-                  <button type="submit" className="w-full rounded-lg bg-[#F97316] px-3 py-2 text-sm font-semibold text-white hover:bg-[#EA6C0A]">
-                    Sync now
-                  </button>
-                </form>
-                <form action="/api/google-sheets/disconnect" method="post">
-                  <button type="submit" className="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600">
-                    Disconnect
-                  </button>
-                </form>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <p className="text-sm text-white">Payment processing</p>
+                  <p className="text-xs text-slate-400">Stripe Connect - accept client payments</p>
+                </div>
+                {contractor?.stripe_connect_account_id ? (
+                  <Badge variant="success">Connected</Badge>
+                ) : (
+                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
+                    Set up
+                  </Link>
+                )}
               </div>
-            ) : (
-              <Link href="/api/google-sheets/connect" className="block w-full rounded-lg bg-slate-700 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-slate-600">
-                Connect Google Sheets
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
+            </Surface>
+          </section>
 
-      {/* Sign out */}
-      <form action={logout}>
-        <button type="submit" className="w-full text-center text-sm text-red-400 py-3 hover:text-red-300 transition-colors">
-          Sign out
-        </button>
-      </form>
+          <section>
+            <SectionTitle icon={<DownloadSimple size={17} weight="duotone" />} label="Export" tone="text-[var(--tr-violet)]" />
+            <Surface className="divide-y divide-slate-700/50 overflow-hidden">
+              <Link href="/api/export/csv" className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-slate-700/30">
+                <p className="text-sm text-white">Download CSV</p>
+                <DownloadSimple size={18} className="text-slate-400" />
+              </Link>
+              <div className="space-y-3 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-white">Google Sheets sync</p>
+                    <p className="text-xs text-slate-400">
+                      {contractor?.google_sheets_last_synced_at
+                        ? `Last synced ${new Date(contractor.google_sheets_last_synced_at).toLocaleString()}`
+                        : "Optional live spreadsheet export"}
+                    </p>
+                  </div>
+                  <Badge variant={contractor?.google_sheets_status === "connected" ? "success" : contractor?.google_sheets_status === "error" ? "error" : "default"}>
+                    {contractor?.google_sheets_status ?? "disconnected"}
+                  </Badge>
+                </div>
+                {googleMessage && <p className="text-xs text-slate-300">{googleMessage}</p>}
+                {contractor?.google_sheets_sync_enabled && contractor.google_sheets_sheet_id ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <form action="/api/google-sheets/sync" method="post">
+                      <button type="submit" className="w-full rounded-lg bg-[var(--tr-blue)] px-3 py-2 text-sm font-semibold text-[#09204f] hover:bg-[#a9c6ff]">
+                        Sync now
+                      </button>
+                    </form>
+                    <form action="/api/google-sheets/disconnect" method="post">
+                      <button type="submit" className="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600">
+                        Disconnect
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <Link href="/api/google-sheets/connect" className="block w-full rounded-lg bg-slate-700 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-slate-600">
+                    Connect Google Sheets
+                  </Link>
+                )}
+              </div>
+            </Surface>
+          </section>
+
+          <form action={logout}>
+            <button type="submit" className="w-full rounded-xl border border-red-400/20 bg-red-500/10 py-3 text-center text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/15">
+              Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ icon, label, tone }: { icon: ReactNode; label: string; tone: string }) {
+  return (
+    <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+      <span className={tone}>{icon}</span>
+      {label}
+    </h2>
+  );
+}
+
+function SettingRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
+  return (
+    <div className="px-4 py-3">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className={`text-sm text-white ${capitalize ? "capitalize" : ""}`}>{value}</p>
     </div>
   );
 }
