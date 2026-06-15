@@ -10,6 +10,7 @@ type BusinessSource = Pick<
   | "license_text"
   | "quote_default_terms"
   | "quote_default_note"
+  | "quote_policy_text"
 >;
 
 type QuoteDocumentInput = {
@@ -33,27 +34,43 @@ type QuoteDocumentInput = {
   preset: QuoteTemplatePreset;
 };
 
-const presetStyles: Record<QuoteTemplatePreset, { accent: string; bg: string; border: string; text: string; muted: string }> = {
+type TemplateTheme = {
+  accent: string;
+  bg: string;
+  border: string;
+  card: string;
+  text: string;
+  muted: string;
+  paperText: string;
+};
+
+const themes: Record<QuoteTemplatePreset, TemplateTheme> = {
   classic: {
-    accent: "#F97316",
-    bg: "#0F172A",
-    border: "#334155",
-    text: "#FFFFFF",
-    muted: "#CBD5E1",
-  },
-  modern: {
-    accent: "#22C55E",
+    accent: "#F59E0B",
     bg: "#111827",
     border: "#374151",
-    text: "#F9FAFB",
-    muted: "#D1D5DB",
+    card: "#1F2937",
+    text: "#FFFFFF",
+    muted: "#CBD5E1",
+    paperText: "#E5E7EB",
+  },
+  modern: {
+    accent: "#0F766E",
+    bg: "#F8FAFC",
+    border: "#CBD5E1",
+    card: "#E2E8F0",
+    text: "#111827",
+    muted: "#64748B",
+    paperText: "#111827",
   },
   compact: {
-    accent: "#F97316",
-    bg: "#FFFFFF",
-    border: "#E2E8F0",
-    text: "#0F172A",
-    muted: "#475569",
+    accent: "#B45309",
+    bg: "#FFFAF5",
+    border: "#FED7AA",
+    card: "#FFEDD5",
+    text: "#1F2937",
+    muted: "#9A3412",
+    paperText: "#1F2937",
   },
 };
 
@@ -64,6 +81,10 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function multiline(value: string | null | undefined) {
+  return escapeHtml(value).replace(/\n/g, "<br />");
 }
 
 function money(value: number) {
@@ -86,6 +107,248 @@ function datetime(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+function contactLine(business: BusinessSnapshot) {
+  return [business.business_phone, business.email, business.business_website].filter(Boolean).map(escapeHtml).join(" | ");
+}
+
+function clientContactLine(quote: QuoteDocumentInput["quote"]) {
+  return [quote.client_email, quote.client_phone].filter(Boolean).map(escapeHtml).join(" | ");
+}
+
+function scheduledLine(quote: QuoteDocumentInput["quote"]) {
+  if (!quote.scheduled_start) return "";
+  return `Scheduled: ${datetime(quote.scheduled_start)}${quote.scheduled_end ? ` - ${datetime(quote.scheduled_end)}` : ""}`;
+}
+
+function renderLogo(business: BusinessSnapshot, theme: TemplateTheme, variant: "dark" | "light" = "dark") {
+  if (business.logo_url) {
+    return `<img src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.business_name)} logo" style="display:block;max-height:54px;max-width:170px;object-fit:contain;margin-bottom:12px;" />`;
+  }
+
+  const background = variant === "light" ? "rgba(15,23,42,.04)" : "rgba(255,255,255,.04)";
+  return `
+    <div style="width:94px;height:54px;border:1.5px dashed ${theme.accent};border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;background:${background};color:${theme.accent};font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;">
+      Logo
+    </div>
+  `;
+}
+
+function renderPolicyBlock(business: BusinessSnapshot, theme: TemplateTheme, variant: "classic" | "modern" | "compact") {
+  if (!business.quote_policy_text) return "";
+  const styles = {
+    classic: `background:#0B1220;border:1px solid ${theme.border};color:${theme.muted};`,
+    modern: "background:#ECFDF5;border:1px solid #99F6E4;color:#134E4A;",
+    compact: `background:#FFF7ED;border:1px solid ${theme.border};color:#7C2D12;`,
+  };
+
+  return `
+    <div style="margin-top:18px;border-radius:14px;padding:14px;${styles[variant]}font-size:13px;line-height:1.55;">
+      <p style="margin:0 0 6px;color:${theme.accent};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Policies &amp; warranty</p>
+      <p style="margin:0;">${multiline(business.quote_policy_text)}</p>
+    </div>
+  `;
+}
+
+function renderTermsAndNote(quote: QuoteDocumentInput["quote"], business: BusinessSnapshot, theme: TemplateTheme) {
+  const note = quote.notes || business.quote_default_note;
+  const terms = business.quote_default_terms;
+
+  return `
+    ${note ? `<div style="margin-top:24px;padding-top:18px;border-top:1px solid ${theme.border};"><p style="margin:0 0 6px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Client note</p><p style="margin:0;color:${theme.paperText};line-height:1.55;">${multiline(note)}</p></div>` : ""}
+    ${terms ? `<div style="margin-top:16px;"><p style="margin:0 0 6px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Terms</p><p style="margin:0;color:${theme.muted};font-size:13px;line-height:1.5;">${multiline(terms)}</p></div>` : ""}
+  `;
+}
+
+function totalRows(quote: QuoteDocumentInput["quote"], theme: TemplateTheme, align = "right") {
+  return `
+    <div style="margin-left:${align === "right" ? "auto" : "0"};max-width:270px;padding-top:8px;">
+      <p style="display:flex;justify-content:space-between;margin:6px 0;color:${theme.muted};"><span>Subtotal</span><span>${money(quote.subtotal)}</span></p>
+      ${quote.tax_amount > 0 ? `<p style="display:flex;justify-content:space-between;margin:6px 0;color:${theme.muted};"><span>Tax ${(quote.tax_rate * 100).toFixed(1)}%</span><span>${money(quote.tax_amount)}</span></p>` : ""}
+      <p style="display:flex;justify-content:space-between;margin:10px 0 0;color:${theme.accent};font-size:22px;font-weight:900;"><span>Total</span><span>${money(quote.total)}</span></p>
+    </div>
+  `;
+}
+
+function renderClassicLineItems(quote: QuoteDocumentInput["quote"], theme: TemplateTheme) {
+  return quote.line_items
+    .map(
+      item => `
+        <tr>
+          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};color:${theme.text};"><strong>${escapeHtml(item.description)}</strong></td>
+          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.muted};">${item.quantity} ${escapeHtml(item.unit ?? "")}</td>
+          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.muted};">${money(item.unit_price)}</td>
+          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.text};font-weight:800;">${money(item.total)}</td>
+        </tr>`
+    )
+    .join("");
+}
+
+function renderClassic({ quote, business }: QuoteDocumentInput) {
+  const theme = themes.classic;
+  const scheduled = scheduledLine(quote);
+
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:760px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:34px;border-radius:16px;border:1px solid ${theme.border};">
+      <div style="display:flex;justify-content:space-between;gap:26px;align-items:flex-start;margin-bottom:26px;">
+        <div>
+          ${renderLogo(business, theme)}
+          <h1 style="font-size:28px;line-height:1.1;margin:0 0 8px;font-weight:900;">${escapeHtml(business.business_name)}</h1>
+          <p style="margin:0;color:${theme.muted};font-size:14px;">${contactLine(business)}</p>
+          ${business.license_text ? `<p style="margin:6px 0 0;color:${theme.muted};font-size:13px;">${escapeHtml(business.license_text)}</p>` : ""}
+        </div>
+        <div style="text-align:right;">
+          <p style="display:inline-block;margin:0;padding:6px 12px;border-radius:999px;background:${theme.accent};color:#111827;font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Quote</p>
+          <p style="margin:14px 0 0;font-size:30px;font-weight:950;color:${theme.text};">${money(quote.total)}</p>
+          <p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">Created ${date(quote.created_at)}</p>
+        </div>
+      </div>
+
+      <div style="background:${theme.card};border:1px solid ${theme.border};border-radius:14px;padding:16px;margin-bottom:24px;">
+        <p style="margin:0 0 4px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Prepared for</p>
+        <h2 style="margin:0;color:${theme.text};font-size:19px;">${escapeHtml(quote.client_name)}</h2>
+        ${quote.client_address ? `<p style="margin:4px 0;color:${theme.muted};">${escapeHtml(quote.client_address)}</p>` : ""}
+        ${clientContactLine(quote) ? `<p style="margin:4px 0;color:${theme.muted};">${clientContactLine(quote)}</p>` : ""}
+        ${scheduled ? `<p style="margin:4px 0;color:${theme.muted};">${scheduled}</p>` : ""}
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+        <thead>
+          <tr style="color:${theme.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;">
+            <th style="padding:0 0 10px;text-align:left;">Item</th>
+            <th style="padding:0 0 10px;text-align:right;">Qty</th>
+            <th style="padding:0 0 10px;text-align:right;">Rate</th>
+            <th style="padding:0 0 10px;text-align:right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${renderClassicLineItems(quote, theme)}</tbody>
+      </table>
+
+      <div style="background:${theme.accent};color:#111827;border-radius:14px;padding:15px;margin-left:auto;max-width:290px;">
+        <p style="display:flex;justify-content:space-between;margin:0;font-size:20px;font-weight:950;"><span>Total</span><span>${money(quote.total)}</span></p>
+      </div>
+
+      ${renderTermsAndNote(quote, business, theme)}
+      ${renderPolicyBlock(business, theme, "classic")}
+      <p style="margin:28px 0 0;color:${theme.muted};font-size:12px;">Sent via Taskrel</p>
+    </div>
+  `;
+}
+
+function renderModern({ quote, business }: QuoteDocumentInput) {
+  const theme = themes.modern;
+  const scheduled = scheduledLine(quote);
+  const lineItems = renderClassicLineItems(quote, theme);
+
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:760px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:34px;border-radius:16px;border:1px solid ${theme.border};">
+      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:4px solid ${theme.accent};padding-bottom:20px;margin-bottom:24px;">
+        <div>
+          ${renderLogo(business, theme, "light")}
+          <h1 style="font-size:22px;line-height:1.1;margin:0 0 6px;font-weight:900;">${escapeHtml(business.business_name)}</h1>
+          <p style="margin:0;color:${theme.muted};font-size:13px;">${contactLine(business)}</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="margin:0;color:${theme.text};font-size:36px;letter-spacing:.04em;font-weight:950;">QUOTE</p>
+          <p style="margin:2px 0 0;color:${theme.muted};font-size:13px;">Created ${date(quote.created_at)}</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;">
+        <div style="background:#FFFFFF;border:1px solid ${theme.border};border-radius:14px;padding:16px;">
+          <p style="margin:0 0 6px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">From</p>
+          <p style="margin:0;color:${theme.text};font-weight:800;">${escapeHtml(business.business_name)}</p>
+          ${business.license_text ? `<p style="margin:5px 0 0;color:${theme.muted};font-size:13px;">${escapeHtml(business.license_text)}</p>` : ""}
+        </div>
+        <div style="background:#FFFFFF;border:1px solid ${theme.border};border-radius:14px;padding:16px;">
+          <p style="margin:0 0 6px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">For</p>
+          <p style="margin:0;color:${theme.text};font-weight:800;">${escapeHtml(quote.client_name)}</p>
+          ${quote.client_address ? `<p style="margin:5px 0 0;color:${theme.muted};font-size:13px;">${escapeHtml(quote.client_address)}</p>` : ""}
+          ${clientContactLine(quote) ? `<p style="margin:5px 0 0;color:${theme.muted};font-size:13px;">${clientContactLine(quote)}</p>` : ""}
+          ${scheduled ? `<p style="margin:5px 0 0;color:${theme.muted};font-size:13px;">${scheduled}</p>` : ""}
+        </div>
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;background:#FFFFFF;border-radius:14px;overflow:hidden;">
+        <thead>
+          <tr style="background:${theme.card};color:${theme.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;">
+            <th style="padding:12px;text-align:left;">Description</th>
+            <th style="padding:12px;text-align:right;">Qty</th>
+            <th style="padding:12px;text-align:right;">Rate</th>
+            <th style="padding:12px;text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${lineItems}</tbody>
+      </table>
+
+      <div style="display:grid;grid-template-columns:1fr 270px;gap:20px;align-items:start;">
+        <div style="color:${theme.muted};font-size:13px;line-height:1.55;">${quote.notes ? multiline(quote.notes) : multiline(business.quote_default_note)}</div>
+        <div style="background:${theme.accent};color:#FFFFFF;border-radius:14px;padding:16px;">${totalRows(quote, { ...theme, muted: "#CCFBF1", accent: "#FFFFFF" }, "left")}</div>
+      </div>
+
+      ${business.quote_default_terms ? `<div style="margin-top:18px;color:${theme.muted};font-size:13px;line-height:1.5;"><strong style="color:${theme.text};">Terms:</strong> ${multiline(business.quote_default_terms)}</div>` : ""}
+      ${renderPolicyBlock(business, theme, "modern")}
+      <p style="margin:28px 0 0;color:${theme.muted};font-size:12px;">Sent via Taskrel</p>
+    </div>
+  `;
+}
+
+function renderCompact({ quote, business }: QuoteDocumentInput) {
+  const theme = themes.compact;
+  const scheduled = scheduledLine(quote);
+  const groupedItems = quote.line_items
+    .map(
+      item => `
+        <div style="display:flex;justify-content:space-between;gap:18px;padding:12px 0;border-bottom:1px solid ${theme.border};font-size:14px;">
+          <span style="color:${theme.text};line-height:1.35;">${escapeHtml(item.description)} <span style="color:${theme.muted};font-size:12px;">(${item.quantity} ${escapeHtml(item.unit ?? "")})</span></span>
+          <strong style="white-space:nowrap;color:${theme.text};">${money(item.total)}</strong>
+        </div>`
+    )
+    .join("");
+
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:720px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:30px;border-radius:16px;border:1px solid ${theme.border};">
+      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:2px solid ${theme.border};padding-bottom:18px;margin-bottom:18px;">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          ${renderLogo(business, theme, "light")}
+          <div>
+            <h1 style="font-size:23px;line-height:1.1;margin:0 0 6px;font-weight:950;">${escapeHtml(business.business_name)}</h1>
+            <p style="margin:0;color:${theme.muted};font-size:13px;">${contactLine(business)}</p>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <p style="margin:0;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Quote total</p>
+          <p style="margin:4px 0 0;color:${theme.text};font-size:28px;font-weight:950;">${money(quote.total)}</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+        <div style="background:${theme.card};border-radius:12px;padding:13px;">
+          <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Client</p>
+          <p style="margin:0;color:${theme.text};font-weight:800;">${escapeHtml(quote.client_name)}</p>
+          ${quote.client_address ? `<p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">${escapeHtml(quote.client_address)}</p>` : ""}
+        </div>
+        <div style="background:${theme.card};border-radius:12px;padding:13px;">
+          <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Schedule</p>
+          <p style="margin:0;color:${theme.text};font-weight:800;">${scheduled || "Ready after approval"}</p>
+          <p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">Created ${date(quote.created_at)}</p>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <div style="display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid ${theme.border};padding-bottom:8px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">
+          <span>Scope</span><span>Amount</span>
+        </div>
+        ${groupedItems}
+      </div>
+
+      ${totalRows(quote, theme)}
+      ${renderTermsAndNote(quote, business, theme)}
+      ${renderPolicyBlock(business, theme, "compact")}
+      <p style="margin:28px 0 0;color:${theme.muted};font-size:12px;">Sent via Taskrel</p>
+    </div>
+  `;
+}
+
 export function buildBusinessSnapshot(contractor: BusinessSource): BusinessSnapshot {
   return {
     business_name: contractor.business_name,
@@ -96,87 +359,18 @@ export function buildBusinessSnapshot(contractor: BusinessSource): BusinessSnaps
     license_text: contractor.license_text,
     quote_default_terms: contractor.quote_default_terms,
     quote_default_note: contractor.quote_default_note,
+    quote_policy_text: contractor.quote_policy_text,
   };
 }
 
-export function renderQuoteDocumentHtml({ quote, business, preset }: QuoteDocumentInput) {
-  const style = presetStyles[preset] ?? presetStyles.classic;
-  const isCompact = preset === "compact";
-  const lineItems = quote.line_items
-    .map(
-      item => `
-        <tr>
-          <td style="padding:${isCompact ? "8px" : "12px"} 0;border-bottom:1px solid ${style.border};color:${style.text};">
-            <strong>${escapeHtml(item.description)}</strong>
-          </td>
-          <td style="padding:${isCompact ? "8px" : "12px"} 0;border-bottom:1px solid ${style.border};text-align:right;color:${style.muted};">
-            ${item.quantity} ${escapeHtml(item.unit ?? "")}
-          </td>
-          <td style="padding:${isCompact ? "8px" : "12px"} 0;border-bottom:1px solid ${style.border};text-align:right;color:${style.muted};">
-            ${money(item.unit_price)}
-          </td>
-          <td style="padding:${isCompact ? "8px" : "12px"} 0;border-bottom:1px solid ${style.border};text-align:right;color:${style.text};font-weight:700;">
-            ${money(item.total)}
-          </td>
-        </tr>`
-    )
-    .join("");
-
-  const logo = business.logo_url
-    ? `<img src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.business_name)} logo" style="max-height:48px;max-width:160px;object-fit:contain;margin-bottom:12px;" />`
-    : "";
-
-  const scheduled = quote.scheduled_start
-    ? `<p style="margin:4px 0;color:${style.muted};">Scheduled: ${datetime(quote.scheduled_start)}${quote.scheduled_end ? ` - ${datetime(quote.scheduled_end)}` : ""}</p>`
-    : "";
-
-  const note = quote.notes || business.quote_default_note;
-  const terms = business.quote_default_terms;
-
-  return `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:720px;margin:0 auto;background:${style.bg};color:${style.text};padding:${isCompact ? "24px" : "32px"};border-radius:14px;border:1px solid ${style.border};">
-      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:${isCompact ? "20px" : "32px"};">
-        <div>
-          ${logo}
-          <h1 style="font-size:${isCompact ? "22px" : "28px"};line-height:1.1;margin:0 0 8px;font-weight:800;">${escapeHtml(business.business_name)}</h1>
-          <p style="margin:0;color:${style.muted};font-size:14px;">${[business.business_phone, business.email, business.business_website].filter(Boolean).map(escapeHtml).join(" | ")}</p>
-          ${business.license_text ? `<p style="margin:6px 0 0;color:${style.muted};font-size:13px;">${escapeHtml(business.license_text)}</p>` : ""}
-        </div>
-        <div style="text-align:right;">
-          <p style="margin:0;color:${style.accent};font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;">Quote</p>
-          <p style="margin:6px 0 0;color:${style.muted};font-size:14px;">Created ${date(quote.created_at)}</p>
-        </div>
-      </div>
-
-      <div style="border-top:1px solid ${style.border};border-bottom:1px solid ${style.border};padding:${isCompact ? "14px" : "18px"} 0;margin-bottom:${isCompact ? "18px" : "28px"};">
-        <p style="margin:0 0 4px;color:${style.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;">Prepared for</p>
-        <h2 style="margin:0;color:${style.text};font-size:18px;">${escapeHtml(quote.client_name)}</h2>
-        ${quote.client_address ? `<p style="margin:4px 0;color:${style.muted};">${escapeHtml(quote.client_address)}</p>` : ""}
-        ${[quote.client_email, quote.client_phone].filter(Boolean).length ? `<p style="margin:4px 0;color:${style.muted};">${[quote.client_email, quote.client_phone].filter(Boolean).map(escapeHtml).join(" | ")}</p>` : ""}
-        ${scheduled}
-      </div>
-
-      <table style="width:100%;border-collapse:collapse;margin:${isCompact ? "12px" : "20px"} 0;">
-        <thead>
-          <tr style="color:${style.muted};font-size:12px;text-transform:uppercase;letter-spacing:.06em;">
-            <th style="padding:0 0 10px;text-align:left;">Item</th>
-            <th style="padding:0 0 10px;text-align:right;">Qty</th>
-            <th style="padding:0 0 10px;text-align:right;">Rate</th>
-            <th style="padding:0 0 10px;text-align:right;">Total</th>
-          </tr>
-        </thead>
-        <tbody>${lineItems}</tbody>
-      </table>
-
-      <div style="margin-left:auto;max-width:260px;padding-top:8px;">
-        <p style="display:flex;justify-content:space-between;margin:6px 0;color:${style.muted};"><span>Subtotal</span><span>${money(quote.subtotal)}</span></p>
-        ${quote.tax_amount > 0 ? `<p style="display:flex;justify-content:space-between;margin:6px 0;color:${style.muted};"><span>Tax ${(quote.tax_rate * 100).toFixed(1)}%</span><span>${money(quote.tax_amount)}</span></p>` : ""}
-        <p style="display:flex;justify-content:space-between;margin:10px 0 0;color:${style.accent};font-size:22px;font-weight:800;"><span>Total</span><span>${money(quote.total)}</span></p>
-      </div>
-
-      ${note ? `<div style="margin-top:28px;padding-top:20px;border-top:1px solid ${style.border};"><p style="margin:0 0 6px;color:${style.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;">Client note</p><p style="margin:0;color:${style.text};line-height:1.55;">${escapeHtml(note)}</p></div>` : ""}
-      ${terms ? `<div style="margin-top:18px;"><p style="margin:0 0 6px;color:${style.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;">Terms</p><p style="margin:0;color:${style.muted};font-size:13px;line-height:1.5;">${escapeHtml(terms)}</p></div>` : ""}
-      <p style="margin:28px 0 0;color:${style.muted};font-size:12px;">Sent via Taskrel</p>
-    </div>
-  `;
+export function renderQuoteDocumentHtml(input: QuoteDocumentInput) {
+  switch (input.preset) {
+    case "modern":
+      return renderModern(input);
+    case "compact":
+      return renderCompact(input);
+    case "classic":
+    default:
+      return renderClassic(input);
+  }
 }

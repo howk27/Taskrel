@@ -10,21 +10,30 @@ export default function BillingPage() {
   const subscribed = params.get("subscribed") === "true";
   const [loadingSubscribe, setLoadingSubscribe] = useState(false);
   const [loadingConnect, setLoadingConnect] = useState(false);
+  const [message, setMessage] = useState("");
 
   async function handleSubscribe() {
+    setMessage("");
     setLoadingSubscribe(true);
     const res = await fetch("/api/stripe/subscribe", { method: "POST" });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
-    else setLoadingSubscribe(false);
+    else {
+      setMessage(data.error ?? "Subscription billing is not enabled for this closed test.");
+      setLoadingSubscribe(false);
+    }
   }
 
   async function handleConnect() {
+    setMessage("");
     setLoadingConnect(true);
     const res = await fetch("/api/stripe/connect", { method: "POST" });
     const data = await res.json();
     if (data.url) window.location.href = data.url;
-    else setLoadingConnect(false);
+    else {
+      setMessage(data.error ?? "Client payments are not enabled for this closed test.");
+      setLoadingConnect(false);
+    }
   }
 
   return (
@@ -40,6 +49,12 @@ export default function BillingPage() {
       {connectSuccess && (
         <div className="rounded-xl bg-green-900/30 border border-green-700 p-4 text-sm text-green-400">
           Stripe Connect setup complete. You can now accept client payments.
+        </div>
+      )}
+
+      {message && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+          {message}
         </div>
       )}
 

@@ -21,6 +21,7 @@ export {
   Receipt,
   SealCheck,
   Tree,
+  UploadSimple,
   UserList,
   Wrench,
   Lightning,

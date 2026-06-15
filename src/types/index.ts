@@ -35,6 +35,7 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
 };
 
 export type QuoteTemplatePreset = "classic" | "modern" | "compact";
+export type PricingSource = "ai_estimate" | "catalog_match" | "manual_edit" | "mixed";
 
 export interface BusinessSnapshot {
   business_name: string;
@@ -45,6 +46,7 @@ export interface BusinessSnapshot {
   license_text: string | null;
   quote_default_terms: string | null;
   quote_default_note: string | null;
+  quote_policy_text: string | null;
 }
 
 // ─── Contractor ───────────────────────────────────────────────────────────────
@@ -65,6 +67,7 @@ export interface Contractor {
   license_text: string | null;
   quote_default_terms: string | null;
   quote_default_note: string | null;
+  quote_policy_text: string | null;
   quote_template_preset: QuoteTemplatePreset;
   stripe_customer_id: string | null;
   stripe_connect_account_id: string | null;
@@ -101,6 +104,9 @@ export interface QuoteLineItem {
   unit?: string;
   unit_price: number;
   total: number;
+  catalog_item_id?: string;
+  pricing_source?: PricingSource;
+  edited_by_contractor?: boolean;
 }
 
 export interface QuoteAssistantMetadata {
@@ -126,6 +132,8 @@ export interface Quote {
   tax_rate: number;
   tax_amount: number;
   total: number;
+  pricing_source?: PricingSource;
+  pricing_confidence?: string | null;
   notes: string | null;
   valid_until: string | null;
   scheduled_start: string | null;

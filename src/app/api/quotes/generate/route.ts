@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { buildQuoteSystemPrompt, buildQuoteUserPrompt } from "@/lib/prompts/quote-prompts";
 import type { Trade } from "@/types";
 import { createOpenAIClient, taskrelDefaultModel } from "@/lib/openai";
+import { applyCatalogPricing, calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
+import { fetchPricingCatalog } from "@/lib/pricing-catalog";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -11,7 +13,7 @@ export async function POST(request: NextRequest) {
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("trade, primary_trade, trades")
+    .select("id, trade, primary_trade, trades")
     .eq("user_id", user.id)
     .single();
 
@@ -60,7 +62,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
     }
 
-    return NextResponse.json(quoteData);
+    const catalogItems = await fetchPricingCatalog({ supabase, contractorId: contractor.id, trade });
+    const pricedLineItems = applyCatalogPricing({
+      trade,
+      lineItems: Array.isArray(quoteData.line_items) ? quoteData.line_items : [],
+      catalogItems,
+    });
+    const calculated = calculateQuotePricing({
+      line_items: pricedLineItems,
+      tax_rate: quoteData.tax_rate,
+    });
+
+    return NextResponse.json({
+      ...quoteData,
+      ...calculated,
+      pricing_source: determineQuotePricingSource(calculated.line_items),
+      pricing_confidence: catalogItems.length > 0 ? "learned" : "starter",
+    });
   } catch (err) {
     console.error("OpenAI quote generation error:", err);
     return NextResponse.json({ error: "AI generation failed" }, { status: 500 });

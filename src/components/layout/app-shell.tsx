@@ -15,7 +15,7 @@ import {
   UserList,
   Wrench,
 } from "@/components/ui/icons";
-import { TRADE_LABELS, type Trade } from "@/types";
+import type { Trade } from "@/types";
 import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
 
 type ShellContractor = {
@@ -48,18 +48,13 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const businessName = contractor?.business_name || "Taskrel";
-  const trade = contractor?.primary_trade ?? contractor?.trade;
-  const tradeLabel = trade ? TRADE_LABELS[trade] : "Trade Management";
 
   return (
     <div className="min-h-screen bg-[var(--tr-bg)] text-white">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] border-r border-[var(--tr-border)] bg-[var(--tr-shell)]/95 backdrop-blur xl:flex xl:flex-col">
         <div className="border-b border-[var(--tr-border)] px-6 py-6">
           <Link href="/dashboard" className="block">
-            <span>
-              <TaskrelWordmark size="md" />
-              <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--tr-text-muted)]">{tradeLabel}</span>
-            </span>
+            <TaskrelWordmark size="md" />
           </Link>
         </div>
 

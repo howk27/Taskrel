@@ -13,25 +13,35 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { quoteId, via } = body; // via: ['email'] | ['sms'] | ['email','sms']
 
-  const { data: contractor } = await supabase
+  const contractorSelect = "id, business_name, email, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, quote_template_preset";
+  const fallbackContractorSelect = "id, business_name, email, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset";
+  const { data: contractor, error: contractorError } = await supabase
     .from("contractors")
-    .select("id, business_name, email, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset")
+    .select(contractorSelect)
     .eq("user_id", user.id)
     .single();
+  const { data: fallbackContractor } = contractorError?.message.includes("quote_policy_text")
+    ? await supabase
+      .from("contractors")
+      .select(fallbackContractorSelect)
+      .eq("user_id", user.id)
+      .single()
+    : { data: null };
+  const quoteContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, quote_policy_text: null } : null);
 
-  if (!contractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
+  if (!quoteContractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
 
   const { data: quote } = await supabase
     .from("quotes")
     .select("*")
     .eq("id", quoteId)
-    .eq("contractor_id", contractor.id)
+    .eq("contractor_id", quoteContractor.id)
     .single();
 
   if (!quote) return NextResponse.json({ error: "Quote not found" }, { status: 404 });
 
-  const businessSnapshot = quote.business_snapshot ?? buildBusinessSnapshot(contractor);
-  const templatePreset = (quote.template_preset ?? contractor.quote_template_preset ?? "classic") as QuoteTemplatePreset;
+  const businessSnapshot = quote.business_snapshot ?? buildBusinessSnapshot(quoteContractor);
+  const templatePreset = (quote.template_preset ?? quoteContractor.quote_template_preset ?? "classic") as QuoteTemplatePreset;
   const errors: string[] = [];
   const sent: string[] = [];
 
@@ -40,22 +50,24 @@ export async function POST(request: NextRequest) {
     if (missingEmailEnv.length > 0) {
       errors.push("email_config");
     } else {
-    try {
-      const sgMail = (await import("@sendgrid/mail")).default;
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+      try {
+        const sgMail = (await import("@sendgrid/mail")).default;
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-      await sgMail.send({
-        to: quote.client_email,
-        from: process.env.SENDGRID_FROM_EMAIL!,
-        subject: `Quote from ${contractor?.business_name ?? "Your Contractor"}`,
-        html: renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset }),
-      });
-      sent.push("email");
-    } catch (err) {
-      console.error("SendGrid error:", err);
-      errors.push("email");
+        await sgMail.send({
+          to: quote.client_email,
+          from: process.env.SENDGRID_FROM_EMAIL!,
+          subject: `Quote from ${quoteContractor.business_name ?? "Your Contractor"}`,
+          html: renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset }),
+        });
+        sent.push("email");
+      } catch (err) {
+        console.error("SendGrid error:", err);
+        errors.push("email");
+      }
     }
-    }
+  } else if (via.includes("email")) {
+    errors.push("email_missing_client");
   }
 
   if (via.includes("sms") && quote.client_phone) {
@@ -69,7 +81,7 @@ export async function POST(request: NextRequest) {
         process.env.TWILIO_AUTH_TOKEN
       );
 
-      const msg = `Hi ${quote.client_name}, ${contractor?.business_name} sent you a quote for $${quote.total.toFixed(2)}. Reply QUOTE to request details.`;
+      const msg = `Hi ${quote.client_name}, ${quoteContractor.business_name} sent you a quote for $${quote.total.toFixed(2)}. Reply QUOTE to request details.`;
 
       await twilioClient.messages.create({
         body: msg,
@@ -82,6 +94,8 @@ export async function POST(request: NextRequest) {
       errors.push("sms");
     }
     }
+  } else if (via.includes("sms")) {
+    errors.push("sms_missing_client");
   }
 
   // Update quote status and sent_via

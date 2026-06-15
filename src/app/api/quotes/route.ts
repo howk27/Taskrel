@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
+import { learnEditedPrices } from "@/lib/pricing-catalog";
+import type { Trade } from "@/types";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -21,13 +24,28 @@ export async function POST(request: NextRequest) {
   const trade = availableTrades.length === 0 || availableTrades.includes(requestedTrade)
     ? requestedTrade
     : contractor.primary_trade ?? contractor.trade;
+  const calculated = calculateQuotePricing({
+    line_items: Array.isArray(body.line_items) ? body.line_items : [],
+    tax_rate: body.tax_rate,
+  });
+  const pricingSource = determineQuotePricingSource(calculated.line_items);
+
+  await learnEditedPrices({
+    supabase,
+    contractorId: contractor.id,
+    trade: trade as Trade,
+    lineItems: calculated.line_items,
+  });
 
   const { data, error } = await supabase
     .from("quotes")
     .insert({
       ...body,
+      ...calculated,
       contractor_id: contractor.id,
       trade,
+      pricing_source: pricingSource,
+      pricing_confidence: body.pricing_confidence ?? null,
       template_preset: body.template_preset ?? contractor.quote_template_preset ?? "classic",
     })
     .select()

@@ -110,7 +110,7 @@ export default function CalendarPage() {
               <button
                 key={day}
                 onClick={() => setSelectedDay(day)}
-                className={`relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm font-semibold transition-colors ${
+                className={`relative grid aspect-square place-items-center overflow-hidden rounded-lg text-sm font-semibold transition-colors ${
                   isSelected
                     ? "bg-[var(--tr-green)] text-[#052112] shadow-sm shadow-emerald-950/40"
                     : hasJobs
@@ -120,9 +120,9 @@ export default function CalendarPage() {
                       : "text-slate-300 hover:bg-slate-700/50"
                 }`}
               >
-                {day}
+                <span className="leading-none">{day}</span>
                 {hasJobs && !isSelected && (
-                  <span className="absolute bottom-1.5 rounded-full bg-[var(--tr-green)] px-1.5 py-0.5 text-[9px] font-black leading-none text-[#052112]">
+                  <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--tr-green)] px-1 text-[9px] font-black leading-none text-[#052112] shadow-sm shadow-emerald-950/30">
                     {jobCount}
                   </span>
                 )}

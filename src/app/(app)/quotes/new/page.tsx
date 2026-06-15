@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Lightning, Plus } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import type { QuoteAssistantMetadata, QuoteLineItem } from "@/types";
+import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 
 type Step = "form" | "generating" | "review";
 
@@ -16,6 +17,8 @@ interface GeneratedQuote extends QuoteAssistantMetadata {
   tax_rate: number;
   tax_amount: number;
   total: number;
+  pricing_source?: string;
+  pricing_confidence?: string | null;
   notes: string;
 }
 
@@ -104,6 +107,51 @@ export default function NewQuotePage() {
       setError(err instanceof Error ? err.message : "Save failed");
       setSaving(false);
     }
+  }
+
+  function updateQuotePricing(lineItems: GeneratedQuote["line_items"], taxRate = quote?.tax_rate ?? 0) {
+    if (!quote) return;
+    const calculated = calculateQuotePricing({ line_items: lineItems, tax_rate: taxRate });
+    setQuote({
+      ...quote,
+      ...calculated,
+      pricing_source: determineQuotePricingSource(calculated.line_items),
+    });
+  }
+
+  function updateLineItem(index: number, patch: Partial<QuoteLineItem>) {
+    if (!quote) return;
+    const nextItems = quote.line_items.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      return {
+        ...item,
+        ...patch,
+        edited_by_contractor: true,
+        pricing_source: "manual_edit" as const,
+      };
+    });
+    updateQuotePricing(nextItems);
+  }
+
+  function addLineItem() {
+    if (!quote) return;
+    updateQuotePricing([
+      ...quote.line_items,
+      {
+        description: "New line item",
+        quantity: 1,
+        unit: "unit",
+        unit_price: 0,
+        total: 0,
+        edited_by_contractor: true,
+        pricing_source: "manual_edit",
+      },
+    ]);
+  }
+
+  function removeLineItem(index: number) {
+    if (!quote) return;
+    updateQuotePricing(quote.line_items.filter((_, itemIndex) => itemIndex !== index));
   }
 
   // Form step
@@ -228,19 +276,63 @@ export default function NewQuotePage() {
             </Surface>
 
             <Surface className="overflow-hidden">
-              <div className="border-b border-slate-700 px-4 py-3">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Line Items</p>
+                <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-blue)]">
+                  Add item
+                </button>
               </div>
               <div className="divide-y divide-slate-700/50">
                 {quote.line_items.map((item, i) => (
-                  <div key={i} className="flex items-start justify-between gap-4 px-4 py-3">
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{item.description}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.quantity} {item.unit ?? "unit"} x ${item.unit_price.toFixed(2)}
-                      </p>
+                  <div key={i} className="grid gap-3 px-4 py-4 lg:grid-cols-[1fr_92px_90px_120px_90px]">
+                    <div className="min-w-0">
+                      <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</label>
+                      <input
+                        value={item.description}
+                        onChange={event => updateLineItem(i, { description: event.target.value })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                      <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</p>
                     </div>
-                    <p className="whitespace-nowrap text-sm font-medium text-white">${item.total.toFixed(2)}</p>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={event => updateLineItem(i, { quantity: Number(event.target.value) })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                      <input
+                        value={item.unit ?? "unit"}
+                        onChange={event => updateLineItem(i, { unit: event.target.value })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={event => updateLineItem(i, { unit_price: Number(event.target.value) })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                    </label>
+                    <div className="flex items-end justify-between gap-3 lg:block lg:text-right">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total</p>
+                        <p className="mt-2 text-sm font-semibold text-white">${item.total.toFixed(2)}</p>
+                      </div>
+                      <button type="button" onClick={() => removeLineItem(i)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -362,4 +454,18 @@ function AssistantList({
       </ul>
     </div>
   );
+}
+
+function sourceLabel(source?: string) {
+  switch (source) {
+    case "catalog_match":
+      return "Saved rate";
+    case "manual_edit":
+      return "Edited";
+    case "mixed":
+      return "Mixed pricing";
+    case "ai_estimate":
+    default:
+      return "AI estimate";
+  }
 }

@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, CalendarBlank, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
-import type { Quote, QuoteTemplatePreset } from "@/types";
+import type { Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
 
 const presets: { value: QuoteTemplatePreset; label: string }[] = [
   { value: "classic", label: "Classic" },
@@ -25,6 +26,8 @@ export default function QuoteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [savingQuote, setSavingQuote] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   const fetchQuote = useCallback(async () => {
     const response = await fetch(`/api/quotes/${id}`);
@@ -69,6 +72,72 @@ export default function QuoteDetailPage() {
     const data = await res.json();
     setConverting(false);
     if (data.id) router.push(`/invoices/${data.id}`);
+  }
+
+  function updateQuotePricing(lineItems: QuoteLineItem[], taxRate = quote?.tax_rate ?? 0) {
+    if (!quote) return;
+    const calculated = calculateQuotePricing({ line_items: lineItems, tax_rate: taxRate });
+    setQuote({
+      ...quote,
+      ...calculated,
+      pricing_source: determineQuotePricingSource(calculated.line_items),
+    });
+    setDirty(true);
+  }
+
+  function updateLineItem(index: number, patch: Partial<QuoteLineItem>) {
+    if (!quote) return;
+    updateQuotePricing(quote.line_items.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      return {
+        ...item,
+        ...patch,
+        edited_by_contractor: true,
+        pricing_source: "manual_edit" as const,
+      };
+    }));
+  }
+
+  function addLineItem() {
+    if (!quote) return;
+    updateQuotePricing([
+      ...quote.line_items,
+      {
+        description: "New line item",
+        quantity: 1,
+        unit: "unit",
+        unit_price: 0,
+        total: 0,
+        edited_by_contractor: true,
+        pricing_source: "manual_edit",
+      },
+    ]);
+  }
+
+  function removeLineItem(index: number) {
+    if (!quote) return;
+    updateQuotePricing(quote.line_items.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  async function handleSaveQuote() {
+    if (!quote) return;
+    setSavingQuote(true);
+    const res = await fetch(`/api/quotes/${quote.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        line_items: quote.line_items,
+        tax_rate: quote.tax_rate,
+        notes: quote.notes,
+        pricing_source: quote.pricing_source,
+        pricing_confidence: quote.pricing_confidence,
+      }),
+    });
+    if (res.ok) {
+      applyQuoteResult(await fetchQuote());
+      setDirty(false);
+    }
+    setSavingQuote(false);
   }
 
   if (loading) {
@@ -123,6 +192,12 @@ export default function QuoteDetailPage() {
           <Surface className="p-5">
             <h2 className="text-lg font-bold text-white">Actions</h2>
             <div className="mt-4 space-y-3">
+              {dirty && (
+                <Button variant="secondary" className="w-full" onClick={handleSaveQuote} loading={savingQuote}>
+                  <FileText size={18} weight="duotone" />
+                  Save pricing changes
+                </Button>
+              )}
               {["draft", "sent", "approved"].includes(quote.status) && (
                 <Button className="w-full" onClick={handleConvertToInvoice} loading={converting}>
                   <Receipt size={18} weight="duotone" />
@@ -164,17 +239,63 @@ export default function QuoteDetailPage() {
 
         <main className="space-y-5 lg:order-1">
           <Surface className="overflow-hidden">
-            <div className="border-b border-slate-700/70 px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-700/70 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line items</p>
+              <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-blue)]">
+                Add item
+              </button>
             </div>
             <div className="divide-y divide-slate-700/50">
               {quote.line_items.map((item, index) => (
-                <div key={index} className="flex items-start justify-between gap-4 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white">{item.description}</p>
-                    <p className="text-xs text-slate-500">{item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}</p>
+                <div key={index} className="grid gap-3 px-4 py-4 lg:grid-cols-[1fr_92px_90px_120px_90px]">
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</label>
+                    <input
+                      value={item.description}
+                      onChange={event => updateLineItem(index, { description: event.target.value })}
+                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.quantity}
+                      onChange={event => updateLineItem(index, { quantity: Number(event.target.value) })}
+                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                    <input
+                      value={item.unit ?? "unit"}
+                      onChange={event => updateLineItem(index, { unit: event.target.value })}
+                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.unit_price}
+                      onChange={event => updateLineItem(index, { unit_price: Number(event.target.value) })}
+                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                    />
+                  </label>
+                  <div className="flex items-end justify-between gap-3 lg:block lg:text-right">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total</p>
+                      <p className="mt-2 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                    </div>
+                    <button type="button" onClick={() => removeLineItem(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -247,4 +368,18 @@ function SummaryMeta({
       <p className="mt-1 truncate text-sm font-semibold capitalize text-white">{value}</p>
     </div>
   );
+}
+
+function sourceLabel(source?: QuoteLineItem["pricing_source"]) {
+  switch (source) {
+    case "catalog_match":
+      return "Saved rate";
+    case "manual_edit":
+      return "Edited";
+    case "mixed":
+      return "Mixed pricing";
+    case "ai_estimate":
+    default:
+      return "AI estimate";
+  }
 }

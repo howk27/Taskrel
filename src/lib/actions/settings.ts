@@ -31,6 +31,7 @@ export async function updateQuoteSettings(
     license_text: String(formData.get("license_text") ?? "").trim() || null,
     quote_default_terms: String(formData.get("quote_default_terms") ?? "").trim() || null,
     quote_default_note: String(formData.get("quote_default_note") ?? "").trim() || null,
+    quote_policy_text: String(formData.get("quote_policy_text") ?? "").trim() || null,
     quote_template_preset: preset,
   };
 
@@ -38,6 +39,27 @@ export async function updateQuoteSettings(
     .from("contractors")
     .update(payload)
     .eq("user_id", user.id);
+
+  if (error?.message.includes("quote_policy_text")) {
+    const fallbackPayload = {
+      logo_url: payload.logo_url,
+      business_phone: payload.business_phone,
+      business_website: payload.business_website,
+      license_text: payload.license_text,
+      quote_default_terms: payload.quote_default_terms,
+      quote_default_note: payload.quote_default_note,
+      quote_template_preset: payload.quote_template_preset,
+    };
+    const { error: fallbackError } = await supabase
+      .from("contractors")
+      .update(fallbackPayload)
+      .eq("user_id", user.id);
+
+    if (fallbackError) return { error: fallbackError.message };
+    revalidatePath("/settings");
+    revalidatePath("/quotes");
+    return { success: "Quote settings saved. Run the latest Supabase migration to save policies and warranty text." };
+  }
 
   if (error) return { error: error.message };
 
