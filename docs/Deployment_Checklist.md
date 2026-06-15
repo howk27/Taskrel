@@ -10,8 +10,9 @@ Set these in Vercel under `Project Settings -> Environment Variables`. Use Produ
 | `NEXT_PUBLIC_SUPABASE_URL` | Required | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Required | Supabase anon public key |
 | `OPENAI_API_KEY` | Required | OpenAI API key |
-| `TASKREL_AI_DEFAULT_MODEL` | Required | `gpt-5.4-mini` |
-| `TASKREL_AI_COMPLEX_MODEL` | Required | `gpt-5.5` |
+| `TASKREL_AI_DEFAULT_MODEL` | Recommended | `gpt-5.4-mini` or another Responses API text model enabled for your OpenAI project |
+| `TASKREL_AI_COMPLEX_MODEL` | Recommended | `gpt-5.5` or another enabled model for future complex assistant work |
+| `TASKREL_PREMIUM_ACCESS_CODES` | Optional for closed test | Comma-separated invite codes that unlock premium as `trialing` |
 | `SENDGRID_API_KEY` | Required for email test | SendGrid API key |
 | `SENDGRID_FROM_EMAIL` | Required for email test | Verified sender on your SendGrid domain |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional today | Supabase service role key, only if future admin routes need it |
@@ -50,6 +51,20 @@ These should not block the first friend-business-owner test:
 - Stripe subscription checkout.
 - Stripe Connect client payments.
 - Google Sheets sync.
+
+## Closed-Test Premium Access
+
+- Set `TASKREL_PREMIUM_ACCESS_CODES` in Vercel to one or more comma-separated codes, for example `friend-test-2026,owner-demo`.
+- Give one code to each tester or use a shared short-term code during early testing.
+- Testers redeem the code in `Settings -> Billing & Payments -> Closed-test premium access`.
+- Redeeming a code sets `contractors.subscription_status` to `trialing`; Stripe webhooks can still set the same account to `active`, `past_due`, or `canceled` later.
+
+## AI Quote Generation Troubleshooting
+
+- If quote generation fails in production, check the message shown in the quote builder first. Taskrel now distinguishes rejected API keys, unavailable models, rate limits/quota, empty AI output, and unreadable AI output.
+- Confirm `OPENAI_API_KEY` is set in Vercel for the Production environment and redeploy after changing it.
+- Confirm `TASKREL_AI_DEFAULT_MODEL` is enabled for the same OpenAI project as the API key. The default is `gpt-5.4-mini`.
+- Check Vercel function logs for `/api/quotes/generate` if the UI still reports a generic failure.
 
 ## Closed Test Smoke Path
 
