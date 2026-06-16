@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Lightning, Plus } from "@/components/ui/icons";
+import { ArrowLeft, CheckCircle, EnvelopeSimple, Lightning, Plus, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, QuoteAssistantMetadata, QuoteLineItem } from "@/types";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/format";
+import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
 type Step = "form" | "generating" | "review";
 
@@ -257,6 +258,26 @@ export default function NewQuotePage() {
 
   // Review step
   if (step === "review" && quote) {
+    const reviewState = getQuoteWorkflowState({
+      id: "new",
+      client_name: clientName || "New client",
+      client_address: clientAddress || null,
+      client_email: clientEmail || null,
+      client_phone: clientPhone || null,
+      total: quote.total,
+      status: "draft",
+      created_at: new Date().toISOString(),
+      updated_at: null,
+      scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
+      sent_via: [],
+      line_items: quote.line_items,
+      notes: quote.notes,
+    });
+    const sendChannels = [
+      ...(clientEmail ? ["email"] : []),
+      ...(clientPhone ? ["sms"] : []),
+    ];
+
     return (
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 xl:py-8">
         <div className="mb-6 flex items-center gap-3">
@@ -445,37 +466,52 @@ export default function NewQuotePage() {
             )}
           </div>
 
-          <Surface className="h-fit p-5">
-            <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-              <Lightning size={22} weight="duotone" className="text-[var(--tr-violet)]" />
-              Assistant review
-            </h2>
-            {quote.pricing_recommendation_snapshot && (
-              <PricingIntelligenceSummary recommendation={quote.pricing_recommendation_snapshot} />
-            )}
-            <AssistantList title="Notes" items={quote.assistant_notes} />
-            <AssistantList title="Assumptions" items={quote.assumptions} />
-            <AssistantList title="Risk flags" items={quote.risk_flags} tone="warning" />
-            {quote.terms_suggestion && (
-              <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Terms suggestion</p>
-                <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{quote.terms_suggestion}</p>
+          <aside className="space-y-4">
+            <Surface className="h-fit p-5">
+              <p className="text-sm font-bold text-[var(--tr-blue)]">{reviewState.bucketLabel}</p>
+              <h2 className="mt-1 text-lg font-bold text-white">{reviewState.nextAction}</h2>
+              <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
+                {reviewState.completedReadiness} of {reviewState.totalReadiness} checks ready. {reviewState.deliveryLabel}.
+              </p>
+              <div className="mt-4 space-y-2">
+                {reviewState.readiness.map(item => (
+                  <ReadinessRow key={item.key} item={item} />
+                ))}
               </div>
-            )}
-            {quote.suggested_addons?.length ? (
-              <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Suggested add-ons</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {quote.suggested_addons.map(addon => (
-                    <span key={addon.label} className="inline-flex items-center gap-1 rounded-full border border-[var(--tr-violet)]/30 bg-[var(--tr-violet)]/10 px-3 py-1.5 text-xs font-semibold text-violet-100">
-                      <Plus size={13} />
-                      {addon.label} (${addon.price})
-                    </span>
-                  ))}
+            </Surface>
+
+            <Surface className="h-fit p-5">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-white">
+                <Lightning size={22} weight="duotone" className="text-[var(--tr-violet)]" />
+                Assistant review
+              </h2>
+              {quote.pricing_recommendation_snapshot && (
+                <PricingIntelligenceSummary recommendation={quote.pricing_recommendation_snapshot} />
+              )}
+              <AssistantList title="Notes" items={quote.assistant_notes} />
+              <AssistantList title="Assumptions" items={quote.assumptions} />
+              <AssistantList title="Risk flags" items={quote.risk_flags} tone="warning" />
+              {quote.terms_suggestion && (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Terms suggestion</p>
+                  <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{quote.terms_suggestion}</p>
                 </div>
-              </div>
-            ) : null}
-          </Surface>
+              )}
+              {quote.suggested_addons?.length ? (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Suggested add-ons</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {quote.suggested_addons.map(addon => (
+                      <span key={addon.label} className="inline-flex items-center gap-1 rounded-full border border-[var(--tr-violet)]/30 bg-[var(--tr-violet)]/10 px-3 py-1.5 text-xs font-semibold text-violet-100">
+                        <Plus size={13} />
+                        {addon.label} (${addon.price})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </Surface>
+          </aside>
         </div>
 
         {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
@@ -488,12 +524,10 @@ export default function NewQuotePage() {
               size="lg"
               loading={saving}
               onClick={() => {
-                const via = [];
-                if (clientEmail) via.push("email");
-                if (clientPhone) via.push("sms");
-                handleSave(via);
+                handleSave(sendChannels);
               }}
             >
+              <EnvelopeSimple size={18} weight="duotone" />
               Send Quote
             </Button>
           )}
@@ -538,6 +572,20 @@ function AssistantList({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function ReadinessRow({ item }: { item: QuoteReadinessItem }) {
+  return (
+    <div className="flex gap-2 rounded-lg bg-white/[0.04] p-2.5">
+      <span className={item.complete ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}>
+        {item.complete ? <CheckCircle size={16} weight="duotone" /> : <SealCheck size={16} weight="duotone" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold text-white">{item.label}</span>
+        <span className="block text-xs leading-5 text-[var(--tr-text-muted)]">{item.detail}</span>
+      </span>
     </div>
   );
 }

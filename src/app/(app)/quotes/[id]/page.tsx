@@ -5,12 +5,13 @@ import type { ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CalendarBlank, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt } from "@/components/ui/icons";
+import { ArrowLeft, CalendarBlank, CheckCircle, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
 import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
+import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
 const presets: { value: QuoteTemplatePreset; label: string }[] = [
   { value: "classic", label: "Classic" },
@@ -245,6 +246,7 @@ export default function QuoteDetailPage() {
   const documentHtml = quote.business_snapshot
     ? renderQuoteDocumentHtml({ quote, business: quote.business_snapshot, preset: previewPreset })
     : "";
+  const workflowState = getQuoteWorkflowState(quote);
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
@@ -257,9 +259,9 @@ export default function QuoteDetailPage() {
           <span className="sr-only">Back</span>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-blue)]">Quote</p>
+          <p className="text-sm font-bold text-[var(--tr-blue)]">{workflowState.bucketLabel}</p>
           <h1 className="truncate text-2xl font-bold text-white md:text-3xl">{quote.client_name}</h1>
-          <p className="text-sm text-[var(--tr-text-muted)]">Created {formatDate(quote.created_at)}</p>
+          <p className="text-sm text-[var(--tr-text-muted)]">{workflowState.nextActionDetail}</p>
         </div>
         <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
       </div>
@@ -267,8 +269,21 @@ export default function QuoteDetailPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <aside className="space-y-4 lg:order-2">
           <Surface className="p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Quote total</p>
+            <p className="text-sm font-bold text-[var(--tr-text-muted)]">Quote total</p>
             <p className="mt-2 text-4xl font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-[var(--tr-blue)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-blue)]">
+                {workflowState.nextAction}
+              </span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${deliveryClass(workflowState.deliveryTone)}`}>
+                {workflowState.deliveryLabel}
+              </span>
+              {dirty && (
+                <span className="rounded-full bg-[var(--tr-amber)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-amber)]">
+                  Unsaved edits
+                </span>
+              )}
+            </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <SummaryMeta icon={<FileText size={15} weight="duotone" />} label="Status" value={quote.status} />
               <SummaryMeta icon={<CalendarBlank size={15} weight="duotone" />} label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
@@ -278,7 +293,24 @@ export default function QuoteDetailPage() {
           </Surface>
 
           <Surface className="p-5">
+            <h2 className="text-lg font-bold text-white">Review readiness</h2>
+            <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
+              {workflowState.completedReadiness} of {workflowState.totalReadiness} checks ready before this quote is sent or converted.
+            </p>
+            <div className="mt-4 space-y-2">
+              {workflowState.readiness.map(item => (
+                <ReadinessRow key={item.key} item={item} />
+              ))}
+            </div>
+          </Surface>
+
+          <Surface className="p-5">
             <h2 className="text-lg font-bold text-white">Actions</h2>
+            {dirty && (
+              <p className="mt-2 rounded-lg bg-[var(--tr-amber)]/10 p-3 text-sm leading-5 text-amber-100">
+                Save pricing changes before sending or converting so the client document matches your latest totals.
+              </p>
+            )}
             <div className="mt-4 space-y-3">
               {dirty && (
                 <Button variant="secondary" className="w-full" onClick={handleSaveQuote} loading={savingQuote}>
@@ -287,19 +319,19 @@ export default function QuoteDetailPage() {
                 </Button>
               )}
               {["draft", "sent", "approved"].includes(quote.status) && (
-                <Button className="w-full" onClick={handleConvertToInvoice} loading={converting}>
+                <Button className="w-full" onClick={handleConvertToInvoice} loading={converting} disabled={dirty}>
                   <Receipt size={18} weight="duotone" />
                   {quote.status === "approved" ? "Create Invoice" : "Approve & Convert"}
                 </Button>
               )}
               {quote.status === "draft" && (
-                <Button className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
+                <Button className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={dirty || sendVia.length === 0}>
                   <EnvelopeSimple size={18} weight="duotone" />
                   Send Quote
                 </Button>
               )}
               {quote.status === "sent" && (
-                <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
+                <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={dirty || sendVia.length === 0}>
                   <EnvelopeSimple size={18} weight="duotone" />
                   Resend Quote
                 </Button>
@@ -551,6 +583,26 @@ function SummaryMeta({
       <p className="mt-1 truncate text-sm font-semibold capitalize text-white">{value}</p>
     </div>
   );
+}
+
+function ReadinessRow({ item }: { item: QuoteReadinessItem }) {
+  return (
+    <div className="flex gap-2 rounded-lg bg-white/[0.04] p-2.5">
+      <span className={item.complete ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}>
+        {item.complete ? <CheckCircle size={16} weight="duotone" /> : <SealCheck size={16} weight="duotone" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold text-white">{item.label}</span>
+        <span className="block text-xs leading-5 text-[var(--tr-text-muted)]">{item.detail}</span>
+      </span>
+    </div>
+  );
+}
+
+function deliveryClass(tone: "ready" | "sent" | "missing") {
+  if (tone === "sent") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
+  if (tone === "ready") return "bg-[var(--tr-blue)]/12 text-[var(--tr-blue)]";
+  return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
 }
 
 function PricingIntelligencePanel({
