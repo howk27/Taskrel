@@ -5,6 +5,7 @@ import { Badge, statusVariant } from "@/components/ui/badge";
 import { DownloadSimple, FileText, Gear, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { OverheadSettingsForm } from "@/components/settings/overhead-settings-form";
 import { QuoteDocumentSettingsForm } from "@/components/settings/quote-document-settings-form";
 import { logout } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -37,11 +38,22 @@ export default async function SettingsPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: contractor } = await supabase
+  const contractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, quote_template_preset, overhead_percent, overhead_fixed_per_job";
+  const fallbackContractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset";
+  const { data: contractor, error: contractorError } = await supabase
     .from("contractors")
-    .select("business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset")
+    .select(contractorSelect)
     .eq("user_id", user.id)
     .single();
+  const needsFallbackContractor = contractorError?.message.includes("quote_policy_text") || contractorError?.message.includes("overhead_");
+  const { data: fallbackContractor } = needsFallbackContractor
+    ? await supabase
+      .from("contractors")
+      .select(fallbackContractorSelect)
+      .eq("user_id", user.id)
+      .single()
+    : { data: null };
+  const settingsContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, quote_policy_text: null, overhead_percent: 0, overhead_fixed_per_job: 0 } : null);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
@@ -56,24 +68,33 @@ export default async function SettingsPage({
           <section>
             <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-blue)]" />
             <Surface className="divide-y divide-slate-700/50 overflow-hidden">
-              <SettingRow label="Business" value={contractor?.business_name ?? "Taskrel business"} />
-              <SettingRow label="Email" value={contractor?.email ?? user.email ?? ""} />
-              <SettingRow label="Trade" value={contractor?.trade ?? "Not set"} capitalize />
+              <SettingRow label="Business" value={settingsContractor?.business_name ?? "Taskrel business"} />
+              <SettingRow label="Email" value={settingsContractor?.email ?? user.email ?? ""} />
+              <SettingRow label="Trade" value={settingsContractor?.trade ?? "Not set"} capitalize />
             </Surface>
+            {settingsContractor && (
+              <div className="mt-4">
+                <OverheadSettingsForm
+                  overheadPercent={settingsContractor.overhead_percent}
+                  overheadFixedPerJob={settingsContractor.overhead_fixed_per_job}
+                />
+              </div>
+            )}
           </section>
 
           <section>
             <SectionTitle icon={<FileText size={17} weight="duotone" />} label="Quote documents" tone="text-[var(--tr-amber)]" />
-            {contractor && (
+            {settingsContractor && (
               <QuoteDocumentSettingsForm
                 contractor={{
-                  logo_url: contractor.logo_url,
-                  business_phone: contractor.business_phone,
-                  business_website: contractor.business_website,
-                  license_text: contractor.license_text,
-                  quote_default_terms: contractor.quote_default_terms,
-                  quote_default_note: contractor.quote_default_note,
-                  quote_template_preset: contractor.quote_template_preset,
+                  logo_url: settingsContractor.logo_url,
+                  business_phone: settingsContractor.business_phone,
+                  business_website: settingsContractor.business_website,
+                  license_text: settingsContractor.license_text,
+                  quote_default_terms: settingsContractor.quote_default_terms,
+                  quote_default_note: settingsContractor.quote_default_note,
+                  quote_policy_text: settingsContractor.quote_policy_text,
+                  quote_template_preset: settingsContractor.quote_template_preset,
                 }}
               />
             )}
@@ -89,9 +110,9 @@ export default async function SettingsPage({
                   <p className="text-sm text-white">Taskrel subscription</p>
                   <p className="text-xs text-slate-400">$19/month</p>
                 </div>
-                {contractor?.subscription_status ? (
-                  <Badge variant={statusVariant(contractor.subscription_status)}>
-                    {contractor.subscription_status}
+                {settingsContractor?.subscription_status ? (
+                  <Badge variant={statusVariant(settingsContractor.subscription_status)}>
+                    {settingsContractor.subscription_status}
                   </Badge>
                 ) : (
                   <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
@@ -104,7 +125,7 @@ export default async function SettingsPage({
                   <p className="text-sm text-white">Payment processing</p>
                   <p className="text-xs text-slate-400">Stripe Connect - accept client payments</p>
                 </div>
-                {contractor?.stripe_connect_account_id ? (
+                {settingsContractor?.stripe_connect_account_id ? (
                   <Badge variant="success">Connected</Badge>
                 ) : (
                   <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
@@ -127,17 +148,17 @@ export default async function SettingsPage({
                   <div>
                     <p className="text-sm text-white">Google Sheets sync</p>
                     <p className="text-xs text-slate-400">
-                      {contractor?.google_sheets_last_synced_at
-                        ? `Last synced ${new Date(contractor.google_sheets_last_synced_at).toLocaleString()}`
+                      {settingsContractor?.google_sheets_last_synced_at
+                        ? `Last synced ${new Date(settingsContractor.google_sheets_last_synced_at).toLocaleString()}`
                         : "Optional live spreadsheet export"}
                     </p>
                   </div>
-                  <Badge variant={contractor?.google_sheets_status === "connected" ? "success" : contractor?.google_sheets_status === "error" ? "error" : "default"}>
-                    {contractor?.google_sheets_status ?? "disconnected"}
+                  <Badge variant={settingsContractor?.google_sheets_status === "connected" ? "success" : settingsContractor?.google_sheets_status === "error" ? "error" : "default"}>
+                    {settingsContractor?.google_sheets_status ?? "disconnected"}
                   </Badge>
                 </div>
                 {googleMessage && <p className="text-xs text-slate-300">{googleMessage}</p>}
-                {contractor?.google_sheets_sync_enabled && contractor.google_sheets_sheet_id ? (
+                {settingsContractor?.google_sheets_sync_enabled && settingsContractor.google_sheets_sheet_id ? (
                   <div className="grid grid-cols-2 gap-2">
                     <form action="/api/google-sheets/sync" method="post">
                       <button type="submit" className="w-full rounded-lg bg-[var(--tr-blue)] px-3 py-2 text-sm font-semibold text-[#09204f] hover:bg-[#a9c6ff]">

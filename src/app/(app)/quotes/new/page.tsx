@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Lightning, Plus } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
-import type { QuoteAssistantMetadata, QuoteLineItem } from "@/types";
+import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, QuoteAssistantMetadata, QuoteLineItem } from "@/types";
+import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
+import { formatCurrency } from "@/lib/format";
 
 type Step = "form" | "generating" | "review";
 
@@ -16,6 +18,10 @@ interface GeneratedQuote extends QuoteAssistantMetadata {
   tax_rate: number;
   tax_amount: number;
   total: number;
+  pricing_source?: string;
+  pricing_confidence?: string | null;
+  property_valuation_snapshot?: PropertyValuationSnapshot | null;
+  pricing_recommendation_snapshot?: PricingRecommendationSnapshot | null;
   notes: string;
 }
 
@@ -34,6 +40,7 @@ export default function NewQuotePage() {
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [scheduledStart, setScheduledStart] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
+  const [expandedLineItemIndex, setExpandedLineItemIndex] = useState<number | null>(0);
 
   // Generated quote
   const [quote, setQuote] = useState<GeneratedQuote | null>(null);
@@ -47,7 +54,7 @@ export default function NewQuotePage() {
       const res = await fetch("/api/quotes/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobDescription, additionalDetails }),
+        body: JSON.stringify({ jobDescription, additionalDetails, clientAddress }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
@@ -92,11 +99,15 @@ export default function NewQuotePage() {
 
       // Send if requested
       if (sendVia.length > 0) {
-        await fetch("/api/quotes/send", {
+        const sendRes = await fetch("/api/quotes/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ quoteId: saved.id, via: sendVia }),
         });
+        const sendResult = await sendRes.json();
+        if (!sendRes.ok) {
+          throw new Error(sendResult.details?.[0]?.message ?? sendResult.error ?? "Quote saved, but sending failed.");
+        }
       }
 
       router.push(`/quotes/${saved.id}`);
@@ -104,6 +115,51 @@ export default function NewQuotePage() {
       setError(err instanceof Error ? err.message : "Save failed");
       setSaving(false);
     }
+  }
+
+  function updateQuotePricing(lineItems: GeneratedQuote["line_items"], taxRate = quote?.tax_rate ?? 0) {
+    if (!quote) return;
+    const calculated = calculateQuotePricing({ line_items: lineItems, tax_rate: taxRate });
+    setQuote({
+      ...quote,
+      ...calculated,
+      pricing_source: determineQuotePricingSource(calculated.line_items),
+    });
+  }
+
+  function updateLineItem(index: number, patch: Partial<QuoteLineItem>) {
+    if (!quote) return;
+    const nextItems = quote.line_items.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      return {
+        ...item,
+        ...patch,
+        edited_by_contractor: true,
+        pricing_source: "manual_edit" as const,
+      };
+    });
+    updateQuotePricing(nextItems);
+  }
+
+  function addLineItem() {
+    if (!quote) return;
+    updateQuotePricing([
+      ...quote.line_items,
+      {
+        description: "New line item",
+        quantity: 1,
+        unit: "unit",
+        unit_price: 0,
+        total: 0,
+        edited_by_contractor: true,
+        pricing_source: "manual_edit",
+      },
+    ]);
+  }
+
+  function removeLineItem(index: number) {
+    if (!quote) return;
+    updateQuotePricing(quote.line_items.filter((_, itemIndex) => itemIndex !== index));
   }
 
   // Form step
@@ -228,19 +284,138 @@ export default function NewQuotePage() {
             </Surface>
 
             <Surface className="overflow-hidden">
-              <div className="border-b border-slate-700 px-4 py-3">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Line Items</p>
+                <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-blue)]">
+                  Add item
+                </button>
               </div>
               <div className="divide-y divide-slate-700/50">
                 {quote.line_items.map((item, i) => (
-                  <div key={i} className="flex items-start justify-between gap-4 px-4 py-3">
-                    <div className="flex-1">
-                      <p className="text-sm text-white">{item.description}</p>
-                      <p className="text-xs text-slate-500">
-                        {item.quantity} {item.unit ?? "unit"} x ${item.unit_price.toFixed(2)}
-                      </p>
+                  <div key={i} className="px-4 py-4">
+                    <div className="lg:hidden">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedLineItemIndex(expandedLineItemIndex === i ? null : i)}
+                        className="flex w-full items-start justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/25 p-3 text-left"
+                      >
+                        <span className="min-w-0">
+                          <span className="block line-clamp-2 text-sm font-semibold leading-5 text-white">{item.description}</span>
+                          <span className="mt-1 block text-xs text-[var(--tr-text-muted)]">
+                            {item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}
+                          </span>
+                          <span className="mt-1 block text-[11px] font-semibold text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</span>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
+                          <span className="mt-2 inline-flex rounded-full bg-[var(--tr-blue)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-blue)]">
+                            {expandedLineItemIndex === i ? "Done" : "Edit"}
+                          </span>
+                        </span>
+                      </button>
+                      {expandedLineItemIndex === i && (
+                        <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                          <label className="block">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
+                            <textarea
+                              value={item.description}
+                              onChange={event => updateLineItem(i, { description: event.target.value })}
+                              rows={3}
+                              className="tr-input mt-1 w-full resize-none rounded-lg px-3 py-2 text-sm leading-5"
+                            />
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="block">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.quantity}
+                                onChange={event => updateLineItem(i, { quantity: Number(event.target.value) })}
+                                className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                              <input
+                                value={item.unit ?? "unit"}
+                                onChange={event => updateLineItem(i, { unit: event.target.value })}
+                                className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                              />
+                            </label>
+                          </div>
+                          <label className="block">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.unit_price}
+                              onChange={event => updateLineItem(i, { unit_price: Number(event.target.value) })}
+                              className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                            />
+                          </label>
+                          <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                            <p className="text-sm font-semibold text-white">Line total {formatCurrency(item.total)}</p>
+                            <button type="button" onClick={() => removeLineItem(i)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <p className="whitespace-nowrap text-sm font-medium text-white">${item.total.toFixed(2)}</p>
+
+                    <div className="hidden gap-3 lg:grid lg:grid-cols-[1fr_92px_90px_120px_90px]">
+                      <div className="min-w-0">
+                        <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</label>
+                        <input
+                          value={item.description}
+                          onChange={event => updateLineItem(i, { description: event.target.value })}
+                          className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                        />
+                        <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</p>
+                      </div>
+                      <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.quantity}
+                          onChange={event => updateLineItem(i, { quantity: Number(event.target.value) })}
+                          className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                        <input
+                          value={item.unit ?? "unit"}
+                          onChange={event => updateLineItem(i, { unit: event.target.value })}
+                          className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.unit_price}
+                          onChange={event => updateLineItem(i, { unit_price: Number(event.target.value) })}
+                          className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                        />
+                      </label>
+                      <div className="flex items-end justify-between gap-3 lg:block lg:text-right">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total</p>
+                          <p className="mt-2 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                        </div>
+                        <button type="button" onClick={() => removeLineItem(i)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -275,6 +450,9 @@ export default function NewQuotePage() {
               <Lightning size={22} weight="duotone" className="text-[var(--tr-violet)]" />
               Assistant review
             </h2>
+            {quote.pricing_recommendation_snapshot && (
+              <PricingIntelligenceSummary recommendation={quote.pricing_recommendation_snapshot} />
+            )}
             <AssistantList title="Notes" items={quote.assistant_notes} />
             <AssistantList title="Assumptions" items={quote.assumptions} />
             <AssistantList title="Risk flags" items={quote.risk_flags} tone="warning" />
@@ -362,4 +540,50 @@ function AssistantList({
       </ul>
     </div>
   );
+}
+
+function PricingIntelligenceSummary({ recommendation }: { recommendation: PricingRecommendationSnapshot }) {
+  return (
+    <div className="mt-4 rounded-xl border border-[var(--tr-amber)]/25 bg-[var(--tr-amber)]/10 p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-amber)]">Internal pricing</p>
+      <div className="mt-2 space-y-1 text-sm">
+        <SummaryRow label="Total overhead" value={formatMoney(recommendation.total_overhead_cost)} />
+        <SummaryRow
+          label={`Property adjustment (${recommendation.property_value_adjustment_percent}%)`}
+          value={formatMoney(recommendation.property_value_adjustment_amount)}
+        />
+        <SummaryRow label="Recommended subtotal" value={formatMoney(recommendation.recommended_subtotal)} strong />
+      </div>
+      <p className="mt-2 text-xs leading-5 text-amber-100/80">
+        Internal only. Edit line item prices manually if you want to account for this recommendation.
+      </p>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-slate-300">{label}</span>
+      <span className={strong ? "font-bold text-white" : "font-semibold text-white"}>{value}</span>
+    </div>
+  );
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function sourceLabel(source?: string) {
+  switch (source) {
+    case "catalog_match":
+      return "Saved rate";
+    case "manual_edit":
+      return "Edited";
+    case "mixed":
+      return "Mixed pricing";
+    case "ai_estimate":
+    default:
+      return "AI estimate";
+  }
 }

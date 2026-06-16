@@ -14,6 +14,7 @@ alter table contractors
   add column if not exists license_text text,
   add column if not exists quote_default_terms text,
   add column if not exists quote_default_note text,
+  add column if not exists quote_policy_text text,
   add column if not exists quote_template_preset text not null default 'classic';
 
 update contractors

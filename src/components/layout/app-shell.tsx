@@ -15,7 +15,7 @@ import {
   UserList,
   Wrench,
 } from "@/components/ui/icons";
-import { TRADE_LABELS, type Trade } from "@/types";
+import type { Trade } from "@/types";
 import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
 
 type ShellContractor = {
@@ -48,18 +48,13 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const businessName = contractor?.business_name || "Taskrel";
-  const trade = contractor?.primary_trade ?? contractor?.trade;
-  const tradeLabel = trade ? TRADE_LABELS[trade] : "Trade Management";
 
   return (
     <div className="min-h-screen bg-[var(--tr-bg)] text-white">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] border-r border-[var(--tr-border)] bg-[var(--tr-shell)]/95 backdrop-blur xl:flex xl:flex-col">
         <div className="border-b border-[var(--tr-border)] px-6 py-6">
           <Link href="/dashboard" className="block">
-            <span>
-              <TaskrelWordmark size="md" />
-              <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--tr-text-muted)]">{tradeLabel}</span>
-            </span>
+            <TaskrelWordmark size="md" />
           </Link>
         </div>
 
@@ -121,6 +116,22 @@ export function AppShell({
         </div>
       </header>
 
+      <header className="sticky top-0 z-30 border-b border-[var(--tr-border)] bg-[var(--tr-bg)]/95 px-4 py-3 backdrop-blur-xl safe-top xl:hidden">
+        <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+          <Link href="/dashboard" className="min-w-0">
+            <TaskrelWordmark size="sm" />
+            <span className="sr-only">Taskrel dashboard</span>
+          </Link>
+          <Link
+            href="/quotes/new"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--tr-blue)] px-3 text-sm font-black text-[#09204f] shadow-lg shadow-blue-950/20"
+          >
+            <Plus size={17} weight="bold" />
+            Create
+          </Link>
+        </div>
+      </header>
+
       <main className="pb-24 xl:ml-[272px] xl:pb-0">
         {children}
       </main>
@@ -133,11 +144,11 @@ export function AppShell({
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-semibold transition-colors ${
+                className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold transition-colors ${
                   active ? "text-[var(--tr-blue)]" : "text-[var(--tr-text-faint)]"
                 }`}
               >
-                <Icon size={23} weight={active ? "duotone" : "regular"} />
+                <Icon size={22} weight={active ? "duotone" : "regular"} />
                 {label.replace("Dashboard", "Home").replace("AI Assistant", "AI")}
               </Link>
             );

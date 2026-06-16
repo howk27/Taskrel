@@ -31,6 +31,7 @@ export async function updateQuoteSettings(
     license_text: String(formData.get("license_text") ?? "").trim() || null,
     quote_default_terms: String(formData.get("quote_default_terms") ?? "").trim() || null,
     quote_default_note: String(formData.get("quote_default_note") ?? "").trim() || null,
+    quote_policy_text: String(formData.get("quote_policy_text") ?? "").trim() || null,
     quote_template_preset: preset,
   };
 
@@ -39,9 +40,71 @@ export async function updateQuoteSettings(
     .update(payload)
     .eq("user_id", user.id);
 
+  if (error?.message.includes("quote_policy_text")) {
+    const fallbackPayload = {
+      logo_url: payload.logo_url,
+      business_phone: payload.business_phone,
+      business_website: payload.business_website,
+      license_text: payload.license_text,
+      quote_default_terms: payload.quote_default_terms,
+      quote_default_note: payload.quote_default_note,
+      quote_template_preset: payload.quote_template_preset,
+    };
+    const { error: fallbackError } = await supabase
+      .from("contractors")
+      .update(fallbackPayload)
+      .eq("user_id", user.id);
+
+    if (fallbackError) return { error: fallbackError.message };
+    revalidatePath("/settings");
+    revalidatePath("/quotes");
+    return { success: "Quote settings saved. Run the latest Supabase migration to save policies and warranty text." };
+  }
+
   if (error) return { error: error.message };
 
   revalidatePath("/settings");
   revalidatePath("/quotes");
   return { success: "Quote settings saved." };
+}
+
+export async function updateOverheadSettings(
+  _: SettingsActionState,
+  formData: FormData
+): Promise<SettingsActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Please log in again." };
+
+  const overheadPercent = Number(formData.get("overhead_percent") ?? 0);
+  const overheadFixed = Number(formData.get("overhead_fixed_per_job") ?? 0);
+
+  if (!Number.isFinite(overheadPercent) || overheadPercent < 0 || overheadPercent > 100) {
+    return { error: "Overhead percent must be between 0 and 100." };
+  }
+
+  if (!Number.isFinite(overheadFixed) || overheadFixed < 0) {
+    return { error: "Fixed overhead must be zero or more." };
+  }
+
+  const { error } = await supabase
+    .from("contractors")
+    .update({
+      overhead_percent: Math.round(overheadPercent * 1000) / 1000,
+      overhead_fixed_per_job: Math.round(overheadFixed * 100) / 100,
+    })
+    .eq("user_id", user.id);
+
+  if (error?.message.includes("overhead_")) {
+    return { error: "Run the latest Supabase migration before saving overhead settings." };
+  }
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/quotes");
+  return { success: "Overhead settings saved." };
 }

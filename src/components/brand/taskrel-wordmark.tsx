@@ -16,7 +16,7 @@ export function TaskrelWordmark({
   return (
     <span
       {...props}
-      className={`inline-flex items-baseline font-black uppercase leading-none text-white ${sizeClass[size]} ${className}`}
+      className={`inline-flex items-end font-black uppercase leading-none text-white ${sizeClass[size]} ${className}`}
       style={{
         fontFamily: '"Arial Black", Impact, system-ui, sans-serif',
         letterSpacing: "0",
@@ -24,7 +24,10 @@ export function TaskrelWordmark({
       }}
     >
       <span>TASK</span>
-      <span className="text-[var(--tr-orange)]">REL</span>
+      <span className="relative ml-1 inline-flex flex-col items-stretch justify-end pb-[0.08em] text-[0.64em] text-[var(--tr-orange)]">
+        <span className="mb-[0.16em] h-[0.16em] w-full rounded-full bg-[var(--tr-orange)]" aria-hidden="true" />
+        <span>REL</span>
+      </span>
     </span>
   );
 }

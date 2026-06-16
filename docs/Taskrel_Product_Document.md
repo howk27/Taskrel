@@ -106,11 +106,13 @@ The market has a gap between manual tools and full field-service platforms:
 | Multi-trade onboarding | Yes | - |
 | Primary trade selection for AI defaults | Yes | - |
 | AI quote generator | Yes | - |
+| Contractor-specific pricing memory | Yes | Advanced price books |
 | Quote workflow screen with filters/search | Yes | - |
 | Quote template presets: classic, modern, compact | Yes | - |
 | Business branding on quote documents | Yes | - |
-| Logo URL on quote documents | Yes | Storage upload |
+| Logo upload on quote documents | Yes | Advanced brand asset management |
 | Default quote terms and client note | Yes | Rich template editor |
+| Default policies and warranty language | Yes | Per-template policy blocks |
 | Quote delivery by email or SMS | Yes | Automated follow-ups |
 | Snapshot quote business/template settings when sent | Yes | Versioned template history |
 | Auto client list from sent quotes | Yes | Full CRM |
@@ -173,13 +175,31 @@ Contractor profile stores:
 - License or insured text
 - Default terms
 - Default client note
+- Default policies and warranty language
 - Default quote template preset
 
 When a quote is sent, Taskrel snapshots business and template settings into the quote. This keeps the client-facing document stable even if the contractor later changes branding or terms.
 
 ---
 
-## 9. Public Interfaces and Data Model
+## 9. Pricing Model
+
+AI helps the contractor get to a first draft, but AI is not the trusted source of final pricing. Taskrel owns the quote math and the contractor owns the final rates.
+
+Pricing behavior:
+
+- AI generates job scope, item descriptions, quantities, units, and starter prices when no saved contractor rate exists.
+- Taskrel recalculates line totals, subtotal, tax, and final total on the server before saving.
+- Contractors can edit line item descriptions, quantities, units, and unit prices before sending.
+- Edited contractor prices are saved to a contractor-level pricing catalog.
+- Future generated quotes reuse saved contractor rates when the trade, item, and unit match.
+- Existing quotes keep their saved prices; catalog changes only affect future quotes.
+
+v1 matching uses normalized text keys for trade, item name, and unit. Later phases may add semantic matching, supplier integrations, margin targets, regional pricing seeds, price book import/export, and price health insights.
+
+---
+
+## 10. Public Interfaces and Data Model
 
 ### Contractor Fields
 
@@ -193,16 +213,37 @@ When a quote is sent, Taskrel snapshots business and template settings into the 
 - `license_text`
 - `quote_default_terms`
 - `quote_default_note`
+- `quote_policy_text`
 - `quote_template_preset`
 
 ### Quote Fields
 
 - `business_snapshot jsonb`
 - `template_preset`
+- `pricing_source`
+- `pricing_confidence`
+
+### Quote Line Item Metadata
+
+- `catalog_item_id`
+- `pricing_source`
+- `edited_by_contractor`
+
+### Pricing Catalog Item Fields
+
+- `contractor_id`
+- `trade`
+- `item_key`
+- `item_name`
+- `description`
+- `unit`
+- `unit_price`
+- `usage_count`
+- `last_used_at`
 
 ---
 
-## 10. Key Technical Decisions
+## 11. Key Technical Decisions
 
 - **Framework:** Next.js App Router and TypeScript.
 - **Styling:** Tailwind CSS with mobile-first layouts.
@@ -216,7 +257,7 @@ When a quote is sent, Taskrel snapshots business and template settings into the 
 
 ---
 
-## 11. Launch Phases
+## 12. Launch Phases
 
 | Phase | Name | Pricing | Goal |
 |---|---|---|---|
@@ -226,12 +267,13 @@ When a quote is sent, Taskrel snapshots business and template settings into the 
 
 ---
 
-## 12. Success Metrics
+## 13. Success Metrics
 
 ### Validation Phase
 
 - APR creates at least 3 quotes without assistance in the first 2 weeks.
 - Quote output is accurate enough to send after review.
+- Contractor-edited prices are remembered and reused in later similar quotes.
 - Quote documents look consistent across multiple jobs.
 - Mobile UX works cleanly with no desktop fallback.
 
@@ -243,7 +285,7 @@ When a quote is sent, Taskrel snapshots business and template settings into the 
 
 ---
 
-## 13. What Taskrel Is Not in v1
+## 14. What Taskrel Is Not in v1
 
 - Not a full CRM.
 - Not a multi-crew dispatch platform.
@@ -252,10 +294,11 @@ When a quote is sent, Taskrel snapshots business and template settings into the 
 - Not a marketplace.
 - Not a drag-and-drop quote designer.
 - Not an automated follow-up platform yet.
+- Not a supplier pricing or material cost database yet.
 
 ---
 
-## 14. Cowork Instructions
+## 15. Cowork Instructions
 
 - Treat this PRD as the source of truth.
 - Build mobile-first and verify at 390px.
