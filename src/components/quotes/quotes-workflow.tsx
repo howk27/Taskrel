@@ -95,7 +95,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
         action={(
           <Link
             href="/quotes/new"
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff]"
+            className="hidden h-11 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff] sm:inline-flex"
           >
             <Plus size={18} weight="bold" />
             New
@@ -145,36 +145,45 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
           <div className="space-y-3">
             {filteredQuotes.map(quote => (
               <Link key={quote.id} href={`/quotes/${quote.id}`} className="block">
-                <Surface className="p-4 transition-colors hover:border-slate-500/80 hover:bg-[#1B2940]">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-blue)]" />
-                      <p className="truncate text-sm font-semibold text-white">{quote.client_name}</p>
+                <Surface className="p-3 transition-colors hover:border-slate-500/80 hover:bg-[#1B2940] sm:p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <FileText size={17} weight="duotone" className="shrink-0 text-[var(--tr-blue)]" />
+                        <p className="truncate text-sm font-bold text-white sm:text-base">{quote.client_name}</p>
+                      </div>
+                      {quote.client_address && (
+                        <p className="mt-1.5 flex items-start gap-1.5 text-xs leading-5 text-[var(--tr-text-muted)]">
+                          <MapPin size={14} weight="duotone" className="mt-0.5 shrink-0 text-[var(--tr-text-faint)]" />
+                          <span className="line-clamp-1 sm:line-clamp-2">{quote.client_address}</span>
+                        </p>
+                      )}
                     </div>
-                    {quote.client_address && (
-                      <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-500">
-                        <MapPin size={14} weight="duotone" className="mt-0.5 shrink-0" />
-                        <span className="line-clamp-2">{quote.client_address}</span>
-                      </p>
-                    )}
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
+                      <div className="mt-1"><Badge variant={statusVariant(quote.status)}>{quote.status}</Badge></div>
+                    </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-base font-bold text-white">{formatCurrency(quote.total)}</p>
-                    <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
-                  </div>
-                </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-700/70 pt-3 text-xs">
-                  <Meta icon={<CalendarBlank size={15} weight="duotone" />} label="Created" value={formatDate(quote.created_at)} />
-                  <Meta icon={<EnvelopeSimple size={15} weight="duotone" />} label="Delivery" value={deliveryMethod(quote.sent_via)} />
-                  <Meta icon={<DeviceMobile size={15} weight="duotone" />} label="Next" value={nextAction(quote.status)} strong />
-                  <Meta
-                    icon={<CalendarBlank size={15} weight="duotone" />}
-                    label="Scheduled"
-                    value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"}
-                  />
-                </div>
+                  <div className="mt-3 rounded-lg border border-white/8 bg-slate-950/25 p-2.5">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--tr-text-muted)]">
+                        <EnvelopeSimple size={14} weight="duotone" className="shrink-0 text-[var(--tr-text-faint)]" />
+                        <span className="truncate">{deliveryMethod(quote.sent_via)}</span>
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 text-[var(--tr-text-muted)]">
+                        <CalendarBlank size={14} weight="duotone" className="text-[var(--tr-text-faint)]" />
+                        {quote.scheduled_start ? formatDate(quote.scheduled_start) : formatDate(quote.created_at)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/8 pt-2">
+                      <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[var(--tr-blue)]">
+                        <DeviceMobile size={14} weight="duotone" className="shrink-0" />
+                        <span className="truncate">{nextAction(quote.status)}</span>
+                      </span>
+                      <span className="text-xs font-semibold text-white/80">Open</span>
+                    </div>
+                  </div>
                 </Surface>
               </Link>
             ))}

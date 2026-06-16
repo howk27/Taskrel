@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   applyCatalogPricing,
   buildCatalogUpserts,
+  calculatePricingRecommendation,
   calculateQuotePricing,
+  getPropertyValueAdjustment,
   normalizePricingKey,
 } from "./pricing";
 import type { QuoteLineItem } from "@/types";
@@ -102,5 +104,43 @@ describe("pricing engine", () => {
         unit_price: 500,
       },
     ]);
+  });
+
+  it("calculates overhead and property value recommendation without changing quote totals", () => {
+    const quotePricing = calculateQuotePricing({
+      line_items: [
+        { description: "Cabinet repaint", quantity: 1, unit: "job", unit_price: 4000, total: 0 },
+      ],
+      tax_rate: 0.07,
+    });
+
+    const recommendation = calculatePricingRecommendation({
+      subtotal: quotePricing.subtotal,
+      overhead_percent: 10,
+      overhead_fixed_per_job: 250,
+      estimated_property_value: 1_200_000,
+    });
+
+    expect(quotePricing.subtotal).toBe(4000);
+    expect(quotePricing.total).toBe(4280);
+    expect(recommendation).toMatchObject({
+      subtotal: 4000,
+      fixed_overhead_cost: 250,
+      percent_overhead_cost: 400,
+      total_overhead_cost: 650,
+      property_value_adjustment_percent: 5,
+      property_value_adjustment_amount: 200,
+      recommended_subtotal: 4850,
+    });
+  });
+
+  it("uses Taskrel default property value tiers", () => {
+    expect(getPropertyValueAdjustment(250000).percent).toBe(-3);
+    expect(getPropertyValueAdjustment(300000).percent).toBe(0);
+    expect(getPropertyValueAdjustment(900000).percent).toBe(0);
+    expect(getPropertyValueAdjustment(900001).percent).toBe(5);
+    expect(getPropertyValueAdjustment(1500000).percent).toBe(5);
+    expect(getPropertyValueAdjustment(1500001).percent).toBe(8);
+    expect(getPropertyValueAdjustment(null).percent).toBe(0);
   });
 });

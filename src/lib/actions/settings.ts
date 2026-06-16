@@ -67,3 +67,44 @@ export async function updateQuoteSettings(
   revalidatePath("/quotes");
   return { success: "Quote settings saved." };
 }
+
+export async function updateOverheadSettings(
+  _: SettingsActionState,
+  formData: FormData
+): Promise<SettingsActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Please log in again." };
+
+  const overheadPercent = Number(formData.get("overhead_percent") ?? 0);
+  const overheadFixed = Number(formData.get("overhead_fixed_per_job") ?? 0);
+
+  if (!Number.isFinite(overheadPercent) || overheadPercent < 0 || overheadPercent > 100) {
+    return { error: "Overhead percent must be between 0 and 100." };
+  }
+
+  if (!Number.isFinite(overheadFixed) || overheadFixed < 0) {
+    return { error: "Fixed overhead must be zero or more." };
+  }
+
+  const { error } = await supabase
+    .from("contractors")
+    .update({
+      overhead_percent: Math.round(overheadPercent * 1000) / 1000,
+      overhead_fixed_per_job: Math.round(overheadFixed * 100) / 100,
+    })
+    .eq("user_id", user.id);
+
+  if (error?.message.includes("overhead_")) {
+    return { error: "Run the latest Supabase migration before saving overhead settings." };
+  }
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/quotes");
+  return { success: "Overhead settings saved." };
+}

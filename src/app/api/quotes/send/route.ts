@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMissingEnv } from "@/lib/env";
 import { buildBusinessSnapshot, renderQuoteDocumentHtml } from "@/lib/quote-document";
+import { describeSendGridError } from "@/lib/sendgrid-error";
 import type { QuoteTemplatePreset } from "@/types";
 import twilio from "twilio";
 
@@ -43,12 +44,18 @@ export async function POST(request: NextRequest) {
   const businessSnapshot = quote.business_snapshot ?? buildBusinessSnapshot(quoteContractor);
   const templatePreset = (quote.template_preset ?? quoteContractor.quote_template_preset ?? "classic") as QuoteTemplatePreset;
   const errors: string[] = [];
+  const details: { channel: string; code: string; message: string }[] = [];
   const sent: string[] = [];
 
   if (via.includes("email") && quote.client_email) {
     const missingEmailEnv = getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]);
     if (missingEmailEnv.length > 0) {
       errors.push("email_config");
+      details.push({
+        channel: "email",
+        code: "email_config",
+        message: `Missing email configuration: ${missingEmailEnv.join(", ")}.`,
+      });
     } else {
       try {
         const sgMail = (await import("@sendgrid/mail")).default;
@@ -62,18 +69,30 @@ export async function POST(request: NextRequest) {
         });
         sent.push("email");
       } catch (err) {
-        console.error("SendGrid error:", err);
+        const emailError = describeSendGridError(err);
+        console.error("SendGrid error:", emailError, err);
         errors.push("email");
+        details.push({ channel: "email", code: emailError.code, message: emailError.message });
       }
     }
   } else if (via.includes("email")) {
     errors.push("email_missing_client");
+    details.push({
+      channel: "email",
+      code: "email_missing_client",
+      message: "This quote does not have a client email address.",
+    });
   }
 
   if (via.includes("sms") && quote.client_phone) {
     const missingSmsEnv = getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]);
     if (missingSmsEnv.length > 0) {
       errors.push("sms_config");
+      details.push({
+        channel: "sms",
+        code: "sms_config",
+        message: `Missing SMS configuration: ${missingSmsEnv.join(", ")}.`,
+      });
     } else {
     try {
       const twilioClient = twilio(
@@ -92,10 +111,16 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error("Twilio error:", err);
       errors.push("sms");
+      details.push({ channel: "sms", code: "sms", message: "Twilio could not send the SMS." });
     }
     }
   } else if (via.includes("sms")) {
     errors.push("sms_missing_client");
+    details.push({
+      channel: "sms",
+      code: "sms_missing_client",
+      message: "This quote does not have a client phone number.",
+    });
   }
 
   // Update quote status and sent_via
@@ -148,5 +173,5 @@ export async function POST(request: NextRequest) {
   }
 
   const status = sent.length === 0 && errors.length > 0 ? 503 : 200;
-  return NextResponse.json({ sent, errors }, { status });
+  return NextResponse.json({ sent, errors, details }, { status });
 }

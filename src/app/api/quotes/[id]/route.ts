@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildBusinessSnapshot } from "@/lib/quote-document";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
+import { buildPricingRecommendationSnapshot, normalizePropertyValuationSnapshot } from "@/lib/pricing-intelligence";
 import { learnEditedPrices } from "@/lib/pricing-catalog";
 import type { Trade } from "@/types";
 
@@ -51,13 +52,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: contractor } = await supabase
+  const contractorSelect = "id, overhead_percent, overhead_fixed_per_job";
+  const fallbackContractorSelect = "id";
+  const { data: contractor, error: contractorError } = await supabase
     .from("contractors")
-    .select("id")
+    .select(contractorSelect)
     .eq("user_id", user.id)
     .single();
+  const { data: fallbackContractor } = contractorError?.message.includes("overhead_")
+    ? await supabase
+      .from("contractors")
+      .select(fallbackContractorSelect)
+      .eq("user_id", user.id)
+      .single()
+    : { data: null };
+  const quoteContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, overhead_percent: 0, overhead_fixed_per_job: 0 } : null);
 
-  if (!contractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
+  if (!quoteContractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
 
   const body = await request.json();
   let payload = body;
@@ -65,9 +76,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (Array.isArray(body.line_items)) {
     const { data: existingQuote } = await supabase
       .from("quotes")
-      .select("trade")
+      .select("trade, client_address, property_valuation_snapshot")
       .eq("id", id)
-      .eq("contractor_id", contractor.id)
+      .eq("contractor_id", quoteContractor.id)
       .single();
 
     const trade = (body.trade ?? existingQuote?.trade) as Trade;
@@ -79,17 +90,48 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (trade) {
       await learnEditedPrices({
         supabase,
-        contractorId: contractor.id,
+        contractorId: quoteContractor.id,
         trade,
         lineItems: calculated.line_items,
       });
     }
+    const propertyValuationSnapshot = normalizePropertyValuationSnapshot(
+      body.property_valuation_snapshot ?? existingQuote?.property_valuation_snapshot,
+      body.client_address ?? existingQuote?.client_address
+    );
 
     payload = {
       ...body,
       ...calculated,
       pricing_source: determineQuotePricingSource(calculated.line_items),
       pricing_confidence: body.pricing_confidence ?? null,
+      property_valuation_snapshot: propertyValuationSnapshot,
+      pricing_recommendation_snapshot: buildPricingRecommendationSnapshot({
+        subtotal: calculated.subtotal,
+        overhead: quoteContractor,
+        propertyValuation: propertyValuationSnapshot,
+      }),
+    };
+  } else if ("property_valuation_snapshot" in body) {
+    const { data: existingQuote } = await supabase
+      .from("quotes")
+      .select("client_address, subtotal")
+      .eq("id", id)
+      .eq("contractor_id", quoteContractor.id)
+      .single();
+    const propertyValuationSnapshot = normalizePropertyValuationSnapshot(
+      body.property_valuation_snapshot,
+      body.client_address ?? existingQuote?.client_address
+    );
+
+    payload = {
+      ...body,
+      property_valuation_snapshot: propertyValuationSnapshot,
+      pricing_recommendation_snapshot: buildPricingRecommendationSnapshot({
+        subtotal: Number(existingQuote?.subtotal ?? 0),
+        overhead: quoteContractor,
+        propertyValuation: propertyValuationSnapshot,
+      }),
     };
   }
 
@@ -97,7 +139,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .from("quotes")
     .update(payload)
     .eq("id", id)
-    .eq("contractor_id", contractor.id)
+    .eq("contractor_id", quoteContractor.id)
     .select()
     .single();
 

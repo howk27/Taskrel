@@ -13,6 +13,8 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [sendMessage, setSendMessage] = useState("");
+  const [sendError, setSendError] = useState("");
 
   useEffect(() => {
     fetch(`/api/invoices/${id}`)
@@ -22,7 +24,20 @@ export default function InvoiceDetailPage() {
 
   async function handleSend() {
     setSending(true);
-    await fetch(`/api/invoices/${id}/send`, { method: "POST" });
+    setSendMessage("");
+    setSendError("");
+    const response = await fetch(`/api/invoices/${id}/send`, { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) {
+      setSendError(result.details?.[0]?.message ?? result.error ?? "Invoice could not be sent.");
+      setSending(false);
+      return;
+    }
+    if (result.details?.length) {
+      setSendMessage(result.details[0].message);
+    } else {
+      setSendMessage("Invoice sent.");
+    }
     setSending(false);
     router.refresh();
   }
@@ -96,6 +111,12 @@ export default function InvoiceDetailPage() {
           <Button className="w-full" onClick={handleSend} loading={sending}>
             {invoice.status === "draft" ? "Send Invoice" : "Resend Invoice"}
           </Button>
+        )}
+        {sendError && (
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{sendError}</p>
+        )}
+        {sendMessage && !sendError && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">{sendMessage}</p>
         )}
       </div>
     </div>

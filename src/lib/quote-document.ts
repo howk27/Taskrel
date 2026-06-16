@@ -64,12 +64,12 @@ const themes: Record<QuoteTemplatePreset, TemplateTheme> = {
     paperText: "#111827",
   },
   compact: {
-    accent: "#B45309",
-    bg: "#FFFAF5",
-    border: "#FED7AA",
-    card: "#FFEDD5",
+    accent: "#D97706",
+    bg: "#F7F4ED",
+    border: "#D6CEC0",
+    card: "#FFFFFF",
     text: "#1F2937",
-    muted: "#9A3412",
+    muted: "#6B7280",
     paperText: "#1F2937",
   },
 };
@@ -125,10 +125,12 @@ function renderLogo(business: BusinessSnapshot, theme: TemplateTheme, variant: "
     return `<img src="${escapeHtml(business.logo_url)}" alt="${escapeHtml(business.business_name)} logo" style="display:block;max-height:54px;max-width:170px;object-fit:contain;margin-bottom:12px;" />`;
   }
 
-  const background = variant === "light" ? "rgba(15,23,42,.04)" : "rgba(255,255,255,.04)";
+  const background = variant === "light" ? "rgba(15,23,42,.025)" : "rgba(255,255,255,.035)";
+  const border = variant === "light" ? "rgba(15,23,42,.14)" : "rgba(255,255,255,.16)";
+  const color = variant === "light" ? "rgba(15,23,42,.42)" : "rgba(255,255,255,.5)";
   return `
-    <div style="width:94px;height:54px;border:1.5px dashed ${theme.accent};border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;background:${background};color:${theme.accent};font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;">
-      Logo
+    <div style="width:76px;height:38px;border:1px solid ${border};border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;background:${background};color:${color};font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;">
+      Logo optional
     </div>
   `;
 }
@@ -138,7 +140,7 @@ function renderPolicyBlock(business: BusinessSnapshot, theme: TemplateTheme, var
   const styles = {
     classic: `background:#0B1220;border:1px solid ${theme.border};color:${theme.muted};`,
     modern: "background:#ECFDF5;border:1px solid #99F6E4;color:#134E4A;",
-    compact: `background:#FFF7ED;border:1px solid ${theme.border};color:#7C2D12;`,
+    compact: `background:#FFFFFF;border:1px solid ${theme.border};color:${theme.text};`,
   };
 
   return `
@@ -169,12 +171,51 @@ function totalRows(quote: QuoteDocumentInput["quote"], theme: TemplateTheme, ali
   `;
 }
 
+function splitLineItemDescription(description: string) {
+  const clean = description.trim().replace(/\s+/g, " ");
+  if (clean.length <= 76) return { title: clean, detail: "" };
+
+  const sentenceMatch = clean.match(/^(.{24,82}?[.!?])\s+(.+)$/);
+  if (sentenceMatch) {
+    return {
+      title: sentenceMatch[1].replace(/[.!?]$/, ""),
+      detail: sentenceMatch[2],
+    };
+  }
+
+  const commaIndex = clean.indexOf(", ");
+  if (commaIndex >= 28 && commaIndex <= 82) {
+    return {
+      title: clean.slice(0, commaIndex),
+      detail: clean.slice(commaIndex + 2),
+    };
+  }
+
+  const softLimit = clean.slice(0, 76);
+  const lastSpace = softLimit.lastIndexOf(" ");
+  const cut = lastSpace > 36 ? lastSpace : 76;
+  return {
+    title: clean.slice(0, cut),
+    detail: clean.slice(cut).trim(),
+  };
+}
+
+function renderLineItemCopy(description: string, theme: TemplateTheme) {
+  const { title, detail } = splitLineItemDescription(description);
+  return `
+    <div>
+      <strong class="quote-line-title" style="display:block;color:${theme.text};font-size:14px;line-height:1.32;">${escapeHtml(title)}</strong>
+      ${detail ? `<span class="quote-line-detail" style="display:block;margin-top:4px;color:${theme.muted};font-size:12px;line-height:1.45;">${escapeHtml(detail)}</span>` : `<span class="quote-line-detail" style="display:none;"></span>`}
+    </div>
+  `;
+}
+
 function renderClassicLineItems(quote: QuoteDocumentInput["quote"], theme: TemplateTheme) {
   return quote.line_items
     .map(
       item => `
         <tr>
-          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};color:${theme.text};"><strong>${escapeHtml(item.description)}</strong></td>
+          <td style="padding:12px 12px 12px 0;border-bottom:1px solid ${theme.border};color:${theme.text};">${renderLineItemCopy(item.description, theme)}</td>
           <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.muted};">${item.quantity} ${escapeHtml(item.unit ?? "")}</td>
           <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.muted};">${money(item.unit_price)}</td>
           <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.text};font-weight:800;">${money(item.total)}</td>
@@ -298,16 +339,19 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
   const groupedItems = quote.line_items
     .map(
       item => `
-        <div style="display:flex;justify-content:space-between;gap:18px;padding:12px 0;border-bottom:1px solid ${theme.border};font-size:14px;">
-          <span style="color:${theme.text};line-height:1.35;">${escapeHtml(item.description)} <span style="color:${theme.muted};font-size:12px;">(${item.quantity} ${escapeHtml(item.unit ?? "")})</span></span>
-          <strong style="white-space:nowrap;color:${theme.text};">${money(item.total)}</strong>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 0;border-bottom:1px solid ${theme.border};font-size:14px;">
+          <div>
+            ${renderLineItemCopy(item.description, theme)}
+            <span style="display:block;margin-top:6px;color:${theme.muted};font-size:12px;">${item.quantity} ${escapeHtml(item.unit ?? "")} x ${money(item.unit_price)}</span>
+          </div>
+          <strong style="white-space:nowrap;color:${theme.text};font-size:15px;">${money(item.total)}</strong>
         </div>`
     )
     .join("");
 
   return `
     <div style="font-family:Inter,Arial,sans-serif;max-width:720px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:30px;border-radius:16px;border:1px solid ${theme.border};">
-      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:2px solid ${theme.border};padding-bottom:18px;margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:2px solid ${theme.accent};padding-bottom:18px;margin-bottom:18px;">
         <div style="display:flex;gap:14px;align-items:flex-start;">
           ${renderLogo(business, theme, "light")}
           <div>
@@ -322,12 +366,12 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
-        <div style="background:${theme.card};border-radius:12px;padding:13px;">
+        <div style="background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:13px;">
           <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Client</p>
           <p style="margin:0;color:${theme.text};font-weight:800;">${escapeHtml(quote.client_name)}</p>
           ${quote.client_address ? `<p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">${escapeHtml(quote.client_address)}</p>` : ""}
         </div>
-        <div style="background:${theme.card};border-radius:12px;padding:13px;">
+        <div style="background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:13px;">
           <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Schedule</p>
           <p style="margin:0;color:${theme.text};font-weight:800;">${scheduled || "Ready after approval"}</p>
           <p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">Created ${date(quote.created_at)}</p>

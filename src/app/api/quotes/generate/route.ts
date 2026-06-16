@@ -4,6 +4,7 @@ import { buildQuoteSystemPrompt, buildQuoteUserPrompt } from "@/lib/prompts/quot
 import type { Trade } from "@/types";
 import { createOpenAIClient, taskrelDefaultModel } from "@/lib/openai";
 import { applyCatalogPricing, calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
+import { buildPricingRecommendationSnapshot, normalizePropertyValuationSnapshot } from "@/lib/pricing-intelligence";
 import { fetchPricingCatalog } from "@/lib/pricing-catalog";
 
 const quoteResponseFormat = {
@@ -73,23 +74,33 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: contractor } = await supabase
+  const contractorSelect = "id, trade, primary_trade, trades, overhead_percent, overhead_fixed_per_job";
+  const fallbackContractorSelect = "id, trade, primary_trade, trades";
+  const { data: contractor, error: contractorError } = await supabase
     .from("contractors")
-    .select("id, trade, primary_trade, trades")
+    .select(contractorSelect)
     .eq("user_id", user.id)
     .single();
+  const { data: fallbackContractor } = contractorError?.message.includes("overhead_")
+    ? await supabase
+      .from("contractors")
+      .select(fallbackContractorSelect)
+      .eq("user_id", user.id)
+      .single()
+    : { data: null };
+  const quoteContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, overhead_percent: 0, overhead_fixed_per_job: 0 } : null);
 
-  if (!contractor?.trade && !contractor?.primary_trade) {
+  if (!quoteContractor?.trade && !quoteContractor?.primary_trade) {
     return NextResponse.json({ error: "Trade not set" }, { status: 400 });
   }
 
   const body = await request.json();
   const { jobDescription, additionalDetails } = body;
   const requestedTrade = body.trade as Trade | undefined;
-  const availableTrades = Array.isArray(contractor.trades) ? contractor.trades as Trade[] : [];
+  const availableTrades = Array.isArray(quoteContractor.trades) ? quoteContractor.trades as Trade[] : [];
   const trade = requestedTrade && availableTrades.includes(requestedTrade)
     ? requestedTrade
-    : (contractor.primary_trade ?? contractor.trade) as Trade;
+    : (quoteContractor.primary_trade ?? quoteContractor.trade) as Trade;
 
   if (!jobDescription?.trim()) {
     return NextResponse.json({ error: "Job description is required" }, { status: 400 });
@@ -144,7 +155,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const catalogItems = await fetchPricingCatalog({ supabase, contractorId: contractor.id, trade });
+    const catalogItems = await fetchPricingCatalog({ supabase, contractorId: quoteContractor.id, trade });
     const pricedLineItems = applyCatalogPricing({
       trade,
       lineItems: Array.isArray(quoteData.line_items) ? quoteData.line_items : [],
@@ -154,12 +165,22 @@ export async function POST(request: NextRequest) {
       line_items: pricedLineItems,
       tax_rate: quoteData.tax_rate,
     });
+    const propertyValuationSnapshot = normalizePropertyValuationSnapshot(
+      body.property_valuation_snapshot,
+      body.clientAddress
+    );
 
     return NextResponse.json({
       ...quoteData,
       ...calculated,
       pricing_source: determineQuotePricingSource(calculated.line_items),
       pricing_confidence: catalogItems.length > 0 ? "learned" : "starter",
+      property_valuation_snapshot: propertyValuationSnapshot,
+      pricing_recommendation_snapshot: buildPricingRecommendationSnapshot({
+        subtotal: calculated.subtotal,
+        overhead: quoteContractor,
+        propertyValuation: propertyValuationSnapshot,
+      }),
     });
   } catch (err) {
     console.error("OpenAI quote generation error:", err);

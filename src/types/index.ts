@@ -37,6 +37,30 @@ export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
 export type QuoteTemplatePreset = "classic" | "modern" | "compact";
 export type PricingSource = "ai_estimate" | "catalog_match" | "manual_edit" | "mixed";
 
+export interface PropertyValuationSnapshot {
+  address: string;
+  normalized_address: string | null;
+  estimated_value: number | null;
+  value_low: number | null;
+  value_high: number | null;
+  confidence: string | null;
+  source: "manual" | "rentcast";
+  fetched_at: string | null;
+}
+
+export interface PricingRecommendationSnapshot {
+  subtotal: number;
+  fixed_overhead_cost: number;
+  percent_overhead_cost: number;
+  total_overhead_cost: number;
+  property_value: number | null;
+  property_value_adjustment_percent: number;
+  property_value_adjustment_amount: number;
+  property_value_adjustment_label: string;
+  property_value_adjustment_reason: string;
+  recommended_subtotal: number;
+}
+
 export interface BusinessSnapshot {
   business_name: string;
   email: string | null;
@@ -69,6 +93,8 @@ export interface Contractor {
   quote_default_note: string | null;
   quote_policy_text: string | null;
   quote_template_preset: QuoteTemplatePreset;
+  overhead_percent: number;
+  overhead_fixed_per_job: number;
   stripe_customer_id: string | null;
   stripe_connect_account_id: string | null;
   subscription_status: "trialing" | "active" | "past_due" | "canceled" | null;
@@ -134,6 +160,8 @@ export interface Quote {
   total: number;
   pricing_source?: PricingSource;
   pricing_confidence?: string | null;
+  property_valuation_snapshot: PropertyValuationSnapshot | null;
+  pricing_recommendation_snapshot: PricingRecommendationSnapshot | null;
   notes: string | null;
   valid_until: string | null;
   scheduled_start: string | null;

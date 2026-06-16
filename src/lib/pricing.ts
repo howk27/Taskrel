@@ -19,6 +19,32 @@ export type PricingCatalogUpsert = {
   unit_price: number;
 };
 
+export type PropertyValueAdjustment = {
+  percent: number;
+  label: "below_market" | "standard" | "premium" | "luxury" | "unknown";
+  reason: string;
+};
+
+export type PricingRecommendationInput = {
+  subtotal: number | string;
+  overhead_percent?: number | string | null;
+  overhead_fixed_per_job?: number | string | null;
+  estimated_property_value?: number | string | null;
+};
+
+export type PricingRecommendation = {
+  subtotal: number;
+  fixed_overhead_cost: number;
+  percent_overhead_cost: number;
+  total_overhead_cost: number;
+  property_value: number | null;
+  property_value_adjustment_percent: number;
+  property_value_adjustment_amount: number;
+  property_value_adjustment_label: PropertyValueAdjustment["label"];
+  property_value_adjustment_reason: string;
+  recommended_subtotal: number;
+};
+
 const fillerWords = new Set([
   "and",
   "the",
@@ -42,6 +68,11 @@ function quantity(value: unknown) {
   const numeric = typeof value === "string" ? Number(value) : typeof value === "number" ? value : 0;
   if (!Number.isFinite(numeric) || numeric < 0) return 0;
   return Math.round(numeric * 1000) / 1000;
+}
+
+function optionalMoney(value: unknown) {
+  const normalized = money(value);
+  return normalized > 0 ? normalized : null;
 }
 
 export function normalizePricingKey(value: string) {
@@ -82,6 +113,77 @@ export function calculateQuotePricing({
     tax_rate: normalizedTaxRate,
     tax_amount,
     total: money(subtotal + tax_amount),
+  };
+}
+
+export function getPropertyValueAdjustment(value: number | string | null | undefined): PropertyValueAdjustment {
+  const propertyValue = optionalMoney(value);
+
+  if (!propertyValue) {
+    return {
+      percent: 0,
+      label: "unknown",
+      reason: "No property value estimate is saved for this quote.",
+    };
+  }
+
+  if (propertyValue < 300000) {
+    return {
+      percent: -3,
+      label: "below_market",
+      reason: "Property value is below Taskrel's standard tier.",
+    };
+  }
+
+  if (propertyValue <= 900000) {
+    return {
+      percent: 0,
+      label: "standard",
+      reason: "Property value is within Taskrel's standard tier.",
+    };
+  }
+
+  if (propertyValue <= 1500000) {
+    return {
+      percent: 5,
+      label: "premium",
+      reason: "Property value is in Taskrel's premium tier.",
+    };
+  }
+
+  return {
+    percent: 8,
+    label: "luxury",
+    reason: "Property value is in Taskrel's luxury tier.",
+  };
+}
+
+export function calculatePricingRecommendation({
+  subtotal,
+  overhead_percent,
+  overhead_fixed_per_job,
+  estimated_property_value,
+}: PricingRecommendationInput): PricingRecommendation {
+  const normalizedSubtotal = money(subtotal);
+  const overheadPercent = quantity(overhead_percent);
+  const fixedOverheadCost = money(overhead_fixed_per_job);
+  const percentOverheadCost = money(normalizedSubtotal * (overheadPercent / 100));
+  const totalOverheadCost = money(fixedOverheadCost + percentOverheadCost);
+  const propertyValue = optionalMoney(estimated_property_value);
+  const adjustment = getPropertyValueAdjustment(propertyValue);
+  const propertyValueAdjustmentAmount = money(normalizedSubtotal * (adjustment.percent / 100));
+
+  return {
+    subtotal: normalizedSubtotal,
+    fixed_overhead_cost: fixedOverheadCost,
+    percent_overhead_cost: percentOverheadCost,
+    total_overhead_cost: totalOverheadCost,
+    property_value: propertyValue,
+    property_value_adjustment_percent: adjustment.percent,
+    property_value_adjustment_amount: propertyValueAdjustmentAmount,
+    property_value_adjustment_label: adjustment.label,
+    property_value_adjustment_reason: adjustment.reason,
+    recommended_subtotal: money(normalizedSubtotal + totalOverheadCost + propertyValueAdjustmentAmount),
   };
 }
 

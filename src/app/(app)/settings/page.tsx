@@ -5,6 +5,7 @@ import { Badge, statusVariant } from "@/components/ui/badge";
 import { DownloadSimple, FileText, Gear, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { OverheadSettingsForm } from "@/components/settings/overhead-settings-form";
 import { QuoteDocumentSettingsForm } from "@/components/settings/quote-document-settings-form";
 import { logout } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -37,21 +38,22 @@ export default async function SettingsPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const contractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, quote_template_preset";
+  const contractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, quote_template_preset, overhead_percent, overhead_fixed_per_job";
   const fallbackContractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset";
   const { data: contractor, error: contractorError } = await supabase
     .from("contractors")
     .select(contractorSelect)
     .eq("user_id", user.id)
     .single();
-  const { data: fallbackContractor } = contractorError?.message.includes("quote_policy_text")
+  const needsFallbackContractor = contractorError?.message.includes("quote_policy_text") || contractorError?.message.includes("overhead_");
+  const { data: fallbackContractor } = needsFallbackContractor
     ? await supabase
       .from("contractors")
       .select(fallbackContractorSelect)
       .eq("user_id", user.id)
       .single()
     : { data: null };
-  const settingsContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, quote_policy_text: null } : null);
+  const settingsContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, quote_policy_text: null, overhead_percent: 0, overhead_fixed_per_job: 0 } : null);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
@@ -70,6 +72,14 @@ export default async function SettingsPage({
               <SettingRow label="Email" value={settingsContractor?.email ?? user.email ?? ""} />
               <SettingRow label="Trade" value={settingsContractor?.trade ?? "Not set"} capitalize />
             </Surface>
+            {settingsContractor && (
+              <div className="mt-4">
+                <OverheadSettingsForm
+                  overheadPercent={settingsContractor.overhead_percent}
+                  overheadFixedPerJob={settingsContractor.overhead_fixed_per_job}
+                />
+              </div>
+            )}
           </section>
 
           <section>

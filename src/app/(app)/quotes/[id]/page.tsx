@@ -10,7 +10,7 @@ import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
-import type { Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
+import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
 
 const presets: { value: QuoteTemplatePreset; label: string }[] = [
   { value: "classic", label: "Classic" },
@@ -28,6 +28,13 @@ export default function QuoteDetailPage() {
   const [converting, setConverting] = useState(false);
   const [savingQuote, setSavingQuote] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [sendMessage, setSendMessage] = useState("");
+  const [sendError, setSendError] = useState("");
+  const [propertyValueInput, setPropertyValueInput] = useState("");
+  const [propertyMessage, setPropertyMessage] = useState("");
+  const [propertyError, setPropertyError] = useState("");
+  const [verifyingProperty, setVerifyingProperty] = useState(false);
+  const [expandedLineItemIndex, setExpandedLineItemIndex] = useState<number | null>(0);
 
   const fetchQuote = useCallback(async () => {
     const response = await fetch(`/api/quotes/${id}`);
@@ -37,7 +44,10 @@ export default function QuoteDetailPage() {
 
   const applyQuoteResult = useCallback((result: { ok: boolean; data: Quote }) => {
     setQuote(result.ok ? result.data : null);
-    if (result.ok) setPreviewPreset(result.data.template_preset ?? "classic");
+    if (result.ok) {
+      setPreviewPreset(result.data.template_preset ?? "classic");
+      setPropertyValueInput(result.data.property_valuation_snapshot?.estimated_value?.toString() ?? "");
+    }
     setLoading(false);
   }, []);
 
@@ -53,11 +63,24 @@ export default function QuoteDetailPage() {
 
   async function handleSend(via: string[]) {
     setSending(true);
-    await fetch("/api/quotes/send", {
+    setSendMessage("");
+    setSendError("");
+    const response = await fetch("/api/quotes/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ quoteId: id, via }),
     });
+    const result = await response.json();
+    if (!response.ok) {
+      setSendError(result.details?.[0]?.message ?? result.error ?? "Quote could not be sent.");
+      setSending(false);
+      return;
+    }
+    if (result.details?.length) {
+      setSendMessage(result.details[0].message);
+    } else {
+      setSendMessage("Quote sent.");
+    }
     applyQuoteResult(await fetchQuote());
     setSending(false);
   }
@@ -129,6 +152,7 @@ export default function QuoteDetailPage() {
         line_items: quote.line_items,
         tax_rate: quote.tax_rate,
         notes: quote.notes,
+        property_valuation_snapshot: quote.property_valuation_snapshot,
         pricing_source: quote.pricing_source,
         pricing_confidence: quote.pricing_confidence,
       }),
@@ -138,6 +162,70 @@ export default function QuoteDetailPage() {
       setDirty(false);
     }
     setSavingQuote(false);
+  }
+
+  async function savePropertyValuation(snapshot: PropertyValuationSnapshot | null) {
+    if (!quote) return;
+    setPropertyMessage("");
+    setPropertyError("");
+    const res = await fetch(`/api/quotes/${quote.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ property_valuation_snapshot: snapshot }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setPropertyError(data.error ?? "Property value could not be saved.");
+      return;
+    }
+    applyQuoteResult({ ok: true, data });
+    setPropertyMessage(snapshot ? "Property value saved for pricing intelligence." : "Property value removed.");
+  }
+
+  async function handleSaveManualPropertyValue() {
+    if (!quote) return;
+    const value = Number(propertyValueInput);
+    if (!Number.isFinite(value) || value <= 0) {
+      setPropertyError("Enter a property value greater than zero.");
+      setPropertyMessage("");
+      return;
+    }
+    await savePropertyValuation({
+      address: quote.client_address ?? "",
+      normalized_address: quote.client_address,
+      estimated_value: Math.round(value * 100) / 100,
+      value_low: null,
+      value_high: null,
+      confidence: null,
+      source: "manual",
+      fetched_at: null,
+    });
+  }
+
+  async function handleVerifyPropertyValue() {
+    if (!quote?.client_address) {
+      setPropertyError("Add a client address before verifying property value.");
+      setPropertyMessage("");
+      return;
+    }
+
+    setVerifyingProperty(true);
+    setPropertyMessage("");
+    setPropertyError("");
+    const res = await fetch("/api/property/valuation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address: quote.client_address }),
+    });
+    const data = await res.json();
+    setVerifyingProperty(false);
+
+    if (!res.ok) {
+      setPropertyError(data.error ?? "Property value lookup failed. Enter it manually.");
+      return;
+    }
+
+    await savePropertyValuation(data);
   }
 
   if (loading) {
@@ -219,6 +307,12 @@ export default function QuoteDetailPage() {
               {sendVia.length === 0 && (
                 <p className="text-sm text-[var(--tr-text-muted)]">Add an email or phone to send this quote.</p>
               )}
+              {sendError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{sendError}</p>
+              )}
+              {sendMessage && !sendError && (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">{sendMessage}</p>
+              )}
             </div>
           </Surface>
 
@@ -235,6 +329,20 @@ export default function QuoteDetailPage() {
               )}
             </div>
           </Surface>
+
+          <PricingIntelligencePanel
+            recommendation={quote.pricing_recommendation_snapshot}
+            valuation={quote.property_valuation_snapshot}
+            propertyValueInput={propertyValueInput}
+            setPropertyValueInput={setPropertyValueInput}
+            propertyMessage={propertyMessage}
+            propertyError={propertyError}
+            verifyingProperty={verifyingProperty}
+            onSaveManual={handleSaveManualPropertyValue}
+            onVerify={handleVerifyPropertyValue}
+            onClear={() => savePropertyValuation(null)}
+            hasAddress={Boolean(quote.client_address)}
+          />
         </aside>
 
         <main className="space-y-5 lg:order-1">
@@ -247,54 +355,129 @@ export default function QuoteDetailPage() {
             </div>
             <div className="divide-y divide-slate-700/50">
               {quote.line_items.map((item, index) => (
-                <div key={index} className="grid gap-3 px-4 py-4 lg:grid-cols-[1fr_92px_90px_120px_90px]">
-                  <div className="min-w-0">
-                    <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</label>
-                    <input
-                      value={item.description}
-                      onChange={event => updateLineItem(index, { description: event.target.value })}
-                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
-                    />
-                    <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</p>
-                  </div>
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.quantity}
-                      onChange={event => updateLineItem(index, { quantity: Number(event.target.value) })}
-                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
-                    <input
-                      value={item.unit ?? "unit"}
-                      onChange={event => updateLineItem(index, { unit: event.target.value })}
-                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.unit_price}
-                      onChange={event => updateLineItem(index, { unit_price: Number(event.target.value) })}
-                      className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
-                    />
-                  </label>
-                  <div className="flex items-end justify-between gap-3 lg:block lg:text-right">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total</p>
-                      <p className="mt-2 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
-                    </div>
-                    <button type="button" onClick={() => removeLineItem(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
-                      Remove
+                <div key={index} className="px-4 py-4">
+                  <div className="lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLineItemIndex(expandedLineItemIndex === index ? null : index)}
+                      className="flex w-full items-start justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/25 p-3 text-left"
+                    >
+                      <span className="min-w-0">
+                        <span className="block line-clamp-2 text-sm font-semibold leading-5 text-white">{item.description}</span>
+                        <span className="mt-1 block text-xs text-[var(--tr-text-muted)]">
+                          {item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}
+                        </span>
+                        <span className="mt-1 block text-[11px] font-semibold text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</span>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
+                        <span className="mt-2 inline-flex rounded-full bg-[var(--tr-blue)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-blue)]">
+                          {expandedLineItemIndex === index ? "Done" : "Edit"}
+                        </span>
+                      </span>
                     </button>
+                    {expandedLineItemIndex === index && (
+                      <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                        <label className="block">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
+                          <textarea
+                            value={item.description}
+                            onChange={event => updateLineItem(index, { description: event.target.value })}
+                            rows={3}
+                            className="tr-input mt-1 w-full resize-none rounded-lg px-3 py-2 text-sm leading-5"
+                          />
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="block">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.quantity}
+                              onChange={event => updateLineItem(index, { quantity: Number(event.target.value) })}
+                              className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                            <input
+                              value={item.unit ?? "unit"}
+                              onChange={event => updateLineItem(index, { unit: event.target.value })}
+                              className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                            />
+                          </label>
+                        </div>
+                        <label className="block">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={event => updateLineItem(index, { unit_price: Number(event.target.value) })}
+                            className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                          />
+                        </label>
+                        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                          <p className="text-sm font-semibold text-white">Line total {formatCurrency(item.total)}</p>
+                          <button type="button" onClick={() => removeLineItem(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="hidden gap-3 lg:grid lg:grid-cols-[1fr_92px_90px_120px_90px]">
+                    <div className="min-w-0">
+                      <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</label>
+                      <input
+                        value={item.description}
+                        onChange={event => updateLineItem(index, { description: event.target.value })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                      <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</p>
+                    </div>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.quantity}
+                        onChange={event => updateLineItem(index, { quantity: Number(event.target.value) })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                      <input
+                        value={item.unit ?? "unit"}
+                        onChange={event => updateLineItem(index, { unit: event.target.value })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={event => updateLineItem(index, { unit_price: Number(event.target.value) })}
+                        className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
+                      />
+                    </label>
+                    <div className="flex items-end justify-between gap-3 lg:block lg:text-right">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                      </div>
+                      <button type="button" onClick={() => removeLineItem(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -366,6 +549,123 @@ function SummaryMeta({
         {label}
       </p>
       <p className="mt-1 truncate text-sm font-semibold capitalize text-white">{value}</p>
+    </div>
+  );
+}
+
+function PricingIntelligencePanel({
+  recommendation,
+  valuation,
+  propertyValueInput,
+  setPropertyValueInput,
+  propertyMessage,
+  propertyError,
+  verifyingProperty,
+  onSaveManual,
+  onVerify,
+  onClear,
+  hasAddress,
+}: {
+  recommendation: PricingRecommendationSnapshot | null;
+  valuation: PropertyValuationSnapshot | null;
+  propertyValueInput: string;
+  setPropertyValueInput: (value: string) => void;
+  propertyMessage: string;
+  propertyError: string;
+  verifyingProperty: boolean;
+  onSaveManual: () => void;
+  onVerify: () => void;
+  onClear: () => void;
+  hasAddress: boolean;
+}) {
+  return (
+    <Surface className="p-5">
+      <h2 className="text-lg font-bold text-white">Pricing intelligence</h2>
+      <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
+        Internal only. These values help you price the work, but they do not appear on the client quote.
+      </p>
+
+      <div className="mt-4 space-y-2">
+        <PricingRow label="Line item subtotal" value={recommendation ? formatCurrency(recommendation.subtotal) : "Not calculated"} />
+        <PricingRow label="Fixed overhead" value={recommendation ? formatCurrency(recommendation.fixed_overhead_cost) : "-"} />
+        <PricingRow label="Percent overhead" value={recommendation ? formatCurrency(recommendation.percent_overhead_cost) : "-"} />
+        <PricingRow label="Total overhead" value={recommendation ? formatCurrency(recommendation.total_overhead_cost) : "-"} strong />
+        <PricingRow
+          label={`Property adjustment${recommendation ? ` (${recommendation.property_value_adjustment_percent}%)` : ""}`}
+          value={recommendation ? formatCurrency(recommendation.property_value_adjustment_amount) : "-"}
+        />
+        <PricingRow label="Recommended subtotal" value={recommendation ? formatCurrency(recommendation.recommended_subtotal) : "Not calculated"} strong tone="text-[var(--tr-amber)]" />
+      </div>
+
+      {recommendation?.property_value_adjustment_reason && (
+        <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-5 text-[var(--tr-text-muted)]">
+          {recommendation.property_value_adjustment_reason}
+        </p>
+      )}
+
+      <div className="mt-5 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-4">
+        <div>
+          <p className="text-sm font-semibold text-white">Property value</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">
+            Enter a value manually or verify the address with RentCast when configured.
+          </p>
+        </div>
+        <input
+          type="number"
+          min="0"
+          step="1000"
+          value={propertyValueInput}
+          onChange={event => setPropertyValueInput(event.target.value)}
+          placeholder="Estimated property value"
+          className="tr-input h-11 w-full rounded-lg px-3 text-sm"
+        />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button variant="secondary" size="sm" onClick={onSaveManual}>
+            Save value
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onVerify} loading={verifyingProperty} disabled={!hasAddress}>
+            Verify value
+          </Button>
+        </div>
+        {valuation && (
+          <div className="space-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-400">
+            <p><span className="font-semibold text-slate-300">Source:</span> {valuation.source}</p>
+            {valuation.normalized_address && <p><span className="font-semibold text-slate-300">Address:</span> {valuation.normalized_address}</p>}
+            {(valuation.value_low || valuation.value_high) && (
+              <p>
+                <span className="font-semibold text-slate-300">Range:</span>{" "}
+                {valuation.value_low ? formatCurrency(valuation.value_low) : "Unknown"} - {valuation.value_high ? formatCurrency(valuation.value_high) : "Unknown"}
+              </p>
+            )}
+            {valuation.fetched_at && <p><span className="font-semibold text-slate-300">Fetched:</span> {formatDate(valuation.fetched_at)}</p>}
+            <button type="button" onClick={onClear} className="pt-1 text-xs font-semibold text-red-300 hover:text-red-200">
+              Clear property value
+            </button>
+          </div>
+        )}
+        {propertyError && <p className="text-sm text-red-300">{propertyError}</p>}
+        {propertyMessage && !propertyError && <p className="text-sm text-emerald-300">{propertyMessage}</p>}
+        {!hasAddress && <p className="text-xs text-slate-500">Add a client address to use RentCast verification.</p>}
+      </div>
+    </Surface>
+  );
+}
+
+function PricingRow({
+  label,
+  value,
+  strong,
+  tone = "text-white",
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  tone?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-slate-400">{label}</span>
+      <span className={`${strong ? "font-bold" : "font-semibold"} ${tone}`}>{value}</span>
     </div>
   );
 }

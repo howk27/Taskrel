@@ -1,3 +1,5 @@
+ Taskrel has been deployed and it's currently reachable at taskrel.com
+
 # Taskrel Closed Test Deployment Checklist
 
 ## Vercel Environment Variables
@@ -13,6 +15,7 @@ Set these in Vercel under `Project Settings -> Environment Variables`. Use Produ
 | `TASKREL_AI_DEFAULT_MODEL` | Recommended | `gpt-5.4-mini` or another Responses API text model enabled for your OpenAI project |
 | `TASKREL_AI_COMPLEX_MODEL` | Recommended | `gpt-5.5` or another enabled model for future complex assistant work |
 | `TASKREL_PREMIUM_ACCESS_CODES` | Optional for closed test | Comma-separated invite codes that unlock premium as `trialing` |
+| `RENTCAST_API_KEY` | Optional | Enables property value verification in quote pricing intelligence |
 | `SENDGRID_API_KEY` | Required for email test | SendGrid API key |
 | `SENDGRID_FROM_EMAIL` | Required for email test | Verified sender on your SendGrid domain |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional today | Supabase service role key, only if future admin routes need it |
@@ -29,9 +32,11 @@ Set these in Vercel under `Project Settings -> Environment Variables`. Use Produ
 
 ## Supabase Setup
 
-- Apply migrations through `006_quote_logo_storage_and_policies.sql`.
+- Apply migrations through `007_pricing_intelligence.sql`.
 - Confirm `pricing_catalog_items` exists.
 - Confirm `contractors.quote_policy_text` exists.
+- Confirm `contractors.overhead_percent` and `contractors.overhead_fixed_per_job` exist.
+- Confirm `quotes.property_valuation_snapshot` and `quotes.pricing_recommendation_snapshot` exist.
 - Confirm Storage bucket `quote-logos` exists and is public.
 - In Supabase Auth URL configuration, set:
   - Site URL: production app URL.
