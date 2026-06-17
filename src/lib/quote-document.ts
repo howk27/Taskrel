@@ -163,12 +163,16 @@ function renderTermsAndNote(quote: QuoteDocumentInput["quote"], business: Busine
 
 function totalRows(quote: QuoteDocumentInput["quote"], theme: TemplateTheme, align = "right") {
   return `
-    <div style="margin-left:${align === "right" ? "auto" : "0"};max-width:270px;padding-top:8px;">
-      <p style="display:flex;justify-content:space-between;margin:6px 0;color:${theme.muted};"><span>Subtotal</span><span>${money(quote.subtotal)}</span></p>
-      ${quote.tax_amount > 0 ? `<p style="display:flex;justify-content:space-between;margin:6px 0;color:${theme.muted};"><span>Tax ${(quote.tax_rate * 100).toFixed(1)}%</span><span>${money(quote.tax_amount)}</span></p>` : ""}
-      <p style="display:flex;justify-content:space-between;margin:10px 0 0;color:${theme.accent};font-size:22px;font-weight:900;"><span>Total</span><span>${money(quote.total)}</span></p>
+    <div class="quote-total-box" style="margin-left:${align === "right" ? "auto" : "0"};width:100%;max-width:310px;padding-top:8px;">
+      <p style="display:flex;justify-content:space-between;gap:16px;margin:6px 0;color:${theme.muted};"><span>Subtotal</span><span style="font-variant-numeric:tabular-nums;">${money(quote.subtotal)}</span></p>
+      ${quote.tax_amount > 0 ? `<p style="display:flex;justify-content:space-between;gap:16px;margin:6px 0;color:${theme.muted};"><span>Tax ${(quote.tax_rate * 100).toFixed(1)}%</span><span style="font-variant-numeric:tabular-nums;">${money(quote.tax_amount)}</span></p>` : ""}
+      <p style="display:flex;justify-content:space-between;gap:16px;margin:10px 0 0;color:${theme.accent};font-size:22px;font-weight:900;"><span>Total</span><span style="font-variant-numeric:tabular-nums;">${money(quote.total)}</span></p>
     </div>
   `;
+}
+
+function shellStyle(theme: TemplateTheme, maxWidth = 760) {
+  return `font-family:Inter,Arial,sans-serif;box-sizing:border-box;width:100%;max-width:${maxWidth}px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:clamp(18px,5vw,34px);border-radius:16px;border:1px solid ${theme.border};overflow-wrap:anywhere;`;
 }
 
 function splitLineItemDescription(description: string) {
@@ -210,16 +214,22 @@ function renderLineItemCopy(description: string, theme: TemplateTheme) {
   `;
 }
 
-function renderClassicLineItems(quote: QuoteDocumentInput["quote"], theme: TemplateTheme) {
+function renderLineItemRows(quote: QuoteDocumentInput["quote"], theme: TemplateTheme, variant: "classic" | "modern" | "compact") {
+  const rowBackground = variant === "modern" ? "#FFFFFF" : variant === "classic" ? theme.card : "transparent";
+  const rowBorder = variant === "compact" ? theme.border : theme.border;
+  const rowPadding = variant === "compact" ? "14px 0" : "14px";
+  const rowRadius = variant === "compact" ? "0" : "13px";
+
   return quote.line_items
     .map(
       item => `
-        <tr>
-          <td style="padding:12px 12px 12px 0;border-bottom:1px solid ${theme.border};color:${theme.text};">${renderLineItemCopy(item.description, theme)}</td>
-          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.muted};">${item.quantity} ${escapeHtml(item.unit ?? "")}</td>
-          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.muted};">${money(item.unit_price)}</td>
-          <td style="padding:12px 0;border-bottom:1px solid ${theme.border};text-align:right;color:${theme.text};font-weight:800;">${money(item.total)}</td>
-        </tr>`
+        <div class="quote-line-row" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start;padding:${rowPadding};border-bottom:1px solid ${rowBorder};${variant === "compact" ? "" : `border-radius:${rowRadius};background:${rowBackground};border:1px solid ${rowBorder};margin-bottom:10px;`}">
+          <div style="min-width:0;">
+            ${renderLineItemCopy(item.description, theme)}
+            <span style="display:block;margin-top:7px;color:${theme.muted};font-size:12px;line-height:1.35;">${item.quantity} ${escapeHtml(item.unit ?? "")} x ${money(item.unit_price)}</span>
+          </div>
+          <strong style="white-space:nowrap;color:${theme.text};font-size:15px;font-variant-numeric:tabular-nums;">${money(item.total)}</strong>
+        </div>`
     )
     .join("");
 }
@@ -229,8 +239,8 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
   const scheduled = scheduledLine(quote);
 
   return `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:760px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:34px;border-radius:16px;border:1px solid ${theme.border};">
-      <div style="display:flex;justify-content:space-between;gap:26px;align-items:flex-start;margin-bottom:26px;">
+    <div style="${shellStyle(theme)}">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px 26px;align-items:flex-start;margin-bottom:26px;">
         <div>
           ${renderLogo(business, theme)}
           <h1 style="font-size:28px;line-height:1.1;margin:0 0 8px;font-weight:900;">${escapeHtml(business.business_name)}</h1>
@@ -252,17 +262,12 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
         ${scheduled ? `<p style="margin:4px 0;color:${theme.muted};">${scheduled}</p>` : ""}
       </div>
 
-      <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-        <thead>
-          <tr style="color:${theme.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;">
-            <th style="padding:0 0 10px;text-align:left;">Item</th>
-            <th style="padding:0 0 10px;text-align:right;">Qty</th>
-            <th style="padding:0 0 10px;text-align:right;">Rate</th>
-            <th style="padding:0 0 10px;text-align:right;">Total</th>
-          </tr>
-        </thead>
-        <tbody>${renderClassicLineItems(quote, theme)}</tbody>
-      </table>
+      <div class="quote-line-items" style="margin:20px 0;">
+        <div style="display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid ${theme.border};padding-bottom:8px;margin-bottom:10px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">
+          <span>Scope</span><span>Amount</span>
+        </div>
+        ${renderLineItemRows(quote, theme, "classic")}
+      </div>
 
       <div style="background:${theme.accent};color:#111827;border-radius:14px;padding:15px;margin-left:auto;max-width:290px;">
         <p style="display:flex;justify-content:space-between;margin:0;font-size:20px;font-weight:950;"><span>Total</span><span>${money(quote.total)}</span></p>
@@ -278,11 +283,10 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
 function renderModern({ quote, business }: QuoteDocumentInput) {
   const theme = themes.modern;
   const scheduled = scheduledLine(quote);
-  const lineItems = renderClassicLineItems(quote, theme);
 
   return `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:760px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:34px;border-radius:16px;border:1px solid ${theme.border};">
-      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:4px solid ${theme.accent};padding-bottom:20px;margin-bottom:24px;">
+    <div style="${shellStyle(theme)}">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px 24px;align-items:flex-start;border-bottom:4px solid ${theme.accent};padding-bottom:20px;margin-bottom:24px;">
         <div>
           ${renderLogo(business, theme, "light")}
           <h1 style="font-size:22px;line-height:1.1;margin:0 0 6px;font-weight:900;">${escapeHtml(business.business_name)}</h1>
@@ -294,7 +298,7 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:24px;">
         <div style="background:#FFFFFF;border:1px solid ${theme.border};border-radius:14px;padding:16px;">
           <p style="margin:0 0 6px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">From</p>
           <p style="margin:0;color:${theme.text};font-weight:800;">${escapeHtml(business.business_name)}</p>
@@ -309,19 +313,14 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
         </div>
       </div>
 
-      <table style="width:100%;border-collapse:collapse;margin:20px 0;background:#FFFFFF;border-radius:14px;overflow:hidden;">
-        <thead>
-          <tr style="background:${theme.card};color:${theme.muted};font-size:12px;text-transform:uppercase;letter-spacing:.08em;">
-            <th style="padding:12px;text-align:left;">Description</th>
-            <th style="padding:12px;text-align:right;">Qty</th>
-            <th style="padding:12px;text-align:right;">Rate</th>
-            <th style="padding:12px;text-align:right;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>${lineItems}</tbody>
-      </table>
+      <div class="quote-line-items" style="margin:20px 0;">
+        <div style="display:flex;justify-content:space-between;gap:18px;background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:10px 12px;margin-bottom:10px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">
+          <span>Description</span><span>Amount</span>
+        </div>
+        ${renderLineItemRows(quote, theme, "modern")}
+      </div>
 
-      <div style="display:grid;grid-template-columns:1fr 270px;gap:20px;align-items:start;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;align-items:start;">
         <div style="color:${theme.muted};font-size:13px;line-height:1.55;">${quote.notes ? multiline(quote.notes) : multiline(business.quote_default_note)}</div>
         <div style="background:${theme.accent};color:#FFFFFF;border-radius:14px;padding:16px;">${totalRows(quote, { ...theme, muted: "#CCFBF1", accent: "#FFFFFF" }, "left")}</div>
       </div>
@@ -336,23 +335,11 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
 function renderCompact({ quote, business }: QuoteDocumentInput) {
   const theme = themes.compact;
   const scheduled = scheduledLine(quote);
-  const groupedItems = quote.line_items
-    .map(
-      item => `
-        <div style="display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 0;border-bottom:1px solid ${theme.border};font-size:14px;">
-          <div>
-            ${renderLineItemCopy(item.description, theme)}
-            <span style="display:block;margin-top:6px;color:${theme.muted};font-size:12px;">${item.quantity} ${escapeHtml(item.unit ?? "")} x ${money(item.unit_price)}</span>
-          </div>
-          <strong style="white-space:nowrap;color:${theme.text};font-size:15px;">${money(item.total)}</strong>
-        </div>`
-    )
-    .join("");
 
   return `
-    <div style="font-family:Inter,Arial,sans-serif;max-width:720px;margin:0 auto;background:${theme.bg};color:${theme.text};padding:30px;border-radius:16px;border:1px solid ${theme.border};">
-      <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:2px solid ${theme.accent};padding-bottom:18px;margin-bottom:18px;">
-        <div style="display:flex;gap:14px;align-items:flex-start;">
+    <div style="${shellStyle(theme, 720)}">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px 24px;align-items:flex-start;border-bottom:2px solid ${theme.accent};padding-bottom:18px;margin-bottom:18px;">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;">
           ${renderLogo(business, theme, "light")}
           <div>
             <h1 style="font-size:23px;line-height:1.1;margin:0 0 6px;font-weight:950;">${escapeHtml(business.business_name)}</h1>
@@ -365,24 +352,27 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:18px;">
         <div style="background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:13px;">
           <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Client</p>
           <p style="margin:0;color:${theme.text};font-weight:800;">${escapeHtml(quote.client_name)}</p>
           ${quote.client_address ? `<p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">${escapeHtml(quote.client_address)}</p>` : ""}
         </div>
-        <div style="background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:13px;">
+        ${scheduled ? `<div style="background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:13px;">
           <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Schedule</p>
-          <p style="margin:0;color:${theme.text};font-weight:800;">${scheduled || "Ready after approval"}</p>
+          <p style="margin:0;color:${theme.text};font-weight:800;">${scheduled}</p>
           <p style="margin:4px 0 0;color:${theme.muted};font-size:13px;">Created ${date(quote.created_at)}</p>
-        </div>
+        </div>` : `<div style="background:${theme.card};border:1px solid ${theme.border};border-radius:12px;padding:13px;">
+          <p style="margin:0 0 5px;color:${theme.muted};font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">Created</p>
+          <p style="margin:0;color:${theme.text};font-weight:800;">${date(quote.created_at)}</p>
+        </div>`}
       </div>
 
-      <div style="margin-top:16px;">
+      <div class="quote-line-items" style="margin-top:16px;">
         <div style="display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid ${theme.border};padding-bottom:8px;color:${theme.muted};font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;">
           <span>Scope</span><span>Amount</span>
         </div>
-        ${groupedItems}
+        ${renderLineItemRows(quote, theme, "compact")}
       </div>
 
       ${totalRows(quote, theme)}

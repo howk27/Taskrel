@@ -39,8 +39,6 @@ export default function NewQuotePage() {
   const [clientAddress, setClientAddress] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [additionalDetails, setAdditionalDetails] = useState("");
-  const [scheduledStart, setScheduledStart] = useState("");
-  const [scheduledEnd, setScheduledEnd] = useState("");
   const [expandedLineItemIndex, setExpandedLineItemIndex] = useState<number | null>(0);
 
   // Generated quote
@@ -89,8 +87,8 @@ export default function NewQuotePage() {
           client_email: clientEmail || null,
           client_phone: clientPhone || null,
           client_address: clientAddress || null,
-          scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
-          scheduled_end: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
+          scheduled_start: null,
+          scheduled_end: null,
           ...quotePayload,
           status: "draft",
         }),
@@ -190,14 +188,6 @@ export default function NewQuotePage() {
             </Surface>
 
             <Surface className="p-5">
-              <h2 className="mb-4 text-lg font-bold text-white">Schedule</h2>
-              <div className="grid gap-3 md:grid-cols-2">
-                <Input label="Job start" type="datetime-local" value={scheduledStart} onChange={e => setScheduledStart(e.target.value)} />
-                <Input label="Job end" type="datetime-local" value={scheduledEnd} onChange={e => setScheduledEnd(e.target.value)} />
-              </div>
-            </Surface>
-
-            <Surface className="p-5">
               <h2 className="mb-4 text-lg font-bold text-white">Job notes</h2>
               <div className="space-y-3">
                 <textarea
@@ -268,7 +258,7 @@ export default function NewQuotePage() {
       status: "draft",
       created_at: new Date().toISOString(),
       updated_at: null,
-      scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
+      scheduled_start: null,
       sent_via: [],
       line_items: quote.line_items,
       notes: quote.notes,
@@ -296,12 +286,6 @@ export default function NewQuotePage() {
               <p className="text-sm text-slate-400">Client</p>
               <p className="font-medium text-white">{clientName}</p>
               {clientAddress && <p className="text-sm text-slate-400">{clientAddress}</p>}
-              {scheduledStart && (
-                <p className="text-sm text-slate-400">
-                  {new Date(scheduledStart).toLocaleString()}
-                  {scheduledEnd && ` - ${new Date(scheduledEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-                </p>
-              )}
             </Surface>
 
             <Surface className="overflow-hidden">

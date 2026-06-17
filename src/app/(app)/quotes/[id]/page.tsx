@@ -267,7 +267,7 @@ export default function QuoteDetailPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
-        <aside className="space-y-4 lg:order-2">
+        <aside className="order-2 space-y-4 lg:order-2">
           <Surface className="p-5">
             <p className="text-sm font-bold text-[var(--tr-text-muted)]">Quote total</p>
             <p className="mt-2 text-4xl font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
@@ -377,7 +377,7 @@ export default function QuoteDetailPage() {
           />
         </aside>
 
-        <main className="space-y-5 lg:order-1">
+        <main className="order-1 space-y-5 lg:order-1">
           <Surface className="overflow-hidden">
             <div className="flex items-center justify-between gap-3 border-b border-slate-700/70 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line items</p>
@@ -553,8 +553,8 @@ export default function QuoteDetailPage() {
                 ))}
               </div>
             </div>
-            <div className="overflow-hidden rounded-lg border border-slate-700 bg-white">
-              <div className="max-h-[720px] overflow-auto p-3">
+            <div className="overflow-hidden rounded-lg bg-transparent">
+              <div className="max-h-[720px] overflow-auto">
                 <div dangerouslySetInnerHTML={{ __html: documentHtml }} />
               </div>
             </div>

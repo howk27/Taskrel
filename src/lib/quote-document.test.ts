@@ -80,4 +80,21 @@ describe("renderQuoteDocumentHtml", () => {
     expect(html).not.toContain("#FFFAF5");
     expect(html).not.toContain("#FFEDD5");
   });
+
+  it.each<QuoteTemplatePreset>(["classic", "modern", "compact"])(
+    "renders pricing as mobile-friendly rows instead of a cramped table for %s",
+    preset => {
+      const html = renderQuoteDocumentHtml({ quote, business, preset });
+
+      expect(html).toContain("quote-line-items");
+      expect(html).toContain("quote-line-row");
+      expect(html).not.toContain("<table");
+    }
+  );
+
+  it("does not render filler schedule copy when a quote is not scheduled", () => {
+    const html = renderQuoteDocumentHtml({ quote, business, preset: "compact" });
+
+    expect(html).not.toContain("Ready after approval");
+  });
 });
