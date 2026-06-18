@@ -39,10 +39,20 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
   if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const { data: deliveryEvents } = await supabase
+    .from("delivery_events")
+    .select("*")
+    .eq("contractor_id", quoteContractor.id)
+    .eq("entity_type", "quote")
+    .eq("entity_id", id)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
   return NextResponse.json({
     ...data,
     business_snapshot: data.business_snapshot ?? buildBusinessSnapshot(quoteContractor),
     template_preset: data.template_preset ?? quoteContractor.quote_template_preset ?? "classic",
+    delivery_events: deliveryEvents ?? [],
   });
 }
 

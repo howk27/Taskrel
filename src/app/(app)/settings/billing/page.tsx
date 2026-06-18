@@ -63,7 +63,7 @@ export default function BillingPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
-      <h1 className="text-lg font-semibold text-white">Billing & Payments</h1>
+      <h1 className="text-lg font-semibold text-white">Billing & online payments</h1>
 
       {subscribed && (
         <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
@@ -73,7 +73,7 @@ export default function BillingPage() {
 
       {connectSuccess && (
         <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
-          Stripe Connect setup complete. You can now accept client payments.
+          Online payment setup complete. You can now accept client payments.
         </div>
       )}
 
@@ -83,7 +83,7 @@ export default function BillingPage() {
         </div>
       )}
 
-      <div className="space-y-3 rounded-xl bg-[#1E293B] p-5">
+      <div className="space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
         <div>
           <h2 className="font-semibold text-white">Taskrel - $19/month</h2>
           <p className="mt-1 text-sm text-slate-400">
@@ -95,7 +95,7 @@ export default function BillingPage() {
         </Button>
       </div>
 
-      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-xl bg-[#1E293B] p-5">
+      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
         <div>
           <h2 className="font-semibold text-white">Closed-test premium access</h2>
           <p className="mt-1 text-sm text-slate-400">
@@ -114,15 +114,15 @@ export default function BillingPage() {
         </Button>
       </form>
 
-      <div className="space-y-3 rounded-xl bg-[#1E293B] p-5">
+      <div className="space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
         <div>
-          <h2 className="font-semibold text-white">Accept Client Payments</h2>
+          <h2 className="font-semibold text-white">Accept client payments</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Connect your Stripe account to collect payments directly from your invoices. Money goes straight to you - Taskrel never touches it.
+            Connect online payments to collect directly from invoices. Money goes straight to you - Taskrel never touches it.
           </p>
         </div>
         <Button variant="secondary" className="w-full" onClick={handleConnect} loading={loadingConnect}>
-          Set Up Stripe Connect
+          Set up online payments
         </Button>
       </div>
     </div>

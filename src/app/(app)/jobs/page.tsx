@@ -8,6 +8,7 @@ import { CalendarBlank, CheckCircle, MapPin, Wrench } from "@/components/ui/icon
 import { formatDate, formatTime } from "@/lib/format";
 import { ChartCard, ValueBarChart } from "@/components/charts/taskrel-charts";
 import { buildTaskrelInsights } from "@/lib/insights";
+import { getJobWorkflowState } from "@/lib/workflows/job-workflow";
 
 export default async function JobsPage() {
   const supabase = await createClient();
@@ -25,7 +26,7 @@ export default async function JobsPage() {
   const [jobsResult, quotesResult, invoicesResult, clientsResult] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, description, status, scheduled_start, scheduled_end, address, created_at")
+      .select("id, title, description, status, scheduled_start, scheduled_end, address, quote_id, created_at, updated_at")
       .eq("contractor_id", contractor.id)
       .order("scheduled_start", { ascending: true }),
     supabase
@@ -49,15 +50,18 @@ export default async function JobsPage() {
     invoices: invoicesResult.data ?? [],
     clients: clientsResult.data ?? [],
   });
-  const activeJobs = jobs.filter(job => ["scheduled", "in_progress"].includes(job.status));
-  const nextJob = activeJobs.filter(job => new Date(job.scheduled_start) >= new Date())[0];
+  const jobStates = jobs.map(job => ({ job, state: getJobWorkflowState(job) }));
+  const activeJobs = jobStates
+    .filter(({ state }) => state.bucket !== "closed")
+    .sort((a, b) => new Date(a.job.scheduled_start).getTime() - new Date(b.job.scheduled_start).getTime());
+  const todayJobs = activeJobs.filter(({ state }) => state.bucket === "today");
+  const nextJob = todayJobs[0] ?? activeJobs[0];
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
-        eyebrow="Operations"
         title="Jobs"
-        subtitle="See what is scheduled, what is in progress, and where attention is needed before crews head out."
+        subtitle="Today first, upcoming second, with schedule proof and the next action attached."
       />
 
       <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
@@ -68,14 +72,14 @@ export default async function JobsPage() {
           </div>
           {activeJobs.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2">
-              {activeJobs.map(job => (
-                <article key={job.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              {activeJobs.map(({ job, state }) => (
+                <article key={job.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-base font-bold text-white">{job.title}</p>
                       <p className="mt-1 flex items-center gap-2 text-sm text-[var(--tr-text-muted)]">
                         <CalendarBlank size={16} />
-                        {formatDate(job.scheduled_start)} at {formatTime(job.scheduled_start)}
+                        {state.nextActionDetail}
                       </p>
                       {job.address && (
                         <p className="mt-2 flex items-start gap-2 text-sm text-[var(--tr-text-faint)]">
@@ -83,8 +87,13 @@ export default async function JobsPage() {
                           <span>{job.address}</span>
                         </p>
                       )}
+                      {job.quote_id && (
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                          Open quote
+                        </Link>
+                      )}
                     </div>
-                    <Badge variant={statusVariant(job.status)}>{job.status.replace("_", " ")}</Badge>
+                    <Badge variant={statusVariant(state.effectiveStatus)}>{state.effectiveStatus.replace("_", " ")}</Badge>
                   </div>
                 </article>
               ))}
@@ -99,21 +108,27 @@ export default async function JobsPage() {
         </Surface>
 
         <Surface className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-green)]">Next job</p>
           {nextJob ? (
-            <div className="mt-3">
-              <h2 className="text-2xl font-black text-white">{nextJob.title}</h2>
+            <div>
+              <p className="text-sm font-semibold text-[var(--tr-green)]">{nextJob.state.bucket === "today" ? "Today" : "Next job"}</p>
+              <h2 className="mt-2 text-2xl font-black text-white">{nextJob.job.title}</h2>
               <p className="mt-2 text-sm text-[var(--tr-text-muted)]">
-                {formatDate(nextJob.scheduled_start)} at {formatTime(nextJob.scheduled_start)}
+                {formatDate(nextJob.job.scheduled_start)} at {formatTime(nextJob.job.scheduled_start)}
               </p>
               <div className="mt-5 space-y-3">
-                {["Confirm client", "Review materials", "Capture completion notes"].map(item => (
-                  <div key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white">
+                {nextJob.state.proof.map(item => (
+                  <div key={item.key} className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-white">
                     <CheckCircle size={18} className="text-[var(--tr-green)]" />
-                    {item}
+                    <div>
+                      <p className="font-semibold">{item.label}</p>
+                      <p className="mt-0.5 text-xs text-[var(--tr-text-muted)]">{item.detail}</p>
+                    </div>
                   </div>
                 ))}
               </div>
+              <p className="mt-5 rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-3 text-sm font-semibold text-white">
+                {nextJob.state.nextAction}
+              </p>
             </div>
           ) : (
             <p className="mt-3 text-sm text-[var(--tr-text-muted)]">No future scheduled job found.</p>

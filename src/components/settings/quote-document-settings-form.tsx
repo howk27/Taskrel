@@ -55,14 +55,14 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
   }
 
   return (
-    <form action={formAction} className="rounded-lg border border-slate-700/70 bg-[#172235] p-4 space-y-4">
+    <form action={formAction} className="space-y-4 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-4">
       <div>
         <label className="text-sm font-medium text-slate-300" htmlFor="quote_template_preset">Default quote template</label>
         <select
           id="quote_template_preset"
           name="quote_template_preset"
           defaultValue={contractor.quote_template_preset ?? "classic"}
-          className="mt-1.5 w-full rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         >
           {presetOptions.map(option => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -73,7 +73,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
         </p>
       </div>
 
-      <div className="rounded-xl border border-slate-700 bg-[#0F172A] p-4">
+      <div className="rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-white">Quote logo</p>
@@ -88,7 +88,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
               style={{ backgroundImage: `url("${safeLogoPreviewUrl}")` }}
             />
           ) : (
-            <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[#F97316] bg-[#111827] text-[10px] font-black uppercase tracking-[0.18em] text-[#F97316]">
+            <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[var(--tr-blue)] bg-slate-950/40 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--tr-blue)]">
               Logo
             </div>
           )}
@@ -103,9 +103,9 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
             if (file) void uploadLogo(file);
           }}
           disabled={uploading}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#F97316]/70 bg-[#111827] px-4 py-6 text-sm font-semibold text-slate-200 transition-colors hover:border-[#F97316] hover:bg-[#182235] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--tr-blue)]/70 bg-slate-950/40 px-4 py-6 text-sm font-semibold text-slate-200 transition-colors hover:border-[var(--tr-blue)] hover:bg-[var(--tr-surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <UploadSimple size={20} weight="duotone" className="text-[#F97316]" />
+          <UploadSimple size={20} weight="duotone" className="text-[var(--tr-blue)]" />
           {uploading ? "Uploading logo..." : "Drop logo or choose file"}
         </button>
         <input
@@ -159,7 +159,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA6C0A] disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-lg bg-[var(--tr-blue)] px-4 py-2.5 text-sm font-semibold text-[#09204f] transition-colors hover:bg-[#a9c6ff] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Saving..." : "Save quote settings"}
       </button>
@@ -191,7 +191,7 @@ function Field({
         value={value}
         onChange={event => onChange?.(event.target.value)}
         placeholder={placeholder}
-        className="mt-1.5 w-full rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+        className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"
       />
     </label>
   );
@@ -216,7 +216,7 @@ function TextArea({
         defaultValue={defaultValue}
         placeholder={placeholder}
         rows={3}
-        className="mt-1.5 w-full resize-none rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+        className="tr-input mt-1.5 w-full resize-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"
       />
     </label>
   );

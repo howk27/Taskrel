@@ -9,7 +9,7 @@ export async function POST() {
   const missingEnv = getMissingEnv(["STRIPE_SECRET_KEY", "NEXT_PUBLIC_APP_URL"]);
   if (!stripe || missingEnv.length > 0) {
     return NextResponse.json(
-      { error: "Stripe Connect is not configured.", missing: missingEnv },
+      { error: "Online payments are not configured.", missing: missingEnv },
       { status: 503 }
     );
   }
