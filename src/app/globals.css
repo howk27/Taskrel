@@ -97,7 +97,7 @@ a,
 .tr-card {
   border: 1px solid var(--tr-border-soft);
   background: linear-gradient(180deg, rgba(30, 43, 66, 0.96), rgba(23, 34, 53, 0.96));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 8px rgba(0, 0, 0, 0.12);
 }
 
 .tr-input {

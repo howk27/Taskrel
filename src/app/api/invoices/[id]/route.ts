@@ -15,7 +15,19 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
   if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json(data);
+  const { data: deliveryEvents } = await supabase
+    .from("delivery_events")
+    .select("*")
+    .eq("contractor_id", data.contractor_id)
+    .eq("entity_type", "invoice")
+    .eq("entity_id", id)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  return NextResponse.json({
+    ...data,
+    delivery_events: deliveryEvents ?? [],
+  });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

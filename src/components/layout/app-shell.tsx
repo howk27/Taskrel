@@ -31,7 +31,7 @@ const nav = [
   { href: "/quotes", label: "Quotes", Icon: FileText },
   { href: "/invoices", label: "Invoices", Icon: Receipt },
   { href: "/clients", label: "Clients", Icon: UserList },
-  { href: "/ai-assistant", label: "AI Assistant", Icon: Lightning },
+  { href: "/ai-assistant", label: "Notices", Icon: Lightning },
   { href: "/settings", label: "Settings", Icon: Gear },
 ];
 
@@ -149,7 +149,7 @@ export function AppShell({
                 }`}
               >
                 <Icon size={22} weight={active ? "duotone" : "regular"} />
-                {label.replace("Dashboard", "Home").replace("AI Assistant", "AI")}
+                {label.replace("Dashboard", "Home")}
               </Link>
             );
           })}

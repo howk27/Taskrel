@@ -7,9 +7,10 @@ import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CalendarBlank, CheckCircle, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
+import { deliveryEventSummary } from "@/lib/delivery-events";
 import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
@@ -180,7 +181,7 @@ export default function QuoteDetailPage() {
       return;
     }
     applyQuoteResult({ ok: true, data });
-    setPropertyMessage(snapshot ? "Property value saved for pricing intelligence." : "Property value removed.");
+    setPropertyMessage(snapshot ? "Property value saved for the pricing check." : "Property value removed.");
   }
 
   async function handleSaveManualPropertyValue() {
@@ -247,13 +248,14 @@ export default function QuoteDetailPage() {
     ? renderQuoteDocumentHtml({ quote, business: quote.business_snapshot, preset: previewPreset })
     : "";
   const workflowState = getQuoteWorkflowState(quote);
+  const deliverySummary = deliveryEventSummary(quote.delivery_events ?? []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
       <div className="flex items-start gap-3">
         <button
           onClick={() => router.back()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-700 bg-[#172235] text-slate-400 hover:text-white"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface)] text-slate-400 hover:text-white"
         >
           <ArrowLeft size={20} weight="bold" />
           <span className="sr-only">Back</span>
@@ -300,6 +302,27 @@ export default function QuoteDetailPage() {
             <div className="mt-4 space-y-2">
               {workflowState.readiness.map(item => (
                 <ReadinessRow key={item.key} item={item} />
+              ))}
+            </div>
+          </Surface>
+
+          <Surface className="p-5">
+            <h2 className="text-lg font-bold text-white">Send proof</h2>
+            <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
+              {deliverySummary.latestSuccessLabel ?? "No successful send recorded yet."}
+            </p>
+            <div className="mt-4 space-y-2">
+              {(quote.delivery_events ?? []).slice(0, 4).map(event => (
+                <div key={event.id} className={`rounded-lg border p-3 ${event.status === "success" ? "border-emerald-300/20 bg-emerald-300/10" : "border-amber-300/20 bg-amber-300/10"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-emerald-100" : "text-amber-100"}`}>
+                      {event.channel.toUpperCase()} / {event.status}
+                    </p>
+                    <p className="shrink-0 text-xs text-[var(--tr-text-faint)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
+                  {event.recipient && <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{event.recipient}</p>}
+                </div>
               ))}
             </div>
           </Surface>
@@ -409,7 +432,7 @@ export default function QuoteDetailPage() {
                       </span>
                     </button>
                     {expandedLineItemIndex === index && (
-                      <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                      <div className="mt-3 space-y-3 rounded-lg border border-white/10 bg-slate-950/30 p-3">
                         <label className="block">
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
                           <textarea
@@ -632,7 +655,7 @@ function PricingIntelligencePanel({
 }) {
   return (
     <Surface className="p-5">
-      <h2 className="text-lg font-bold text-white">Pricing intelligence</h2>
+      <h2 className="text-lg font-bold text-white">Pricing check</h2>
       <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
         Internal only. These values help you price the work, but they do not appear on the client quote.
       </p>
@@ -655,7 +678,7 @@ function PricingIntelligencePanel({
         </p>
       )}
 
-      <div className="mt-5 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-4">
+      <div className="mt-5 space-y-3 rounded-lg border border-white/10 bg-slate-950/30 p-4">
         <div>
           <p className="text-sm font-semibold text-white">Property value</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">

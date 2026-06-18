@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Job } from "@/types";
+import type { Job, Quote } from "@/types";
 import { Badge, statusVariant } from "@/components/ui/badge";
-import { CalendarBlank, CaretLeft, CaretRight, MapPin } from "@/components/ui/icons";
+import { CalendarBlank, CaretLeft, CaretRight, MapPin, Plus } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { Button } from "@/components/ui/button";
 import { formatTime } from "@/lib/format";
 
 function getDaysInMonth(year: number, month: number) {
@@ -22,7 +23,10 @@ export default function CalendarPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [approvedQuotes, setApprovedQuotes] = useState<Quote[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
+  const [schedulingQuoteId, setSchedulingQuoteId] = useState<string | null>(null);
+  const [scheduleMessage, setScheduleMessage] = useState("");
 
   useEffect(() => {
     const start = new Date(year, month, 1).toISOString();
@@ -31,6 +35,15 @@ export default function CalendarPage() {
       .then(r => r.json())
       .then(data => setJobs(Array.isArray(data) ? data : []));
   }, [year, month]);
+
+  useEffect(() => {
+    fetch("/api/quotes")
+      .then(r => r.json())
+      .then(data => {
+        const rows = Array.isArray(data) ? data : [];
+        setApprovedQuotes(rows.filter((quote: Quote) => quote.status === "approved" && !quote.scheduled_start).slice(0, 4));
+      });
+  }, []);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -51,6 +64,48 @@ export default function CalendarPage() {
     && selectedDate.getDate() === today.getDate()
     && selectedDate.getMonth() === today.getMonth()
     && selectedDate.getFullYear() === today.getFullYear();
+
+  async function handleScheduleQuote(quote: Quote) {
+    if (!selectedDate) return;
+    setSchedulingQuoteId(quote.id);
+    setScheduleMessage("");
+    const scheduledStart = new Date(selectedDate);
+    scheduledStart.setHours(9, 0, 0, 0);
+    const scheduledEnd = new Date(scheduledStart);
+    scheduledEnd.setHours(12, 0, 0, 0);
+
+    const jobResponse = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: quote.client_id,
+        quote_id: quote.id,
+        title: `${quote.client_name} job`,
+        description: quote.notes,
+        scheduled_start: scheduledStart.toISOString(),
+        scheduled_end: scheduledEnd.toISOString(),
+        address: quote.client_address,
+      }),
+    });
+
+    if (jobResponse.ok) {
+      await fetch(`/api/quotes/${quote.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduled_start: scheduledStart.toISOString(),
+          scheduled_end: scheduledEnd.toISOString(),
+        }),
+      });
+      const newJob = await jobResponse.json();
+      setJobs(current => [...current, newJob]);
+      setApprovedQuotes(current => current.filter(item => item.id !== quote.id));
+      setScheduleMessage(`${quote.client_name} scheduled for ${formatTime(scheduledStart.toISOString())}.`);
+    } else {
+      setScheduleMessage("Could not schedule that quote. Try again.");
+    }
+    setSchedulingQuoteId(null);
+  }
 
   function prevMonth() {
     if (month === 0) {
@@ -177,6 +232,30 @@ export default function CalendarPage() {
               <p className="text-sm font-medium text-white">
                 {isSelectedToday ? "No scheduled jobs for today." : "No jobs scheduled for this day."}
               </p>
+              {approvedQuotes.length > 0 ? (
+                <div className="mt-5 space-y-3 text-left">
+                  <p className="text-sm font-semibold text-white">Schedule approved work</p>
+                  {approvedQuotes.map(quote => (
+                    <div key={quote.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{quote.client_name}</p>
+                          <p className="mt-1 text-xs text-[var(--tr-text-muted)]">{quote.client_address ?? "No address saved"}</p>
+                        </div>
+                        <Button size="sm" variant="secondary" loading={schedulingQuoteId === quote.id} onClick={() => handleScheduleQuote(quote)}>
+                          Schedule
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {scheduleMessage && <p className="text-sm text-[var(--tr-text-muted)]">{scheduleMessage}</p>}
+                </div>
+              ) : (
+                <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+                  <Plus size={17} weight="bold" />
+                  Create quote
+                </Link>
+              )}
             </Surface>
           )}
         </section>

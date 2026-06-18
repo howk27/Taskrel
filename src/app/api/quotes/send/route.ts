@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMissingEnv } from "@/lib/env";
 import { buildBusinessSnapshot, renderQuoteDocumentHtml } from "@/lib/quote-document";
 import { describeSendGridError } from "@/lib/sendgrid-error";
+import { buildDeliveryEventRows, type DeliveryEventAttempt } from "@/lib/delivery-events";
 import type { QuoteTemplatePreset } from "@/types";
 import twilio from "twilio";
 
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
   const errors: string[] = [];
   const details: { channel: string; code: string; message: string }[] = [];
   const sent: string[] = [];
+  const deliveryAttempts: DeliveryEventAttempt[] = [];
 
   if (via.includes("email") && quote.client_email) {
     const missingEmailEnv = getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]);
@@ -53,6 +55,14 @@ export async function POST(request: NextRequest) {
       errors.push("email_config");
       details.push({
         channel: "email",
+        code: "email_config",
+        message: `Missing email configuration: ${missingEmailEnv.join(", ")}.`,
+      });
+      deliveryAttempts.push({
+        channel: "email",
+        provider: "sendgrid",
+        recipient: quote.client_email,
+        status: "error",
         code: "email_config",
         message: `Missing email configuration: ${missingEmailEnv.join(", ")}.`,
       });
@@ -68,17 +78,41 @@ export async function POST(request: NextRequest) {
           html: renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset }),
         });
         sent.push("email");
+        deliveryAttempts.push({
+          channel: "email",
+          provider: "sendgrid",
+          recipient: quote.client_email,
+          status: "success",
+          code: "sent",
+          message: "Quote email sent.",
+        });
       } catch (err) {
         const emailError = describeSendGridError(err);
         console.error("SendGrid error:", emailError, err);
         errors.push("email");
         details.push({ channel: "email", code: emailError.code, message: emailError.message });
+        deliveryAttempts.push({
+          channel: "email",
+          provider: "sendgrid",
+          recipient: quote.client_email,
+          status: "error",
+          code: emailError.code,
+          message: emailError.message,
+        });
       }
     }
   } else if (via.includes("email")) {
     errors.push("email_missing_client");
     details.push({
       channel: "email",
+      code: "email_missing_client",
+      message: "This quote does not have a client email address.",
+    });
+    deliveryAttempts.push({
+      channel: "email",
+      provider: "sendgrid",
+      recipient: null,
+      status: "error",
       code: "email_missing_client",
       message: "This quote does not have a client email address.",
     });
@@ -90,6 +124,14 @@ export async function POST(request: NextRequest) {
       errors.push("sms_config");
       details.push({
         channel: "sms",
+        code: "sms_config",
+        message: `Missing SMS configuration: ${missingSmsEnv.join(", ")}.`,
+      });
+      deliveryAttempts.push({
+        channel: "sms",
+        provider: "twilio",
+        recipient: quote.client_phone,
+        status: "error",
         code: "sms_config",
         message: `Missing SMS configuration: ${missingSmsEnv.join(", ")}.`,
       });
@@ -108,10 +150,26 @@ export async function POST(request: NextRequest) {
         to: quote.client_phone,
       });
       sent.push("sms");
+      deliveryAttempts.push({
+        channel: "sms",
+        provider: "twilio",
+        recipient: quote.client_phone,
+        status: "success",
+        code: "sent",
+        message: "Quote SMS sent.",
+      });
     } catch (err) {
       console.error("Twilio error:", err);
       errors.push("sms");
       details.push({ channel: "sms", code: "sms", message: "Twilio could not send the SMS." });
+      deliveryAttempts.push({
+        channel: "sms",
+        provider: "twilio",
+        recipient: quote.client_phone,
+        status: "error",
+        code: "sms",
+        message: "Twilio could not send the SMS.",
+      });
     }
     }
   } else if (via.includes("sms")) {
@@ -121,6 +179,30 @@ export async function POST(request: NextRequest) {
       code: "sms_missing_client",
       message: "This quote does not have a client phone number.",
     });
+    deliveryAttempts.push({
+      channel: "sms",
+      provider: "twilio",
+      recipient: null,
+      status: "error",
+      code: "sms_missing_client",
+      message: "This quote does not have a client phone number.",
+    });
+  }
+
+  if (deliveryAttempts.length > 0) {
+    const { error: deliveryEventError } = await supabase
+      .from("delivery_events")
+      .insert(buildDeliveryEventRows({
+        contractorId: quote.contractor_id,
+        actorUserId: user.id,
+        entityType: "quote",
+        entityId: quoteId,
+        action: "send",
+        attempts: deliveryAttempts,
+      }));
+    if (deliveryEventError) {
+      console.error("Delivery event logging failed:", deliveryEventError);
+    }
   }
 
   // Update quote status and sent_via
