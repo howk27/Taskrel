@@ -2,7 +2,7 @@
 
 ## Goal
 
-Complete Taskrel's onboarding workflow and simplify the core forms contractors use to set up the business, create quotes, and maintain quote document settings. The product should make every important action visibly resolved: complete, optional, needs attention, or blocked by an error. Contractors should understand what data affects client-facing documents, what stays internal, and what still needs work before they can send a quote with confidence.
+Complete Taskrel's onboarding workflow and simplify the core forms contractors use to set up the business, create quotes, manage billing and payment processing, and maintain quote document settings. The product should make every important action visibly resolved: complete, optional, needs attention, or blocked by an error. Contractors should understand what data affects client-facing documents, what stays internal, what is ready to collect money, and what still needs work before they can send a quote or invoice with confidence.
 
 ## Product Context
 
@@ -12,9 +12,9 @@ The current onboarding page only captures business type, trades, and primary tra
 
 ## Recommended Approach
 
-Use an onboarding-first workspace setup workflow, then reuse the same form readiness model in settings and quote creation.
+Use an onboarding-first workspace setup workflow, then reuse the same form readiness model everywhere the pattern repeats: settings, quote creation, billing, payment processing, invoice sending, exports, and calendar/date fields.
 
-Onboarding should collect the business information that directly affects quoting: identity, trade profile, internal pricing defaults, and quote document defaults. Settings should become the maintenance surface for those same inputs after onboarding. Quote creation should show readiness before and after generation, so the primary action always matches the missing or completed state.
+Onboarding should collect the business information that directly affects quoting: identity, trade profile, internal pricing defaults, billing/payment readiness, and quote document defaults. Settings should become the maintenance surface for those same inputs after onboarding. Quote creation should show readiness before and after generation, so the primary action always matches the missing or completed state. The implementation should actively look for repeated action-state gaps instead of limiting the work to the fields named in this spec.
 
 ## Scope
 
@@ -24,7 +24,10 @@ In scope:
 - Business information editing in settings.
 - Quote document settings form, including hiding the visible logo URL field.
 - Internal overhead settings in onboarding and settings.
+- Billing subscription readiness and Stripe payment-processing readiness.
+- Invoice payment link readiness and invoice send edge states where they depend on Stripe Connect, email, SMS, or client contact data.
 - New quote creation form and generated quote review readiness.
+- Quote date and optional scheduled work date controls in quote creation.
 - Shared readiness/status helpers or small presentational components when they reduce duplicated logic.
 - Copy that explains which fields affect client-facing quote documents and which stay internal.
 
@@ -38,7 +41,7 @@ Out of scope:
 
 ## Shared Status Model
 
-Taskrel should use the same completion language across onboarding, settings, quote creation, quote documents, billing, and exports.
+Taskrel should use the same completion language across onboarding, settings, quote creation, quote documents, billing, payment processing, invoice sending, exports, and calendar-related fields.
 
 - Complete: the action or section is ready and has the data needed for the related workflow.
 - Needs attention: required or high-value data is missing, invalid, or preventing the next action.
@@ -46,6 +49,28 @@ Taskrel should use the same completion language across onboarding, settings, quo
 - Error: the app tried to save, sync, upload, send, or read required data and hit a provider, validation, or database problem.
 
 Status labels must include text, not color alone. They should appear near the section title, in summary rows, and in the right-side or sticky readiness panel where appropriate.
+
+## Repeated Pattern Audit
+
+The implementation should not treat this spec as a closed checklist of only the fields named by the user. The core pattern is broader: whenever Taskrel has an action, integration, save operation, send operation, generated artifact, or date-dependent record, the UI should show whether that thing is ready, complete, optional, or blocked.
+
+Audit these surfaces before implementation:
+
+- Onboarding setup.
+- Settings business information.
+- Quote document settings.
+- Internal overhead and pricing intelligence.
+- New quote generation.
+- Quote review, save, send, and resend.
+- Quote date and scheduled work date.
+- Billing subscription.
+- Stripe Connect payment processing.
+- Invoice send and payment link creation.
+- Google Sheets and CSV exports.
+- Dashboard work queue and attention items.
+- Calendar scheduling.
+
+The first implementation pass should update the surfaces in scope for this spec. If the audit finds the same missing-state pattern in adjacent components touched during implementation, include the small aligned fix instead of leaving an obviously inconsistent experience.
 
 ## Onboarding Design
 
@@ -114,6 +139,28 @@ Completion rules:
 - Needs attention when an upload is in progress or an invalid image is selected.
 - Error when upload or save fails.
 
+### Billing And Payment Processing
+
+Billing and payment processing should be represented during onboarding and maintained in settings. They are separate concepts and should not be collapsed into one vague billing card.
+
+Fields and actions:
+
+- Taskrel subscription or closed-test premium access.
+- Stripe Connect setup for accepting client payments.
+- Payment link readiness for invoices.
+
+Completion rules:
+
+- Subscription is Complete when `subscription_status` is `trialing` or `active`.
+- Subscription Needs attention when the contractor has no active or trialing status and wants to keep using paid features.
+- Subscription Error when Stripe subscription billing is not configured or a checkout session cannot be created.
+- Payment processing is Complete when `stripe_connect_account_id` exists and the user returned from Connect successfully.
+- Payment processing Needs attention when Stripe Connect is missing and invoices need payment links.
+- Payment processing Error when Stripe Connect is not configured, onboarding refreshes, or payment link creation fails.
+- Closed-test access is Complete when an access code sets `subscription_status` to `trialing`.
+
+Copy should make the difference clear: "Taskrel subscription keeps the app active. Stripe Connect lets clients pay your invoices."
+
 ### Start Work
 
 The final onboarding step should not be a generic "Continue" moment. It should route the contractor to the most useful next action.
@@ -148,6 +195,18 @@ Completion states should appear beside each settings section:
 - Billing and payments: complete when subscription and Stripe Connect are active, needs attention when payment setup is missing, error for provider problems.
 - Exports and sync: optional when disconnected, complete when connected, error when sync fails.
 
+The dedicated billing page should read current contractor billing state instead of only showing action cards. It should show two status rows at the top:
+
+- Taskrel subscription: Active, Trialing, Past due, Canceled, Not started, or Error.
+- Client payment processing: Connected, Needs setup, Returning to setup, or Error.
+
+The primary actions should change by state:
+
+- Subscribe, Manage subscription, Fix billing, or Enter access code.
+- Set up payment processing, Continue setup, Reconnect, or View payment readiness.
+
+Payment processing status should also appear where it matters: invoice detail and invoice send flows. If Stripe Connect is missing, sending an invoice by email/SMS can still be possible, but payment link readiness should show Needs attention instead of silently omitting a payment link.
+
 ## New Quote Form Design
 
 The new quote form should guide users before generation and after generation.
@@ -157,6 +216,7 @@ The new quote form should guide users before generation and after generation.
 The form should be organized by workflow state rather than only by input type:
 
 - Client: name, email, phone.
+- Date: quote date calendar input and optional scheduled work date.
 - Site: address, optional property context.
 - Scope: job description and additional details.
 - Readiness: compact summary of what is ready and what is missing.
@@ -169,6 +229,8 @@ Completion rules:
 - Address is optional, with copy that it improves pricing intelligence and records.
 - Scope is complete when the job description has at least 20 non-space characters.
 - Scope needs attention when empty or too short.
+- Quote date is complete by default because it should default to today's date.
+- Scheduled work date is optional during quote creation and should not block generation or draft save.
 
 The primary action should adapt to readiness:
 
@@ -178,6 +240,8 @@ The primary action should adapt to readiness:
 
 On desktop, show a compact right-side readiness panel. On mobile, use a sticky bottom readiness/action bar so users can see what is missing without scrolling back to the top.
 
+The quote date calendar input should default to the current day and stamp the client-facing quote creation date. It should save through the existing quote create path as `created_at` when the contractor intentionally changes it. If the contractor does not change it, the server or database default creation timestamp is acceptable. Scheduled work date should remain separate and map to `scheduled_start` and `scheduled_end` only when the contractor is setting work timing.
+
 ### After Generation
 
 The generated quote review step should keep the existing readiness checklist pattern and make it more consistent with the shared status model.
@@ -185,6 +249,7 @@ The generated quote review step should keep the existing readiness checklist pat
 Readiness items:
 
 - Client contact.
+- Quote date.
 - Line items.
 - Totals.
 - Job context.
@@ -212,6 +277,29 @@ The product should make that behavior explicit:
 
 This prevents silent mismatch between settings and client-facing quote documents while preserving historical records.
 
+## Invoice And Payment Readiness
+
+Invoice send should use the same readiness pattern as quote send.
+
+Readiness items:
+
+- Client email.
+- Client phone.
+- Invoice total.
+- Payment link.
+- Stripe Connect payment processing.
+- Send provider configuration.
+
+Completion rules:
+
+- Email send is Complete when client email and email provider configuration exist.
+- SMS send is Complete when client phone and SMS provider configuration exist.
+- Payment link is Complete when an existing invoice payment link exists or Stripe Connect can create one.
+- Payment link Needs attention when Stripe Connect is missing.
+- Payment link Error when Stripe is configured but link creation fails.
+- Invoice can be sent without a payment link only if the UI explicitly says the invoice was sent without online payment.
+- If an invoice sends by email or SMS but payment link creation fails, show saved/sent state separately from payment-link error.
+
 ## Data Flow
 
 Use existing contractor fields where possible:
@@ -232,6 +320,9 @@ Use existing contractor fields where possible:
 - `quote_template_preset`
 - `overhead_percent`
 - `overhead_fixed_per_job`
+- `stripe_customer_id`
+- `stripe_connect_account_id`
+- `subscription_status`
 - `onboarding_complete`
 
 Quote readiness should continue using existing quote fields:
@@ -248,6 +339,18 @@ Quote readiness should continue using existing quote fields:
 - `sent_via`
 - `business_snapshot`
 - `template_preset`
+
+Billing and invoice readiness should use existing fields:
+
+- `subscription_status`
+- `stripe_customer_id`
+- `stripe_connect_account_id`
+- `stripe_payment_link`
+- `stripe_payment_intent_id`
+- `amount_paid`
+- `paid_at`
+- `due_date`
+- `sent_via`
 
 No new database fields are required for the initial implementation. Partial onboarding progress can stay local to the client until the contractor submits the setup flow.
 
@@ -276,8 +379,18 @@ Quote creation:
 
 - Missing client contact should block send, not draft save.
 - Missing or short job description should block generation.
+- Quote date should default to today and be visible before generation.
+- Scheduled work date should be optional and visually separate from quote creation date.
 - Send provider failures should distinguish email, SMS, and configuration errors.
 - Saved-but-not-sent should be communicated clearly.
+
+Billing and payment processing:
+
+- Missing Stripe billing configuration should show Error, not a generic closed-test message.
+- Past due or canceled subscription should show Needs attention with the next billing action.
+- Missing Stripe Connect should show Needs attention wherever invoice payment collection is relevant.
+- Stripe Connect refresh or return states should be represented on the billing page.
+- Payment link failure should not be hidden if the invoice still sends.
 
 Historical quote documents:
 
@@ -328,12 +441,17 @@ Manual checks:
 - Settings business information can be edited after onboarding.
 - Settings sections show complete/optional/needs-attention/error states.
 - New quote form shows missing client contact before send.
+- New quote form shows a quote date calendar defaulting to today.
+- New quote form keeps quote date separate from scheduled work date.
 - New quote form allows saving draft without email or phone.
 - New quote form blocks generation when scope is empty or too short.
+- Billing page represents subscription state from contractor data.
+- Billing page represents Stripe Connect/payment processing state from contractor data.
+- Invoice send makes payment link readiness visible and handles sent-without-payment-link states.
 - Mobile quote creation uses available space without hiding the primary action.
 
 ## Implementation Notes
 
-Start with a small shared readiness model for setup sections. Keep it pure and testable, similar to the existing quote workflow model. Then update onboarding to use that model. After onboarding is complete, update settings to maintain the same fields and states. Finally, align the new quote form with the same readiness language before and after generation.
+Start with a small shared readiness model for setup and action sections. Keep it pure and testable, similar to the existing quote workflow model. Then update onboarding to use that model. After onboarding is complete, update settings and billing to maintain the same fields and states. Then align the new quote form with the same readiness language before and after generation, including quote date and scheduled work date controls. Finally, apply the same action-state treatment to invoice payment readiness where invoice send already depends on Stripe Connect, email, SMS, and client contact data.
 
-Avoid broad visual rewrites outside these forms. The goal is clearer workflow state, more compact layouts, and fewer surprises when saved settings affect quote documents.
+Avoid unrelated visual rewrites, but do not ignore the same missing-state pattern when it appears in adjacent surfaces touched by the work. The goal is clearer workflow state, more compact layouts, and fewer surprises when saved settings affect quote documents, generated quotes, billing, payment processing, and invoice sends.
