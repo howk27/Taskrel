@@ -170,7 +170,7 @@ export default function NewQuotePage() {
             <ArrowLeft size={24} weight="bold" />
           </button>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-blue)]">Quote builder</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-orange)]">Quote builder</p>
             <h1 className="text-2xl font-bold text-white md:text-3xl">New Quote</h1>
           </div>
         </div>
@@ -275,7 +275,7 @@ export default function NewQuotePage() {
             <ArrowLeft size={24} weight="bold" />
           </button>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-blue)]">Ready to review</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-orange)]">Ready to review</p>
             <h1 className="text-2xl font-bold text-white md:text-3xl">Review Quote</h1>
           </div>
         </div>
@@ -291,7 +291,7 @@ export default function NewQuotePage() {
             <Surface className="overflow-hidden">
               <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
                 <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Line Items</p>
-                <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-blue)]">
+                <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-orange)]">
                   Add item
                 </button>
               </div>
@@ -313,13 +313,13 @@ export default function NewQuotePage() {
                         </span>
                         <span className="shrink-0 text-right">
                           <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
-                          <span className="mt-2 inline-flex rounded-full bg-[var(--tr-blue)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-blue)]">
+                          <span className="mt-2 inline-flex rounded-full bg-[var(--tr-orange)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-orange)]">
                             {expandedLineItemIndex === i ? "Done" : "Edit"}
                           </span>
                         </span>
                       </button>
                       {expandedLineItemIndex === i && (
-                        <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                        <div className="mt-3 space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] p-3">
                           <label className="block">
                             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
                             <textarea
@@ -452,7 +452,7 @@ export default function NewQuotePage() {
 
           <aside className="space-y-4">
             <Surface className="h-fit p-5">
-              <p className="text-sm font-bold text-[var(--tr-blue)]">{reviewState.bucketLabel}</p>
+              <p className="text-sm font-bold text-[var(--tr-orange)]">{reviewState.bucketLabel}</p>
               <h2 className="mt-1 text-lg font-bold text-white">{reviewState.nextAction}</h2>
               <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
                 {reviewState.completedReadiness} of {reviewState.totalReadiness} checks ready. {reviewState.deliveryLabel}.

@@ -66,7 +66,7 @@ export default async function SettingsPage({
       <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
         <div className="space-y-6">
           <section>
-            <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-blue)]" />
+            <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-orange)]" />
             <Surface className="divide-y divide-slate-700/50 overflow-hidden">
               <SettingRow label="Business" value={settingsContractor?.business_name ?? "Taskrel business"} />
               <SettingRow label="Email" value={settingsContractor?.email ?? user.email ?? ""} />
@@ -115,7 +115,7 @@ export default async function SettingsPage({
                     {settingsContractor.subscription_status}
                   </Badge>
                 ) : (
-                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
+                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-orange)]">
                     Subscribe
                   </Link>
                 )}
@@ -128,7 +128,7 @@ export default async function SettingsPage({
                 {settingsContractor?.stripe_connect_account_id ? (
                   <Badge variant="success">Connected</Badge>
                 ) : (
-                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
+                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-orange)]">
                     Set up
                   </Link>
                 )}
@@ -161,7 +161,7 @@ export default async function SettingsPage({
                 {settingsContractor?.google_sheets_sync_enabled && settingsContractor.google_sheets_sheet_id ? (
                   <div className="grid grid-cols-2 gap-2">
                     <form action="/api/google-sheets/sync" method="post">
-                      <button type="submit" className="w-full rounded-lg bg-[var(--tr-blue)] px-3 py-2 text-sm font-semibold text-[#09204f] hover:bg-[#a9c6ff]">
+                      <button type="submit" className="w-full rounded-lg bg-[var(--tr-orange)] px-3 py-2 text-sm font-semibold text-[#241205] hover:bg-[var(--tr-amber)]">
                         Sync now
                       </button>
                     </form>

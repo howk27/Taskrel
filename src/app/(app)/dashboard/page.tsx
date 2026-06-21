@@ -4,11 +4,14 @@ import { redirect } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { ChartCard, PipelineDonut, RevenueAreaChart, ValueBarChart } from "@/components/charts/taskrel-charts";
 import { DashboardWorkQueue } from "@/components/dashboard/dashboard-work-queue";
+import { LaunchReadinessChecklist } from "@/components/dashboard/launch-readiness-checklist";
 import { CalendarBlank, FileText, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { getMissingEnv } from "@/lib/env";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { buildTaskrelInsights } from "@/lib/insights";
+import { buildLaunchReadiness } from "@/lib/launch-readiness";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
@@ -18,7 +21,7 @@ export default async function DashboardPage() {
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("id, onboarding_complete")
+    .select("id, onboarding_complete, business_name, business_phone, business_website, license_text, logo_url, quote_default_terms, quote_policy_text, quote_template_preset, stripe_connect_account_id")
     .eq("user_id", user.id)
     .single();
 
@@ -27,7 +30,7 @@ export default async function DashboardPage() {
   const [quotesResult, jobsResult, invoicesResult, clientsResult] = await Promise.all([
     supabase
       .from("quotes")
-      .select("id, client_name, client_address, total, subtotal, tax_amount, status, line_items, notes, created_at, scheduled_start, scheduled_end, sent_via, template_preset")
+      .select("id, client_name, client_address, total, subtotal, tax_amount, status, line_items, notes, created_at, scheduled_start, scheduled_end, sent_via, template_preset, follow_up_due_at, last_followed_up_at")
       .eq("contractor_id", contractor.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -51,6 +54,24 @@ export default async function DashboardPage() {
   const invoices = invoicesResult.data ?? [];
   const clients = clientsResult.data ?? [];
   const insights = buildTaskrelInsights({ quotes, jobs, invoices, clients });
+  const launchReadiness = buildLaunchReadiness({
+    contractor: {
+      business_name: contractor.business_name,
+      business_phone: contractor.business_phone,
+      business_website: contractor.business_website,
+      license_text: contractor.license_text,
+      logo_url: contractor.logo_url,
+      quote_default_terms: contractor.quote_default_terms,
+      quote_policy_text: contractor.quote_policy_text,
+      quote_template_preset: contractor.quote_template_preset,
+      stripe_connect_account_id: contractor.stripe_connect_account_id,
+    },
+    delivery: {
+      emailConfigured: getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]).length === 0,
+      smsConfigured: getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]).length === 0,
+    },
+    quoteCount: quotes.length,
+  });
   const activeQuotes = quotes.filter(quote => ["draft", "sent", "approved"].includes(quote.status));
   const upcomingJobs = jobs
     .filter(job => ["scheduled", "in_progress"].includes(job.status))
@@ -63,6 +84,8 @@ export default async function DashboardPage() {
         title="Dashboard"
         subtitle="Quotes, schedule, and payments that need attention."
       />
+
+      <LaunchReadinessChecklist readiness={launchReadiness} />
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Metric icon={<FileText size={21} />} label="Active quotes" value={formatCurrency(insights.summaryMetrics.activeQuoteValue)} />
@@ -78,7 +101,7 @@ export default async function DashboardPage() {
               <h2 className="text-lg font-bold text-white">Active quotes</h2>
               <p className="text-sm text-[var(--tr-text-muted)]">Expand a quote to see what was sent and what to do next.</p>
             </div>
-            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View all</Link>
+            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-orange)]">View all</Link>
           </div>
           <DashboardWorkQueue quotes={activeQuotes} />
         </Surface>
@@ -87,7 +110,7 @@ export default async function DashboardPage() {
           <Surface className="p-5">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-lg font-bold text-white">Scheduled work</h2>
-              <Link href="/jobs" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View jobs</Link>
+              <Link href="/jobs" className="shrink-0 text-sm font-semibold text-[var(--tr-orange)]">View jobs</Link>
             </div>
             {upcomingJobs.length > 0 ? (
               <div className="space-y-3">
@@ -98,7 +121,7 @@ export default async function DashboardPage() {
                         <p className="font-semibold text-white">{job.title}</p>
                         <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{formatDate(job.scheduled_start)}</p>
                         {job.quote_id && (
-                          <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                          <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-orange)]">
                             Open quote
                           </Link>
                         )}
@@ -122,7 +145,7 @@ export default async function DashboardPage() {
                 <Link key={risk.id} href={risk.href ?? "#"} className="block rounded-xl border border-white/10 bg-white/[0.03] p-4 hover:bg-white/[0.06]">
                   <p className="text-sm font-bold text-white">{risk.title}</p>
                   <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{risk.body}</p>
-                  {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{risk.actionLabel}</p>}
+                  {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-orange)]">{risk.actionLabel}</p>}
                 </Link>
               )) : (
                 <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">
@@ -166,7 +189,7 @@ function Metric({
   value: string;
   tone?: "blue" | "green" | "amber";
 }) {
-  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-blue)]";
+  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-orange)]";
   return (
     <Surface className="p-4">
       <div className={`mb-3 ${toneClass}`}>{icon}</div>

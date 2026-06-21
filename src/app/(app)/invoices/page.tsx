@@ -68,7 +68,7 @@ export default async function InvoicesPage() {
           </div>
           <Link
             href="/quotes"
-            className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+            className="mt-5 inline-flex h-11 items-center justify-center rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]"
           >
             Review quotes
           </Link>
@@ -79,7 +79,7 @@ export default async function InvoicesPage() {
         <div className="grid gap-3 lg:grid-cols-2">
           {invoiceRows.map(invoice => (
             <Link key={invoice.id} href={`/invoices/${invoice.id}`} className="block">
-              <Surface className="p-4 transition-colors hover:border-slate-500/80 hover:bg-[#1B2940]">
+              <Surface className="p-4 transition-colors hover:border-[var(--tr-border)] hover:bg-[var(--tr-surface-2)]">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export default async function InvoicesPage() {
           <Receipt size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
           <p className="font-semibold text-white">No invoices yet</p>
           <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approve a quote to convert it into an invoice.</p>
-          <Link href="/quotes" className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+          <Link href="/quotes" className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]">
             View quotes
           </Link>
         </Surface>
@@ -127,7 +127,7 @@ function InvoiceMetric({ label, value, tone }: { label: string; value: string; t
   return (
     <Surface className="p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">{label}</p>
-      <p className={`mt-2 text-2xl font-black ${toneClass}`}>{value}</p>
+      <p className={`mt-2 text-2xl font-extrabold ${toneClass}`}>{value}</p>
     </Surface>
   );
 }

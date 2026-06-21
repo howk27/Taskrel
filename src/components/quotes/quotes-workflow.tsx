@@ -37,6 +37,8 @@ type QuoteListItem = {
   created_at: string;
   updated_at: string | null;
   scheduled_start: string | null;
+  follow_up_due_at: string | null;
+  last_followed_up_at: string | null;
   sent_via: ("email" | "sms")[] | null;
   line_items: QuoteLineItem[] | null;
   notes: string | null;
@@ -62,8 +64,9 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
         quote.client_email,
         quote.client_phone,
         quote.status,
-        state.nextAction,
-        state.deliveryLabel,
+                state.nextAction,
+                state.deliveryLabel,
+                state.followUpLabel,
       ]
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(term));
@@ -89,7 +92,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
         action={(
           <Link
             href="/quotes/new"
-            className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] transition-colors hover:bg-[#a9c6ff] sm:inline-flex"
+            className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] transition-colors hover:bg-[var(--tr-amber)] sm:inline-flex"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -107,24 +110,24 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
               onClick={() => setFilter(summary.key)}
               className={`min-h-[132px] rounded-xl p-4 text-left transition-colors ${
                 active
-                  ? "bg-[var(--tr-blue)] text-[#09204f]"
+                  ? "bg-[var(--tr-orange)] text-[#241205]"
                   : "bg-[var(--tr-surface)] text-white shadow-[inset_0_0_0_1px_var(--tr-border-soft)] hover:bg-[var(--tr-surface-2)]"
               }`}
             >
-              <span className={`text-sm font-bold ${active ? "text-[#09204f]" : "text-white"}`}>{summary.label}</span>
-              <span className={`mt-1 block text-xs ${active ? "text-[#17315f]" : "text-[var(--tr-text-muted)]"}`}>
+              <span className={`text-sm font-bold ${active ? "text-[#241205]" : "text-white"}`}>{summary.label}</span>
+              <span className={`mt-1 block text-xs ${active ? "text-[#4d270f]" : "text-[var(--tr-text-muted)]"}`}>
                 {summary.actionLabel}
               </span>
               <span className="mt-4 flex items-end justify-between gap-3">
                 <span>
                   <span className="block text-3xl font-black tabular-nums">{summary.count}</span>
-                  <span className={`text-xs font-semibold ${active ? "text-[#17315f]" : "text-[var(--tr-text-faint)]"}`}>
+                  <span className={`text-xs font-semibold ${active ? "text-[#4d270f]" : "text-[var(--tr-text-faint)]"}`}>
                     quote{summary.count === 1 ? "" : "s"}
                   </span>
                 </span>
                 <span className="text-right">
                   <span className="block text-lg font-black tabular-nums">{formatCurrency(summary.total)}</span>
-                  <span className={`text-xs font-semibold ${active ? "text-[#17315f]" : "text-[var(--tr-text-faint)]"}`}>
+                  <span className={`text-xs font-semibold ${active ? "text-[#4d270f]" : "text-[var(--tr-text-faint)]"}`}>
                     value
                   </span>
                 </span>
@@ -136,7 +139,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
 
       <Surface className="p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#0F172A] px-3 shadow-[inset_0_0_0_1px_var(--tr-border)]">
+          <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg bg-[var(--tr-bg-soft)] px-3 shadow-[inset_0_0_0_1px_var(--tr-border)]">
             <MagnifyingGlass size={18} className="text-[var(--tr-text-faint)]" />
             <input
               value={search}
@@ -157,12 +160,12 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
                   onClick={() => setFilter(item.key)}
                   className={`flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-bold transition-colors ${
                     active
-                      ? "bg-[var(--tr-blue)] text-[#09204f]"
+                      ? "bg-[var(--tr-orange)] text-[#241205]"
                       : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
                   }`}
                 >
                   {item.shortLabel}
-                  <span className={`rounded-full px-1.5 py-0.5 tabular-nums ${active ? "bg-[#09204f]/12" : "bg-white/8"}`}>
+                  <span className={`rounded-full px-1.5 py-0.5 tabular-nums ${active ? "bg-[#241205]/12" : "bg-white/8"}`}>
                     {count}
                   </span>
                 </button>
@@ -182,7 +185,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
 
           {selectedQuote && selectedState && (
             <Surface className="hidden h-fit p-5 xl:block">
-              <p className="text-sm font-bold text-[var(--tr-blue)]">{selectedState.bucketLabel}</p>
+              <p className="text-sm font-bold text-[var(--tr-orange)]">{selectedState.bucketLabel}</p>
               <h2 className="mt-2 text-2xl font-black text-white">{selectedQuote.client_name}</h2>
               <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
                 {selectedQuote.client_address ?? "No address saved"}
@@ -193,6 +196,11 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
                 <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${deliveryClass(selectedState.deliveryTone)}`}>
                   {selectedState.deliveryLabel}
                 </span>
+                {selectedState.followUpLabel && (
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${followUpClass(selectedState.followUpTone)}`}>
+                    {selectedState.followUpLabel}
+                  </span>
+                )}
               </div>
 
               <div className="mt-5 space-y-2">
@@ -203,7 +211,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
 
               <Link
                 href={`/quotes/${selectedQuote.id}`}
-                className="mt-5 flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--tr-blue)] text-sm font-bold text-[#09204f] transition-colors hover:bg-[#a9c6ff]"
+                className="mt-5 flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--tr-orange)] text-sm font-bold text-[#241205] transition-colors hover:bg-[var(--tr-amber)]"
               >
                 <DeviceMobile size={18} weight="duotone" />
                 {selectedState.nextAction}
@@ -220,7 +228,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
           </p>
           <Link
             href="/quotes/new"
-            className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+            className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -255,11 +263,11 @@ function QuoteCard({ quote }: { quote: QuoteListItem }) {
 
   return (
     <Link key={quote.id} href={`/quotes/${quote.id}`} className="block">
-      <Surface className="p-3 transition-colors hover:bg-[#1B2940] sm:p-4">
+      <Surface className="p-3 transition-colors hover:bg-[var(--tr-surface-2)] sm:p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <FileText size={17} weight="duotone" className="shrink-0 text-[var(--tr-blue)]" />
+              <FileText size={17} weight="duotone" className="shrink-0 text-[var(--tr-orange)]" />
               <p className="truncate text-base font-black text-white">{quote.client_name}</p>
             </div>
             {quote.client_address && (
@@ -277,7 +285,7 @@ function QuoteCard({ quote }: { quote: QuoteListItem }) {
 
         <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[var(--tr-blue)]/12 px-2.5 text-xs font-bold text-[var(--tr-blue)]">
+            <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-[var(--tr-orange)]/12 px-2.5 text-xs font-bold text-[var(--tr-orange)]">
               <DeviceMobile size={14} weight="duotone" />
               {state.nextAction}
             </span>
@@ -285,6 +293,12 @@ function QuoteCard({ quote }: { quote: QuoteListItem }) {
               <EnvelopeSimple size={14} weight="duotone" />
               {state.deliveryLabel}
             </span>
+            {state.followUpLabel && (
+              <span className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold ${followUpClass(state.followUpTone)}`}>
+                <SealCheck size={14} weight="duotone" />
+                {state.followUpLabel}
+              </span>
+            )}
             <span className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-white/[0.05] px-2.5 text-xs font-bold text-[var(--tr-text-muted)]">
               <CheckCircle size={14} weight="duotone" />
               {state.completedReadiness}/{state.totalReadiness} ready
@@ -324,8 +338,15 @@ function ReadinessRow({
 
 function deliveryClass(tone: "ready" | "sent" | "missing") {
   if (tone === "sent") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
-  if (tone === "ready") return "bg-[var(--tr-blue)]/12 text-[var(--tr-blue)]";
+  if (tone === "ready") return "bg-[var(--tr-info)]/12 text-[var(--tr-info)]";
   return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
+}
+
+function followUpClass(tone: "none" | "scheduled" | "due" | "logged") {
+  if (tone === "due") return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
+  if (tone === "scheduled") return "bg-[var(--tr-info)]/12 text-[var(--tr-info)]";
+  if (tone === "logged") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
+  return "bg-white/[0.05] text-[var(--tr-text-muted)]";
 }
 
 function filterLabel(filter: QuoteWorkflowBucket) {

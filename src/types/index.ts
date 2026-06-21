@@ -168,6 +168,10 @@ export interface Quote {
   scheduled_end: string | null;
   business_snapshot: BusinessSnapshot | null;
   template_preset: QuoteTemplatePreset;
+  public_access_token: string | null;
+  approved_at: string | null;
+  follow_up_due_at: string | null;
+  last_followed_up_at: string | null;
   sent_via: ("email" | "sms")[];
   created_at: string;
   updated_at: string;

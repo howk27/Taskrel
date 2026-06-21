@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/tmp
+/.impeccable
 
 # next.js
 /.next/

@@ -13,6 +13,8 @@ export type QuoteWorkflowInput = {
   created_at: string;
   updated_at?: string | null;
   scheduled_start?: string | null;
+  follow_up_due_at?: string | null;
+  last_followed_up_at?: string | null;
   sent_via?: ("email" | "sms")[] | null;
   line_items?: Pick<QuoteLineItem, "description" | "quantity" | "unit_price" | "total">[] | null;
   notes?: string | null;
@@ -31,6 +33,8 @@ export type QuoteWorkflowState = {
   bucketShortLabel: string;
   nextAction: string;
   nextActionDetail: string;
+  followUpLabel: string | null;
+  followUpTone: "none" | "scheduled" | "due" | "logged";
   deliveryLabel: string;
   deliveryTone: "ready" | "sent" | "missing";
   readiness: QuoteReadinessItem[];
@@ -45,6 +49,10 @@ export type QuoteWorkflowSummary = {
   actionLabel: string;
   count: number;
   total: number;
+};
+
+type QuoteWorkflowOptions = {
+  now?: Date;
 };
 
 const bucketOrder: QuoteWorkflowBucket[] = ["needs_review", "waiting", "approved", "closed"];
@@ -72,18 +80,21 @@ const bucketCopy: Record<QuoteWorkflowBucket, Pick<QuoteWorkflowSummary, "label"
   },
 };
 
-export function getQuoteWorkflowState(quote: QuoteWorkflowInput): QuoteWorkflowState {
+export function getQuoteWorkflowState(quote: QuoteWorkflowInput, options: QuoteWorkflowOptions = {}): QuoteWorkflowState {
   const bucket = bucketForStatus(quote.status);
   const copy = bucketCopy[bucket];
   const delivery = getDeliveryState(quote);
   const readiness = getReadiness(quote, delivery.label);
+  const followUp = getFollowUpState(quote, options.now ?? new Date());
 
   return {
     bucket,
     bucketLabel: copy.label,
     bucketShortLabel: copy.shortLabel,
-    nextAction: copy.actionLabel,
-    nextActionDetail: nextActionDetail(bucket, delivery.label),
+    nextAction: followUp.nextAction ?? copy.actionLabel,
+    nextActionDetail: followUp.nextActionDetail ?? nextActionDetail(bucket, delivery.label),
+    followUpLabel: followUp.label,
+    followUpTone: followUp.tone,
     deliveryLabel: delivery.label,
     deliveryTone: delivery.tone,
     readiness,
@@ -180,4 +191,46 @@ function nextActionDetail(bucket: QuoteWorkflowBucket, deliveryLabel: string) {
   if (bucket === "waiting") return "Resend or follow up with the client";
   if (bucket === "approved") return "Convert approved work into an invoice";
   return "Keep for records or duplicate for a similar job";
+}
+
+function formatFollowUpDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(value));
+}
+
+function getFollowUpState(quote: QuoteWorkflowInput, now: Date): {
+  label: string | null;
+  tone: QuoteWorkflowState["followUpTone"];
+  nextAction: string | null;
+  nextActionDetail: string | null;
+} {
+  if (quote.status !== "sent") {
+    return { label: null, tone: "none", nextAction: null, nextActionDetail: null };
+  }
+
+  if (!quote.follow_up_due_at) {
+    return {
+      label: quote.last_followed_up_at ? `Followed up ${formatFollowUpDate(quote.last_followed_up_at)}` : "No follow-up scheduled",
+      tone: quote.last_followed_up_at ? "logged" : "none",
+      nextAction: null,
+      nextActionDetail: null,
+    };
+  }
+
+  const dueAt = new Date(quote.follow_up_due_at);
+  if (dueAt <= now) {
+    return {
+      label: "Follow-up due",
+      tone: "due",
+      nextAction: "Follow up now",
+      nextActionDetail: "Follow up with the client today",
+    };
+  }
+
+  const formatted = formatFollowUpDate(quote.follow_up_due_at);
+  return {
+    label: `Due ${formatted}`,
+    tone: "scheduled",
+    nextAction: "Follow up",
+    nextActionDetail: `Follow up on ${formatted}`,
+  };
 }

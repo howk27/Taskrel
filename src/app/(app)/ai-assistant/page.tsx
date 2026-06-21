@@ -41,7 +41,7 @@ export default async function AiAssistantPage() {
         title="What Taskrel noticed"
         subtitle="Real recommendations from your quotes, invoices, jobs, and clients. No fake market data."
         action={
-          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] md:inline-flex">
+          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] md:inline-flex">
             <Plus size={18} weight="bold" />
             Generate quote
           </Link>
@@ -64,7 +64,7 @@ export default async function AiAssistantPage() {
               <Link key={action.id} href={action.href ?? "#"} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.06]">
                 <p className="text-base font-bold text-white">{action.title}</p>
                 <p className="mt-2 text-sm leading-6 text-[var(--tr-text-muted)]">{action.body}</p>
-                <p className="mt-4 text-sm font-bold text-[var(--tr-blue)]">{action.actionLabel ?? "Open"}</p>
+                <p className="mt-4 text-sm font-bold text-[var(--tr-orange)]">{action.actionLabel ?? "Open"}</p>
               </Link>
             ))}
           </div>

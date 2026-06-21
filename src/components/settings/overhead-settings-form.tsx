@@ -12,7 +12,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
   const [state, formAction, pending] = useActionState<SettingsActionState, FormData>(updateOverheadSettings, undefined);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-lg border border-slate-700/70 bg-[#172235] p-4">
+    <form action={formAction} className="space-y-4 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-4">
       <div>
         <p className="text-sm font-semibold text-white">Internal overhead costs</p>
         <p className="mt-1 text-xs leading-5 text-slate-400">
@@ -29,7 +29,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
           max="100"
           step="0.001"
           defaultValue={Number(overheadPercent ?? 0)}
-          className="mt-1.5 w-full rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         />
       </label>
 
@@ -41,7 +41,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
           min="0"
           step="0.01"
           defaultValue={Number(overheadFixedPerJob ?? 0)}
-          className="mt-1.5 w-full rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         />
       </label>
 
@@ -51,7 +51,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA6C0A] disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-lg bg-[var(--tr-orange)] px-4 py-2.5 text-sm font-semibold text-[#241205] transition-colors hover:bg-[var(--tr-amber)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Saving..." : "Save overhead settings"}
       </button>

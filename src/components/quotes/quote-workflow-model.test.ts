@@ -40,6 +40,41 @@ describe("quote workflow model", () => {
     expect(state.deliveryLabel).toBe("Email + SMS");
   });
 
+  it("marks sent quotes as follow-up due when the due date has passed", () => {
+    const state = getQuoteWorkflowState(
+      {
+        ...baseQuote,
+        status: "sent",
+        sent_via: ["email"],
+        follow_up_due_at: "2026-06-03T00:00:00.000Z",
+      },
+      { now: new Date("2026-06-04T12:00:00.000Z") },
+    );
+
+    expect(state.bucket).toBe("waiting");
+    expect(state.nextAction).toBe("Follow up now");
+    expect(state.nextActionDetail).toBe("Follow up with the client today");
+    expect(state.followUpTone).toBe("due");
+    expect(state.followUpLabel).toBe("Follow-up due");
+  });
+
+  it("shows the scheduled follow-up date for sent quotes that are not due yet", () => {
+    const state = getQuoteWorkflowState(
+      {
+        ...baseQuote,
+        status: "sent",
+        sent_via: ["email"],
+        follow_up_due_at: "2026-06-07T00:00:00.000Z",
+      },
+      { now: new Date("2026-06-04T12:00:00.000Z") },
+    );
+
+    expect(state.nextAction).toBe("Follow up");
+    expect(state.nextActionDetail).toBe("Follow up on Jun 7, 2026");
+    expect(state.followUpTone).toBe("scheduled");
+    expect(state.followUpLabel).toBe("Due Jun 7, 2026");
+  });
+
   it("aggregates quote counts and totals by workflow bucket", () => {
     const summary = getQuoteWorkflowSummary([
       baseQuote,

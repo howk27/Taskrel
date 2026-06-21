@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildTaskrelExportRows, stringifyTaskrelCsv } from "@/lib/export-records";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -12,6 +13,8 @@ export async function GET() {
     .eq("user_id", user.id)
     .single();
 
+  if (!contractor?.id) return NextResponse.json({ error: "Complete onboarding before exporting records." }, { status: 404 });
+
   const { data: quotes } = await supabase
     .from("quotes")
     .select("id, client_name, client_email, client_phone, client_address, trade, status, total, created_at")
@@ -24,23 +27,7 @@ export async function GET() {
     .eq("contractor_id", contractor?.id)
     .order("created_at", { ascending: false });
 
-  const rows: string[] = [];
-
-  // Quotes sheet
-  rows.push("QUOTES");
-  rows.push("ID,Client,Email,Phone,Address,Trade,Status,Total,Created");
-  quotes?.forEach(q => {
-    rows.push([q.id, q.client_name, q.client_email ?? "", q.client_phone ?? "", q.client_address ?? "", q.trade, q.status, q.total, q.created_at].map(v => `"${v}"`).join(","));
-  });
-
-  rows.push("");
-  rows.push("INVOICES");
-  rows.push("Invoice #,Client,Email,Status,Total,Paid,Due Date,Paid At,Created");
-  invoices?.forEach(i => {
-    rows.push([i.invoice_number, i.client_name, i.client_email ?? "", i.status, i.total, i.amount_paid, i.due_date ?? "", i.paid_at ?? "", i.created_at].map(v => `"${v}"`).join(","));
-  });
-
-  const csv = rows.join("\n");
+  const csv = stringifyTaskrelCsv(buildTaskrelExportRows({ quotes: quotes ?? [], invoices: invoices ?? [] }));
   const date = new Date().toISOString().split("T")[0];
 
   return new NextResponse(csv, {

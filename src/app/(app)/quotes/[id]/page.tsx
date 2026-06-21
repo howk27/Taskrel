@@ -27,6 +27,7 @@ export default function QuoteDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [followingUp, setFollowingUp] = useState(false);
   const [savingQuote, setSavingQuote] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [sendMessage, setSendMessage] = useState("");
@@ -96,6 +97,23 @@ export default function QuoteDetailPage() {
     const data = await res.json();
     setConverting(false);
     if (data.id) router.push(`/invoices/${data.id}`);
+  }
+
+  async function handleMarkFollowedUp() {
+    if (!quote) return;
+    setFollowingUp(true);
+    setSendMessage("");
+    setSendError("");
+    const res = await fetch(`/api/quotes/${quote.id}/follow-up`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) {
+      setSendError(data.error ?? "Follow-up could not be logged.");
+      setFollowingUp(false);
+      return;
+    }
+    applyQuoteResult(await fetchQuote());
+    setSendMessage("Follow-up logged. Taskrel will surface this quote again in two days if it is still waiting.");
+    setFollowingUp(false);
   }
 
   function updateQuotePricing(lineItems: QuoteLineItem[], taxRate = quote?.tax_rate ?? 0) {
@@ -253,13 +271,13 @@ export default function QuoteDetailPage() {
       <div className="flex items-start gap-3">
         <button
           onClick={() => router.back()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-700 bg-[#172235] text-slate-400 hover:text-white"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] text-slate-400 hover:text-white"
         >
           <ArrowLeft size={20} weight="bold" />
           <span className="sr-only">Back</span>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-[var(--tr-blue)]">{workflowState.bucketLabel}</p>
+          <p className="text-sm font-bold text-[var(--tr-orange)]">{workflowState.bucketLabel}</p>
           <h1 className="truncate text-2xl font-bold text-white md:text-3xl">{quote.client_name}</h1>
           <p className="text-sm text-[var(--tr-text-muted)]">{workflowState.nextActionDetail}</p>
         </div>
@@ -272,7 +290,7 @@ export default function QuoteDetailPage() {
             <p className="text-sm font-bold text-[var(--tr-text-muted)]">Quote total</p>
             <p className="mt-2 text-4xl font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[var(--tr-blue)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-blue)]">
+              <span className="rounded-full bg-[var(--tr-orange)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-orange)]">
                 {workflowState.nextAction}
               </span>
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${deliveryClass(workflowState.deliveryTone)}`}>
@@ -288,6 +306,7 @@ export default function QuoteDetailPage() {
               <SummaryMeta icon={<FileText size={15} weight="duotone" />} label="Status" value={quote.status} />
               <SummaryMeta icon={<CalendarBlank size={15} weight="duotone" />} label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
               <SummaryMeta icon={<EnvelopeSimple size={15} weight="duotone" />} label="Delivery" value={quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready"} />
+              <SummaryMeta icon={<SealCheck size={15} weight="duotone" />} label="Follow-up" value={workflowState.followUpLabel ?? "Not needed"} />
               <SummaryMeta icon={<DeviceMobile size={15} weight="duotone" />} label="Contact" value={quote.client_phone ? "Phone saved" : quote.client_email ? "Email saved" : "Missing"} />
             </div>
           </Surface>
@@ -336,6 +355,12 @@ export default function QuoteDetailPage() {
                   Resend Quote
                 </Button>
               )}
+              {quote.status === "sent" && (
+                <Button variant="secondary" className="w-full" onClick={handleMarkFollowedUp} loading={followingUp} disabled={dirty}>
+                  <SealCheck size={18} weight="duotone" />
+                  Mark followed up
+                </Button>
+              )}
               {sendVia.length === 0 && (
                 <p className="text-sm text-[var(--tr-text-muted)]">Add an email or phone to send this quote.</p>
               )}
@@ -381,7 +406,7 @@ export default function QuoteDetailPage() {
           <Surface className="overflow-hidden">
             <div className="flex items-center justify-between gap-3 border-b border-slate-700/70 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line items</p>
-              <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-blue)]">
+              <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-orange)]">
                 Add item
               </button>
             </div>
@@ -403,13 +428,13 @@ export default function QuoteDetailPage() {
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
-                        <span className="mt-2 inline-flex rounded-full bg-[var(--tr-blue)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-blue)]">
+                        <span className="mt-2 inline-flex rounded-full bg-[var(--tr-orange)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-orange)]">
                           {expandedLineItemIndex === index ? "Done" : "Edit"}
                         </span>
                       </span>
                     </button>
                     {expandedLineItemIndex === index && (
-                      <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                      <div className="mt-3 space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] p-3">
                         <label className="block">
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
                           <textarea
@@ -545,7 +570,7 @@ export default function QuoteDetailPage() {
                     key={preset.value}
                     onClick={() => setPreviewPreset(preset.value)}
                     className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
-                      previewPreset === preset.value ? "bg-[var(--tr-blue)] text-[#09204f]" : "text-slate-400 hover:text-white"
+                      previewPreset === preset.value ? "bg-[var(--tr-orange)] text-[#241205]" : "text-slate-400 hover:text-white"
                     }`}
                   >
                     {preset.label}
@@ -601,7 +626,7 @@ function ReadinessRow({ item }: { item: QuoteReadinessItem }) {
 
 function deliveryClass(tone: "ready" | "sent" | "missing") {
   if (tone === "sent") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
-  if (tone === "ready") return "bg-[var(--tr-blue)]/12 text-[var(--tr-blue)]";
+  if (tone === "ready") return "bg-[var(--tr-info)]/12 text-[var(--tr-info)]";
   return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
 }
 
@@ -655,7 +680,7 @@ function PricingIntelligencePanel({
         </p>
       )}
 
-      <div className="mt-5 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-4">
+      <div className="mt-5 space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] p-4">
         <div>
           <p className="text-sm font-semibold text-white">Property value</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">

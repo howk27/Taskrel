@@ -161,7 +161,7 @@ export default function CalendarPage() {
                         </p>
                       )}
                       {job.quote_id && (
-                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-orange)]">
                           Open quote
                         </Link>
                       )}

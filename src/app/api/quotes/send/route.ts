@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMissingEnv } from "@/lib/env";
+import { buildPublicQuoteUrl, generatePublicQuoteToken, renderPublicQuoteEmailHtml } from "@/lib/public-quote";
 import { buildBusinessSnapshot, renderQuoteDocumentHtml } from "@/lib/quote-document";
 import { describeSendGridError } from "@/lib/sendgrid-error";
 import type { QuoteTemplatePreset } from "@/types";
 import twilio from "twilio";
+
+function daysFromNow(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -43,6 +50,28 @@ export async function POST(request: NextRequest) {
 
   const businessSnapshot = quote.business_snapshot ?? buildBusinessSnapshot(quoteContractor);
   const templatePreset = (quote.template_preset ?? quoteContractor.quote_template_preset ?? "classic") as QuoteTemplatePreset;
+  const publicAccessToken = quote.public_access_token ?? generatePublicQuoteToken();
+  const quoteUrl = buildPublicQuoteUrl(process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin, publicAccessToken);
+  const { error: publicLinkError } = await supabase
+    .from("quotes")
+    .update({
+      business_snapshot: businessSnapshot,
+      template_preset: templatePreset,
+      public_access_token: publicAccessToken,
+    })
+    .eq("id", quoteId)
+    .eq("contractor_id", quoteContractor.id);
+
+  if (publicLinkError) {
+    return NextResponse.json(
+      {
+        error: "Quote link could not be prepared.",
+        details: [{ channel: "quote", code: "public_link", message: publicLinkError.message }],
+      },
+      { status: 500 },
+    );
+  }
+
   const errors: string[] = [];
   const details: { channel: string; code: string; message: string }[] = [];
   const sent: string[] = [];
@@ -65,7 +94,11 @@ export async function POST(request: NextRequest) {
           to: quote.client_email,
           from: process.env.SENDGRID_FROM_EMAIL!,
           subject: `Quote from ${quoteContractor.business_name ?? "Your Contractor"}`,
-          html: renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset }),
+          html: renderPublicQuoteEmailHtml({
+            businessName: quoteContractor.business_name ?? "Your Contractor",
+            quoteUrl,
+            quoteHtml: renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset }),
+          }),
         });
         sent.push("email");
       } catch (err) {
@@ -100,7 +133,7 @@ export async function POST(request: NextRequest) {
         process.env.TWILIO_AUTH_TOKEN
       );
 
-      const msg = `Hi ${quote.client_name}, ${quoteContractor.business_name} sent you a quote for $${quote.total.toFixed(2)}. Reply QUOTE to request details.`;
+      const msg = `Hi ${quote.client_name}, ${quoteContractor.business_name} sent you a quote for $${quote.total.toFixed(2)}. View and approve it here: ${quoteUrl}`;
 
       await twilioClient.messages.create({
         body: msg,
@@ -130,8 +163,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: "sent",
         sent_via: sent,
-        business_snapshot: businessSnapshot,
-        template_preset: templatePreset,
+        follow_up_due_at: daysFromNow(2),
       })
       .eq("id", quoteId);
 
@@ -173,5 +205,5 @@ export async function POST(request: NextRequest) {
   }
 
   const status = sent.length === 0 && errors.length > 0 ? 503 : 200;
-  return NextResponse.json({ sent, errors, details }, { status });
+  return NextResponse.json({ sent, errors, details, quoteUrl }, { status });
 }

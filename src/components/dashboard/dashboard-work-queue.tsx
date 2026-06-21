@@ -8,6 +8,7 @@ import { Badge, statusVariant } from "@/components/ui/badge";
 import { CalendarBlank, EnvelopeSimple, FileText, MapPin } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { getQuoteWorkflowState } from "@/components/quotes/quote-workflow-model";
 
 export type DashboardQuote = {
   id: string;
@@ -21,6 +22,8 @@ export type DashboardQuote = {
   notes: string | null;
   scheduled_start: string | null;
   scheduled_end: string | null;
+  follow_up_due_at?: string | null;
+  last_followed_up_at?: string | null;
   sent_via: ("email" | "sms")[] | null;
   created_at: string;
 };
@@ -31,20 +34,6 @@ function deliveryMethod(sentVia: DashboardQuote["sent_via"]) {
   if (sentVia.includes("email")) return "Email";
   if (sentVia.includes("sms")) return "SMS";
   return "Sent";
-}
-
-function nextAction(status: QuoteStatus) {
-  switch (status) {
-    case "draft":
-      return "Review & Send";
-    case "sent":
-      return "Follow up / Convert";
-    case "approved":
-      return "Create Invoice";
-    case "rejected":
-    case "expired":
-      return "Review";
-  }
 }
 
 export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
@@ -68,11 +57,12 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
     <div className="space-y-3">
       {activeQuotes.map(quote => {
         const expanded = expandedId === quote.id;
+        const workflowState = getQuoteWorkflowState(quote);
         const topItems = quote.line_items.slice(0, 3);
         const hiddenItemCount = Math.max(quote.line_items.length - topItems.length, 0);
 
         return (
-          <Surface key={quote.id} className={`overflow-hidden ${expanded ? "border-[var(--tr-blue)]/50" : ""}`}>
+          <Surface key={quote.id} className={`overflow-hidden ${expanded ? "border-[var(--tr-orange)]/45" : ""}`}>
             <button
               type="button"
               onClick={() => setExpandedId(expanded ? null : quote.id)}
@@ -81,7 +71,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-blue)]" />
+                  <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-orange)]" />
                   <p className="truncate text-sm font-bold text-white">{quote.client_name}</p>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--tr-text-muted)]">
@@ -89,7 +79,13 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                   <span aria-hidden="true">/</span>
                   <span>{quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"}</span>
                   <span aria-hidden="true">/</span>
-                  <span className="font-semibold text-[var(--tr-blue)]">{nextAction(quote.status)}</span>
+                  <span className="font-semibold text-[var(--tr-orange)]">{workflowState.nextAction}</span>
+                  {workflowState.followUpLabel && (
+                    <>
+                      <span aria-hidden="true">/</span>
+                      <span className={workflowState.followUpTone === "due" ? "font-semibold text-[var(--tr-amber)]" : ""}>{workflowState.followUpLabel}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -152,12 +148,12 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
                   <QueueMeta icon={<EnvelopeSimple size={15} weight="duotone" />} label="Delivery" value={deliveryMethod(quote.sent_via)} />
                   <QueueMeta icon={<CalendarBlank size={15} weight="duotone" />} label="Schedule" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
-                  <QueueMeta icon={<FileText size={15} weight="duotone" />} label="Next" value={nextAction(quote.status)} strong />
+                  <QueueMeta icon={<FileText size={15} weight="duotone" />} label="Next" value={workflowState.nextAction} strong />
                 </div>
 
                 <Link
                   href={`/quotes/${quote.id}`}
-                  className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff] sm:w-auto"
+                  className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] hover:bg-[var(--tr-amber)] sm:w-auto"
                 >
                   Open quote
                 </Link>
@@ -186,7 +182,7 @@ function QueueMeta({
       <span className="mt-0.5 shrink-0 text-slate-500">{icon}</span>
       <span className="min-w-0">
         <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-        <span className={`block truncate text-xs ${strong ? "font-semibold text-[var(--tr-blue)]" : "text-slate-300"}`}>{value}</span>
+        <span className={`block truncate text-xs ${strong ? "font-semibold text-[var(--tr-orange)]" : "text-slate-300"}`}>{value}</span>
       </span>
     </div>
   );

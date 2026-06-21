@@ -64,7 +64,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* Line items */}
-      <div className="rounded-xl bg-[#1E293B] overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)]">
         <div className="px-4 py-3 border-b border-slate-700">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Line Items</p>
         </div>
@@ -100,7 +100,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       {invoice.stripe_payment_link && invoice.status !== "paid" && (
-        <div className="rounded-xl bg-[#1E293B] p-4">
+        <div className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-4">
           <p className="text-xs text-slate-400 mb-2">Payment Link</p>
           <p className="text-[#F97316] text-sm break-all">{invoice.stripe_payment_link}</p>
         </div>

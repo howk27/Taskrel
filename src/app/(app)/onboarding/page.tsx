@@ -48,11 +48,11 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-1 flex-col bg-[#0F172A] px-5 py-8">
+    <main className="flex min-h-screen flex-1 flex-col bg-[var(--tr-bg)] px-5 py-8">
       <div className="mx-auto w-full max-w-md space-y-6">
-        <div className="rounded-lg border border-slate-800 bg-[#172235] p-5">
+        <div className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
           <span className="text-2xl font-black tracking-tight text-white">
-            task<span className="text-[#F97316]">rel</span>
+            task<span className="text-[var(--tr-orange)]">rel</span>
           </span>
           <h1 className="mt-5 text-2xl font-semibold text-white">Set up your work profile</h1>
           <p className="mt-2 text-sm leading-6 text-slate-400">
@@ -77,11 +77,11 @@ export default function OnboardingPage() {
                     onClick={() => setBusinessType(type)}
                     className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                       active
-                        ? "border-[#F97316] bg-[#F97316]/10 text-white"
-                        : "border-slate-800 bg-[#172235] text-slate-300 hover:border-slate-600"
+                        ? "border-[var(--tr-orange)] bg-[var(--tr-orange)]/10 text-white"
+                        : "border-[var(--tr-border-soft)] bg-[var(--tr-surface)] text-slate-300 hover:border-[var(--tr-border)]"
                     }`}
                   >
-                    <IconComponent size={22} weight={active ? "fill" : "regular"} className={active ? "text-[#F97316]" : "text-slate-400"} />
+                    <IconComponent size={22} weight={active ? "fill" : "regular"} className={active ? "text-[var(--tr-orange)]" : "text-slate-400"} />
                     <span className="text-sm font-medium">{label}</span>
                   </button>
                 );
@@ -102,11 +102,11 @@ export default function OnboardingPage() {
                     onClick={() => toggleTrade(trade)}
                     className={`flex min-h-24 flex-col justify-between rounded-lg border p-3 text-left transition-colors ${
                       active
-                        ? "border-[#F97316] bg-[#F97316]/10 text-white"
-                        : "border-slate-800 bg-[#172235] text-slate-300 hover:border-slate-600"
+                        ? "border-[var(--tr-orange)] bg-[var(--tr-orange)]/10 text-white"
+                        : "border-[var(--tr-border-soft)] bg-[var(--tr-surface)] text-slate-300 hover:border-[var(--tr-border)]"
                     }`}
                   >
-                    <IconComponent size={24} weight={active ? "fill" : "regular"} className={active ? "text-[#F97316]" : "text-slate-400"} />
+                    <IconComponent size={24} weight={active ? "fill" : "regular"} className={active ? "text-[var(--tr-orange)]" : "text-slate-400"} />
                     <span className="text-sm font-semibold">{label}</span>
                     {active && <input type="hidden" name="trades" value={trade} />}
                   </button>
@@ -124,7 +124,7 @@ export default function OnboardingPage() {
                 id="primary_trade_select"
                 value={primaryTrade}
                 onChange={(event) => setPrimaryTrade(event.target.value as Trade)}
-                className="h-12 w-full rounded-lg border border-slate-800 bg-[#172235] px-3 text-sm font-medium text-white focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+                className="tr-input h-12 w-full rounded-lg px-3 text-sm font-medium"
               >
                 {primaryOptions.map((trade) => (
                   <option key={trade} value={trade}>{TRADE_LABELS[trade]}</option>

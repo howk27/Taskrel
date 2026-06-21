@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getConfiguredEnv } from "@/lib/env";
 import type Stripe from "stripe";
 
@@ -22,10 +22,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  let supabase: ReturnType<typeof createAdminClient>;
+  try {
+    supabase = createAdminClient();
+  } catch (err) {
+    console.error("Stripe webhook Supabase admin client failed:", err);
+    return NextResponse.json({ error: "Supabase admin client is not configured." }, { status: 503 });
+  }
 
   switch (event.type) {
-    // ── Subscription events ────────────────────────────────────────────────
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
@@ -45,7 +50,6 @@ export async function POST(request: NextRequest) {
       break;
     }
 
-    // ── Connect: invoice paid by client ───────────────────────────────────
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;
       if (pi.metadata?.invoice_id) {
