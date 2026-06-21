@@ -239,7 +239,7 @@ export default function NewQuotePage() {
   if (step === "generating") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 gap-4">
-        <span className="h-10 w-10 animate-spin rounded-full border-4 border-[#F97316] border-r-transparent" />
+        <span className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--tr-orange)] border-r-transparent" />
         <p className="text-white font-medium">Generating your quote...</p>
         <p className="text-slate-400 text-sm">Usually takes 5-10 seconds</p>
       </div>

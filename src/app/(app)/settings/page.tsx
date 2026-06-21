@@ -13,15 +13,15 @@ import { createClient } from "@/lib/supabase/server";
 function googleNotice(status?: string) {
   switch (status) {
     case "not_configured":
-      return "Google Sheets is waiting for Google OAuth keys.";
+      return "Spreadsheet export is waiting for Google OAuth keys.";
     case "connected":
-      return "Google Sheets connected.";
+      return "Spreadsheet export connected.";
     case "synced":
-      return "Google Sheet synced.";
+      return "Spreadsheet exported.";
     case "disconnected":
-      return "Google Sheets disconnected.";
+      return "Spreadsheet export disconnected.";
     case "error":
-      return "Google Sheets needs attention. Try reconnecting.";
+      return "Spreadsheet export needs attention. Try reconnecting.";
     default:
       return null;
   }
@@ -58,14 +58,20 @@ export default async function SettingsPage({
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
-        eyebrow="Workspace"
         title="Settings"
-        subtitle="Account, quote documents, billing, and exports."
+        subtitle="Account, quote documents, online payments, and spreadsheet export."
       />
+
+      <nav className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Settings sections">
+        <SettingsJump href="#account" icon={<Gear size={18} weight="duotone" />} label="Account" detail="Business info and overhead" />
+        <SettingsJump href="#quote-documents" icon={<FileText size={18} weight="duotone" />} label="Quote documents" detail="Logo, terms, and defaults" />
+        <SettingsJump href="#payments" icon={<Receipt size={18} weight="duotone" />} label="Online payments" detail="Subscription and client pay links" />
+        <SettingsJump href="#export" icon={<DownloadSimple size={18} weight="duotone" />} label="Spreadsheet export" detail="CSV and spreadsheet connection" />
+      </nav>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
         <div className="space-y-6">
-          <section>
+          <section id="account" className="scroll-mt-24">
             <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-orange)]" />
             <Surface className="divide-y divide-slate-700/50 overflow-hidden">
               <SettingRow label="Business" value={settingsContractor?.business_name ?? "Taskrel business"} />
@@ -82,7 +88,7 @@ export default async function SettingsPage({
             )}
           </section>
 
-          <section>
+          <section id="quote-documents" className="scroll-mt-24">
             <SectionTitle icon={<FileText size={17} weight="duotone" />} label="Quote documents" tone="text-[var(--tr-amber)]" />
             {settingsContractor && (
               <QuoteDocumentSettingsForm
@@ -102,8 +108,8 @@ export default async function SettingsPage({
         </div>
 
         <div className="space-y-6">
-          <section>
-            <SectionTitle icon={<Receipt size={17} weight="duotone" />} label="Billing" tone="text-[var(--tr-green)]" />
+          <section id="payments" className="scroll-mt-24">
+            <SectionTitle icon={<Receipt size={17} weight="duotone" />} label="Online payments" tone="text-[var(--tr-green)]" />
             <Surface className="divide-y divide-slate-700/50 overflow-hidden">
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
@@ -122,8 +128,8 @@ export default async function SettingsPage({
               </div>
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
-                  <p className="text-sm text-white">Payment processing</p>
-                  <p className="text-xs text-slate-400">Stripe Connect - accept client payments</p>
+                  <p className="text-sm text-white">Client online payments</p>
+                  <p className="text-xs text-slate-400">Connect payments before sending payment links</p>
                 </div>
                 {settingsContractor?.stripe_connect_account_id ? (
                   <Badge variant="success">Connected</Badge>
@@ -136,8 +142,8 @@ export default async function SettingsPage({
             </Surface>
           </section>
 
-          <section>
-            <SectionTitle icon={<DownloadSimple size={17} weight="duotone" />} label="Export" tone="text-[var(--tr-violet)]" />
+          <section id="export" className="scroll-mt-24">
+            <SectionTitle icon={<DownloadSimple size={17} weight="duotone" />} label="Spreadsheet export" tone="text-[var(--tr-violet)]" />
             <Surface className="divide-y divide-slate-700/50 overflow-hidden">
               <Link href="/api/export/csv" className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-slate-700/30">
                 <p className="text-sm text-white">Download CSV</p>
@@ -146,11 +152,11 @@ export default async function SettingsPage({
               <div className="space-y-3 px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm text-white">Google Sheets sync</p>
+                    <p className="text-sm text-white">Spreadsheet export</p>
                     <p className="text-xs text-slate-400">
                       {settingsContractor?.google_sheets_last_synced_at
                         ? `Last synced ${new Date(settingsContractor.google_sheets_last_synced_at).toLocaleString()}`
-                        : "Optional live spreadsheet export"}
+                        : "Optional spreadsheet export"}
                     </p>
                   </div>
                   <Badge variant={settingsContractor?.google_sheets_status === "connected" ? "success" : settingsContractor?.google_sheets_status === "error" ? "error" : "default"}>
@@ -173,7 +179,7 @@ export default async function SettingsPage({
                   </div>
                 ) : (
                   <Link href="/api/google-sheets/connect" className="block w-full rounded-lg bg-slate-700 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-slate-600">
-                    Connect Google Sheets
+                    Connect spreadsheet export
                   </Link>
                 )}
               </div>
@@ -197,6 +203,26 @@ function SectionTitle({ icon, label, tone }: { icon: ReactNode; label: string; t
       <span className={tone}>{icon}</span>
       {label}
     </h2>
+  );
+}
+
+function SettingsJump({
+  href,
+  icon,
+  label,
+  detail,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  detail: string;
+}) {
+  return (
+    <a href={href} className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-4 transition-colors hover:bg-[var(--tr-surface-2)]">
+      <span className="text-[var(--tr-orange)]">{icon}</span>
+      <span className="mt-3 block text-sm font-bold text-white">{label}</span>
+      <span className="mt-1 block text-xs leading-5 text-[var(--tr-text-muted)]">{detail}</span>
+    </a>
   );
 }
 

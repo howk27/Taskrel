@@ -173,6 +173,7 @@ export interface Quote {
   follow_up_due_at: string | null;
   last_followed_up_at: string | null;
   sent_via: ("email" | "sms")[];
+  delivery_events?: DeliveryEvent[];
   created_at: string;
   updated_at: string;
 }
@@ -223,6 +224,32 @@ export interface Invoice {
   stripe_payment_link: string | null;
   notes: string | null;
   sent_via: ("email" | "sms")[];
+  delivery_events?: DeliveryEvent[];
   created_at: string;
   updated_at: string;
+}
+
+// â”€â”€â”€ Delivery Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export type DeliveryEntityType = "quote" | "invoice";
+export type DeliveryAction = "send" | "payment_link" | "payment";
+export type DeliveryChannel = "email" | "sms" | "stripe";
+export type DeliveryProvider = "sendgrid" | "twilio" | "stripe" | "taskrel";
+export type DeliveryStatus = "success" | "error" | "info";
+
+export interface DeliveryEvent {
+  id: string;
+  contractor_id: string;
+  actor_user_id: string | null;
+  entity_type: DeliveryEntityType;
+  entity_id: string;
+  action: DeliveryAction;
+  channel: DeliveryChannel;
+  provider: DeliveryProvider;
+  recipient: string | null;
+  status: DeliveryStatus;
+  code: string;
+  message: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
 }
