@@ -66,9 +66,11 @@ Audit these surfaces before implementation:
 - Billing subscription.
 - Stripe Connect payment processing.
 - Invoice send and payment link creation.
+- Stripe webhook subscription and invoice payment updates.
 - Google Sheets and CSV exports.
 - Dashboard work queue and attention items.
 - Calendar scheduling.
+- Empty and missing-data states across all list, detail, setup, and action surfaces.
 
 The first implementation pass should update the surfaces in scope for this spec. If the audit finds the same missing-state pattern in adjacent components touched during implementation, include the small aligned fix instead of leaving an obviously inconsistent experience.
 
@@ -300,6 +302,66 @@ Completion rules:
 - Invoice can be sent without a payment link only if the UI explicitly says the invoice was sent without online payment.
 - If an invoice sends by email or SMS but payment link creation fails, show saved/sent state separately from payment-link error.
 
+## Webhook Auto-Updates
+
+Stripe webhooks are part of the user-facing workflow even though they run in the background. The app should represent what the webhook is expected to update and what happens when that update is missing, delayed, or cannot be matched.
+
+Current automatic updates to preserve and represent:
+
+- `customer.subscription.created` and `customer.subscription.updated` update `contractors.subscription_status` from the Stripe subscription.
+- `customer.subscription.deleted` updates `contractors.subscription_status` to `canceled`.
+- `payment_intent.succeeded` updates the matching invoice to `paid`, sets `amount_paid`, sets `paid_at`, and stores `stripe_payment_intent_id`.
+
+Required user-facing states:
+
+- Subscription pending confirmation: user returned from checkout, but webhook has not updated `subscription_status` yet.
+- Subscription active/trialing: webhook confirmed the subscription or closed-test code set `trialing`.
+- Subscription past due/canceled: webhook updated the contractor to a state that needs action.
+- Payment pending confirmation: invoice was sent with a payment link, but no successful payment webhook has arrived yet.
+- Paid: webhook marked the invoice paid and recorded amount/date/payment intent.
+- Partial or mismatched payment: payment amount is less than invoice total or the webhook cannot match an invoice id.
+- Webhook not configured: `STRIPE_WEBHOOK_SECRET` is missing or webhook route returns configuration errors.
+- Webhook error: signature validation or update failed.
+
+Invoice and billing pages should not require the user to know what a webhook is. Use plain language such as "Waiting for Stripe confirmation," "Payment recorded," "Payment needs review," or "Stripe updates are not configured."
+
+Implementation should log and surface unmatched payment events safely. If a payment succeeds but cannot be matched to an invoice, do not mark any invoice paid. Show an admin/debug-safe Error state in development or settings diagnostics, and keep invoice status unchanged.
+
+## Missing And Empty States
+
+Missing and empty states should be designed as part of the workflow, not as afterthoughts. Every list, detail page, setup section, and action panel touched by this work needs a meaningful empty state and a missing-data state.
+
+Required empty states:
+
+- Onboarding not started: show the first required setup section.
+- Business information incomplete: show the missing required fields and the next editable section.
+- Quote documents empty: show that defaults are optional, but explain what will appear on client-facing quotes if added.
+- No quotes: primary action is create the first quote.
+- No quote results after search/filter: explain that the filter has no matching quotes and offer clear filter reset.
+- No invoices: explain invoices are created from approved quotes and link to active quotes.
+- No jobs on calendar: explain scheduled work appears after quotes are approved with dates.
+- No clients: explain clients are created from sent quotes and invoices.
+- No exports connected: show CSV download availability and Google Sheets optional connection state.
+
+Required missing-data states:
+
+- Missing client name.
+- Missing client email and phone.
+- Missing job description.
+- Missing quote line items.
+- Missing quote total.
+- Missing quote date.
+- Missing scheduled work date when the user is trying to create a scheduled job.
+- Missing business name, trade, primary trade, or business type.
+- Missing logo is Optional, not an error.
+- Missing overhead is Optional when intentionally off.
+- Missing subscription is Needs attention where paid access matters.
+- Missing Stripe Connect is Needs attention where payment collection matters.
+- Missing SendGrid or Twilio configuration is Error for send channels.
+- Missing webhook configuration is Error for automatic billing/payment updates.
+
+Every missing or empty state should answer three questions: what is missing, why it matters, and what the user can do next.
+
 ## Data Flow
 
 Use existing contractor fields where possible:
@@ -351,6 +413,7 @@ Billing and invoice readiness should use existing fields:
 - `paid_at`
 - `due_date`
 - `sent_via`
+- Stripe webhook event data for subscription and payment updates.
 
 No new database fields are required for the initial implementation. Partial onboarding progress can stay local to the client until the contractor submits the setup flow.
 
@@ -391,11 +454,21 @@ Billing and payment processing:
 - Missing Stripe Connect should show Needs attention wherever invoice payment collection is relevant.
 - Stripe Connect refresh or return states should be represented on the billing page.
 - Payment link failure should not be hidden if the invoice still sends.
+- Webhook confirmation delay should show a pending state instead of implying payment or subscription failed immediately.
+- Webhook configuration failure should show Error wherever automatic subscription or invoice payment updates are expected.
+- Unmatched payment webhook events should not update unrelated invoices.
 
 Historical quote documents:
 
 - A quote using an older business snapshot should not silently change.
 - A quote should be refreshable before resend when current branding differs.
+
+Empty and missing states:
+
+- Empty states should never be blank panels.
+- Missing-data states should point to the exact field, section, or integration that needs action.
+- Optional missing data should be labeled Optional, not Needs attention.
+- Error states should distinguish validation errors from provider/configuration errors.
 
 ## Layout And Space Use
 
@@ -448,6 +521,10 @@ Manual checks:
 - Billing page represents subscription state from contractor data.
 - Billing page represents Stripe Connect/payment processing state from contractor data.
 - Invoice send makes payment link readiness visible and handles sent-without-payment-link states.
+- Stripe subscription webhook updates billing status.
+- Stripe payment webhook marks the correct invoice paid.
+- Webhook pending, missing configuration, and unmatched payment states are represented.
+- Empty states are covered for quotes, invoices, jobs/calendar, clients, settings sections, and exports.
 - Mobile quote creation uses available space without hiding the primary action.
 
 ## Implementation Notes
