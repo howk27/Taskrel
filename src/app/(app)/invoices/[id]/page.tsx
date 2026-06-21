@@ -86,7 +86,7 @@ export default function InvoiceDetailPage() {
         <Surface className="p-8 text-center">
           <p className="font-semibold text-white">Invoice not found</p>
           <p className="mt-1 text-sm text-[var(--tr-text-muted)]">This invoice may have been removed or you may not have access.</p>
-          <Link href="/invoices" className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+          <Link href="/invoices" className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]">
             Back to invoices
           </Link>
         </Surface>
@@ -207,7 +207,7 @@ export default function InvoiceDetailPage() {
                   href={invoice.stripe_payment_link}
                   target="_blank"
                   rel="noreferrer"
-                  className="block rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-3 text-sm font-semibold text-[var(--tr-blue)] break-all hover:bg-white/[0.04]"
+                  className="block rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-3 text-sm font-semibold text-[var(--tr-orange)] break-all hover:bg-white/[0.04]"
                 >
                   {invoice.stripe_payment_link}
                 </a>

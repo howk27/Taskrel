@@ -31,7 +31,7 @@ const nav = [
   { href: "/quotes", label: "Quotes", Icon: FileText },
   { href: "/invoices", label: "Invoices", Icon: Receipt },
   { href: "/clients", label: "Clients", Icon: UserList },
-  { href: "/ai-assistant", label: "Notices", Icon: Lightning },
+  { href: "/ai-assistant", label: "AI Assistant", Icon: Lightning },
   { href: "/settings", label: "Settings", Icon: Gear },
 ];
 
@@ -51,7 +51,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-[var(--tr-bg)] text-white">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] border-r border-[var(--tr-border)] bg-[var(--tr-shell)]/95 backdrop-blur xl:flex xl:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] border-r border-[var(--tr-border)] bg-[var(--tr-shell)]/98 xl:flex xl:flex-col">
         <div className="border-b border-[var(--tr-border)] px-6 py-6">
           <Link href="/dashboard" className="block">
             <TaskrelWordmark size="md" />
@@ -61,10 +61,10 @@ export function AppShell({
         <div className="px-4 py-5">
           <Link
             href="/quotes/new"
-            className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] transition-colors hover:bg-[#a9c6ff]"
+            className="flex h-12 items-center justify-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] transition-colors hover:bg-[var(--tr-amber)]"
           >
             <Plus size={18} weight="bold" />
-            Create New
+            New quote
           </Link>
         </div>
 
@@ -77,12 +77,12 @@ export function AppShell({
                 href={href}
                 className={`group relative flex h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
                   active
-                    ? "bg-white/10 text-white"
-                    : "text-[var(--tr-text-muted)] hover:bg-white/6 hover:text-white"
+                    ? "bg-[var(--tr-surface-2)] text-white"
+                    : "text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface)] hover:text-white"
                 }`}
               >
-                {active && <span className="absolute left-0 h-7 w-1 rounded-full bg-[var(--tr-blue)]" />}
-                <Icon size={22} weight={active ? "duotone" : "regular"} className={active ? "text-[var(--tr-blue)]" : ""} />
+                {active && <span className="absolute left-0 h-7 w-1 rounded-full bg-[var(--tr-orange)]" />}
+                <Icon size={22} weight={active ? "duotone" : "regular"} className={active ? "text-[var(--tr-orange)]" : ""} />
                 {label}
               </Link>
             );
@@ -97,8 +97,8 @@ export function AppShell({
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 hidden h-16 border-b border-[var(--tr-border)] bg-[var(--tr-bg)]/82 px-6 backdrop-blur-xl xl:ml-[272px] xl:flex xl:items-center xl:justify-between">
-        <label className="flex h-11 w-full max-w-md items-center gap-3 rounded-xl border border-[var(--tr-border)] bg-[#0a1020]/80 px-4">
+      <header className="sticky top-0 z-30 hidden h-16 border-b border-[var(--tr-border)] bg-[var(--tr-bg)]/92 px-6 backdrop-blur-xl xl:ml-[272px] xl:flex xl:items-center xl:justify-between">
+        <label className="flex h-11 w-full max-w-md items-center gap-3 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-bg-soft)] px-4">
           <MagnifyingGlass size={20} className="text-[var(--tr-text-faint)]" />
           <input
             placeholder="Search jobs, clients, or quotes..."
@@ -109,7 +109,7 @@ export function AppShell({
           <Link href="/calendar" className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--tr-border)] text-[var(--tr-text-muted)] hover:text-white">
             <CalendarBlank size={20} />
           </Link>
-          <Link href="/quotes/new" className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+          <Link href="/quotes/new" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] hover:bg-[var(--tr-amber)]">
             <Plus size={17} weight="bold" />
             Create
           </Link>
@@ -124,7 +124,7 @@ export function AppShell({
           </Link>
           <Link
             href="/quotes/new"
-            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--tr-blue)] px-3 text-sm font-black text-[#09204f] shadow-lg shadow-blue-950/20"
+            className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--tr-orange)] px-3 text-sm font-black text-[#241205]"
           >
             <Plus size={17} weight="bold" />
             Create
@@ -145,11 +145,11 @@ export function AppShell({
                 key={href}
                 href={href}
                 className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold transition-colors ${
-                  active ? "text-[var(--tr-blue)]" : "text-[var(--tr-text-faint)]"
+                  active ? "text-[var(--tr-orange)]" : "text-[var(--tr-text-faint)]"
                 }`}
               >
                 <Icon size={22} weight={active ? "duotone" : "regular"} />
-                {label.replace("Dashboard", "Home")}
+                {label.replace("Dashboard", "Home").replace("AI Assistant", "Next")}
               </Link>
             );
           })}

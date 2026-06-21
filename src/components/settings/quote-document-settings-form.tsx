@@ -73,7 +73,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
         </p>
       </div>
 
-      <div className="rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-4">
+      <div className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-white">Quote logo</p>
@@ -88,7 +88,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
               style={{ backgroundImage: `url("${safeLogoPreviewUrl}")` }}
             />
           ) : (
-            <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[var(--tr-blue)] bg-slate-950/40 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--tr-blue)]">
+            <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[var(--tr-orange)] bg-[var(--tr-shell)] text-[10px] font-black uppercase tracking-[0.18em] text-[var(--tr-orange)]">
               Logo
             </div>
           )}
@@ -103,9 +103,9 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
             if (file) void uploadLogo(file);
           }}
           disabled={uploading}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--tr-blue)]/70 bg-slate-950/40 px-4 py-6 text-sm font-semibold text-slate-200 transition-colors hover:border-[var(--tr-blue)] hover:bg-[var(--tr-surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--tr-orange)]/70 bg-[var(--tr-shell)] px-4 py-6 text-sm font-semibold text-slate-200 transition-colors hover:border-[var(--tr-orange)] hover:bg-[var(--tr-surface-2)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <UploadSimple size={20} weight="duotone" className="text-[var(--tr-blue)]" />
+          <UploadSimple size={20} weight="duotone" className="text-[var(--tr-orange)]" />
           {uploading ? "Uploading logo..." : "Drop logo or choose file"}
         </button>
         <input
@@ -159,7 +159,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[var(--tr-blue)] px-4 py-2.5 text-sm font-semibold text-[#09204f] transition-colors hover:bg-[#a9c6ff] disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-lg bg-[var(--tr-orange)] px-4 py-2.5 text-sm font-semibold text-[#241205] transition-colors hover:bg-[var(--tr-amber)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Saving..." : "Save quote settings"}
       </button>
@@ -191,7 +191,7 @@ function Field({
         value={value}
         onChange={event => onChange?.(event.target.value)}
         placeholder={placeholder}
-        className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"
+        className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
       />
     </label>
   );
@@ -216,7 +216,7 @@ function TextArea({
         defaultValue={defaultValue}
         placeholder={placeholder}
         rows={3}
-        className="tr-input mt-1.5 w-full resize-none rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"
+        className="tr-input mt-1.5 w-full resize-none rounded-lg px-3 py-2.5 text-sm"
       />
     </label>
   );

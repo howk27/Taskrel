@@ -56,7 +56,7 @@ export default async function ClientsPage() {
         action={(
           <Link
             href="/quotes/new"
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff]"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] hover:bg-[var(--tr-amber)]"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -93,7 +93,7 @@ export default async function ClientsPage() {
             return (
             <Surface key={client.id} className="p-4">
               <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--tr-blue)]/15 text-[var(--tr-blue)]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--tr-orange)]/15 text-[var(--tr-orange)]">
                   <UserList size={22} weight="duotone" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -130,7 +130,7 @@ export default async function ClientsPage() {
                   {recentJob && <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Job: {recentJob.status.replace("_", " ")}</p>}
                 </div>
               )}
-              <Link href={nextHref} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[var(--tr-blue)] px-3 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff]">
+              <Link href={nextHref} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[var(--tr-orange)] px-3 text-sm font-bold text-[#241205] hover:bg-[var(--tr-amber)]">
                 {nextAction}
               </Link>
             </Surface>
@@ -141,7 +141,7 @@ export default async function ClientsPage() {
           <UserList size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
           <p className="font-semibold text-white">No clients yet</p>
           <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Clients are added automatically when you send a quote.</p>
-          <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+          <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]">
             <Plus size={17} weight="bold" />
             Create a quote
           </Link>

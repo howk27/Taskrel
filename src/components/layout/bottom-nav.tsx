@@ -25,7 +25,7 @@ export function BottomNav() {
               key={href}
               href={href}
               className={`flex flex-1 flex-col items-center justify-center gap-1 py-3 text-xs font-medium transition-colors ${
-                active ? "text-[var(--tr-blue)]" : "text-slate-500 hover:text-slate-300"
+                active ? "text-[var(--tr-orange)]" : "text-slate-500 hover:text-slate-300"
               }`}
             >
               <Icon size={24} weight={active ? "fill" : "regular"} />

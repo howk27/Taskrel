@@ -20,6 +20,28 @@ import type { ChartPoint } from "@/lib/insights";
 
 const palette = ["#8fb3ff", "#66d19e", "#f5b86b", "#a78bfa", "#f87171"];
 
+function formatAxisCurrency(value: unknown) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "$0";
+  const absolute = Math.abs(amount);
+
+  if (absolute >= 1_000_000) {
+    const compact = amount / 1_000_000;
+    return `$${Number.isInteger(compact) ? compact.toFixed(0) : compact.toFixed(1)}m`;
+  }
+
+  if (absolute >= 1_000) {
+    const compact = amount / 1_000;
+    return `$${Number.isInteger(compact) ? compact.toFixed(0) : compact.toFixed(1)}k`;
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 function tooltipStyle() {
   return {
     background: "#111827",
@@ -61,7 +83,7 @@ export function RevenueAreaChart({ data }: { data: ChartPoint[] }) {
         </defs>
         <CartesianGrid stroke="rgba(148,163,184,.13)" vertical={false} />
         <XAxis dataKey="label" stroke="#7c879d" tickLine={false} axisLine={false} />
-        <YAxis stroke="#7c879d" tickLine={false} axisLine={false} tickFormatter={value => `$${Number(value) / 1000}k`} width={42} />
+        <YAxis stroke="#7c879d" tickLine={false} axisLine={false} tickFormatter={formatAxisCurrency} width={54} />
         <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={tooltipStyle()} />
         <Area type="monotone" dataKey="value" stroke="#66d19e" strokeWidth={3} fill="url(#revenueGradient)" />
       </AreaChart>
@@ -75,7 +97,7 @@ export function ValueBarChart({ data, currency = true }: { data: ChartPoint[]; c
       <BarChart data={data}>
         <CartesianGrid stroke="rgba(148,163,184,.13)" vertical={false} />
         <XAxis dataKey="label" stroke="#7c879d" tickLine={false} axisLine={false} />
-        <YAxis stroke="#7c879d" tickLine={false} axisLine={false} tickFormatter={value => currency ? `$${Number(value) / 1000}k` : String(value)} width={42} />
+        <YAxis stroke="#7c879d" tickLine={false} axisLine={false} tickFormatter={value => currency ? formatAxisCurrency(value) : String(value)} width={54} />
         <Tooltip formatter={(value) => currency ? formatCurrency(Number(value)) : Number(value)} contentStyle={tooltipStyle()} />
         <Bar dataKey="value" radius={[8, 8, 3, 3]}>
           {data.map((_, index) => (

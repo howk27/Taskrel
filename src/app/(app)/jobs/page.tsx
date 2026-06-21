@@ -68,7 +68,7 @@ export default async function JobsPage() {
         <Surface className="p-5">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-lg font-bold text-white">Active work</h2>
-            <Link href="/calendar" className="text-sm font-semibold text-[var(--tr-blue)]">Calendar view</Link>
+            <Link href="/calendar" className="text-sm font-semibold text-[var(--tr-orange)]">Calendar view</Link>
           </div>
           {activeJobs.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2">
@@ -88,7 +88,7 @@ export default async function JobsPage() {
                         </p>
                       )}
                       {job.quote_id && (
-                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-orange)]">
                           Open quote
                         </Link>
                       )}

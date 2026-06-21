@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildTaskrelExportRows } from "@/lib/export-records";
 import { createClient } from "@/lib/supabase/server";
 import {
   getGoogleSheetsMissingEnv,
@@ -41,35 +42,7 @@ export async function POST(request: NextRequest) {
     .eq("contractor_id", contractor.id)
     .order("created_at", { ascending: false });
 
-  const rows: string[][] = [
-    ["QUOTES"],
-    ["ID", "Client", "Email", "Phone", "Address", "Trade", "Status", "Total", "Created"],
-    ...(quotes ?? []).map((quote) => [
-      quote.id,
-      quote.client_name,
-      quote.client_email ?? "",
-      quote.client_phone ?? "",
-      quote.client_address ?? "",
-      quote.trade,
-      quote.status,
-      String(quote.total),
-      quote.created_at,
-    ]),
-    [],
-    ["INVOICES"],
-    ["Invoice #", "Client", "Email", "Status", "Total", "Paid", "Due Date", "Paid At", "Created"],
-    ...(invoices ?? []).map((invoice) => [
-      invoice.invoice_number,
-      invoice.client_name,
-      invoice.client_email ?? "",
-      invoice.status,
-      String(invoice.total),
-      String(invoice.amount_paid),
-      invoice.due_date ?? "",
-      invoice.paid_at ?? "",
-      invoice.created_at,
-    ]),
-  ];
+  const rows = buildTaskrelExportRows({ quotes: quotes ?? [], invoices: invoices ?? [] });
 
   try {
     const token = await refreshGoogleAccessToken(contractor.google_sheets_refresh_token);

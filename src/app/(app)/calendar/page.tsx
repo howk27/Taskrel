@@ -216,7 +216,7 @@ export default function CalendarPage() {
                         </p>
                       )}
                       {job.quote_id && (
-                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-orange)]">
                           Open quote
                         </Link>
                       )}
@@ -251,7 +251,7 @@ export default function CalendarPage() {
                   {scheduleMessage && <p className="text-sm text-[var(--tr-text-muted)]">{scheduleMessage}</p>}
                 </div>
               ) : (
-                <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+                <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]">
                   <Plus size={17} weight="bold" />
                   Create quote
                 </Link>

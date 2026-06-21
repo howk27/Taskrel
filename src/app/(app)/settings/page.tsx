@@ -72,7 +72,7 @@ export default async function SettingsPage({
       <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
         <div className="space-y-6">
           <section id="account" className="scroll-mt-24">
-            <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-blue)]" />
+            <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-orange)]" />
             <Surface className="divide-y divide-slate-700/50 overflow-hidden">
               <SettingRow label="Business" value={settingsContractor?.business_name ?? "Taskrel business"} />
               <SettingRow label="Email" value={settingsContractor?.email ?? user.email ?? ""} />
@@ -121,7 +121,7 @@ export default async function SettingsPage({
                     {settingsContractor.subscription_status}
                   </Badge>
                 ) : (
-                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
+                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-orange)]">
                     Subscribe
                   </Link>
                 )}
@@ -134,7 +134,7 @@ export default async function SettingsPage({
                 {settingsContractor?.stripe_connect_account_id ? (
                   <Badge variant="success">Connected</Badge>
                 ) : (
-                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
+                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-orange)]">
                     Set up
                   </Link>
                 )}
@@ -167,7 +167,7 @@ export default async function SettingsPage({
                 {settingsContractor?.google_sheets_sync_enabled && settingsContractor.google_sheets_sheet_id ? (
                   <div className="grid grid-cols-2 gap-2">
                     <form action="/api/google-sheets/sync" method="post">
-                      <button type="submit" className="w-full rounded-lg bg-[var(--tr-blue)] px-3 py-2 text-sm font-semibold text-[#09204f] hover:bg-[#a9c6ff]">
+                      <button type="submit" className="w-full rounded-lg bg-[var(--tr-orange)] px-3 py-2 text-sm font-semibold text-[#241205] hover:bg-[var(--tr-amber)]">
                         Sync now
                       </button>
                     </form>
@@ -219,7 +219,7 @@ function SettingsJump({
 }) {
   return (
     <a href={href} className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-4 transition-colors hover:bg-[var(--tr-surface-2)]">
-      <span className="text-[var(--tr-blue)]">{icon}</span>
+      <span className="text-[var(--tr-orange)]">{icon}</span>
       <span className="mt-3 block text-sm font-bold text-white">{label}</span>
       <span className="mt-1 block text-xs leading-5 text-[var(--tr-text-muted)]">{detail}</span>
     </a>

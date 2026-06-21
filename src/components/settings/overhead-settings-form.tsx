@@ -16,7 +16,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
       <div>
         <p className="text-sm font-semibold text-white">Internal overhead costs</p>
         <p className="mt-1 text-xs leading-5 text-slate-400">
-          These costs stay internal. Taskrel uses them in the quote pricing check, but they do not appear on client-facing quotes.
+          These costs stay internal. Taskrel uses them in quote pricing intelligence, but they do not appear on client-facing quotes.
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
           max="100"
           step="0.001"
           defaultValue={Number(overheadPercent ?? 0)}
-          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         />
       </label>
 
@@ -41,7 +41,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
           min="0"
           step="0.01"
           defaultValue={Number(overheadFixedPerJob ?? 0)}
-          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm placeholder:text-slate-600"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         />
       </label>
 
@@ -51,7 +51,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[var(--tr-blue)] px-4 py-2.5 text-sm font-semibold text-[#09204f] transition-colors hover:bg-[#a9c6ff] disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-lg bg-[var(--tr-orange)] px-4 py-2.5 text-sm font-semibold text-[#241205] transition-colors hover:bg-[var(--tr-amber)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Saving..." : "Save overhead settings"}
       </button>
