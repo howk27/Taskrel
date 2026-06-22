@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { getConfiguredEnv } from "@/lib/env";
+import { buildDeliveryEventRows } from "@/lib/delivery-events";
 import type Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
       const { data: invoice } = await supabase
         .from("invoices")
-        .select("id, total")
+        .select("id, contractor_id, client_email, client_phone, total")
         .eq("id", invoiceId)
         .maybeSingle();
 
@@ -75,6 +76,31 @@ export async function POST(request: NextRequest) {
           stripe_payment_intent_id: pi.id,
         })
         .eq("id", invoice.id);
+
+      const { error: deliveryEventError } = await supabase
+        .from("delivery_events")
+        .insert(buildDeliveryEventRows({
+          contractorId: invoice.contractor_id,
+          actorUserId: null,
+          entityType: "invoice",
+          entityId: invoice.id,
+          action: "payment",
+          attempts: [{
+            channel: "stripe",
+            provider: "stripe",
+            recipient: invoice.client_email ?? invoice.client_phone,
+            status: "success",
+            code: "payment_intent_succeeded",
+            message: "Online payment received.",
+            metadata: {
+              payment_intent_id: pi.id,
+              amount_received: amountPaid,
+            },
+          }],
+        }));
+      if (deliveryEventError) {
+        console.error("Payment delivery event logging failed:", deliveryEventError);
+      }
       break;
     }
   }

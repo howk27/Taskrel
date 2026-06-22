@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Job } from "@/types";
+import type { Job, Quote } from "@/types";
 import { Badge, statusVariant } from "@/components/ui/badge";
-import { CalendarBlank, CaretLeft, CaretRight, MapPin } from "@/components/ui/icons";
+import { CalendarBlank, CaretLeft, CaretRight, MapPin, Plus } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { Button } from "@/components/ui/button";
 import { formatTime } from "@/lib/format";
-import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -23,7 +23,10 @@ export default function CalendarPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [approvedQuotes, setApprovedQuotes] = useState<Quote[]>([]);
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
+  const [schedulingQuoteId, setSchedulingQuoteId] = useState<string | null>(null);
+  const [scheduleMessage, setScheduleMessage] = useState("");
 
   useEffect(() => {
     const start = new Date(year, month, 1).toISOString();
@@ -32,6 +35,15 @@ export default function CalendarPage() {
       .then(r => r.json())
       .then(data => setJobs(Array.isArray(data) ? data : []));
   }, [year, month]);
+
+  useEffect(() => {
+    fetch("/api/quotes")
+      .then(r => r.json())
+      .then(data => {
+        const rows = Array.isArray(data) ? data : [];
+        setApprovedQuotes(rows.filter((quote: Quote) => quote.status === "approved" && !quote.scheduled_start).slice(0, 4));
+      });
+  }, []);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -47,7 +59,53 @@ export default function CalendarPage() {
     });
 
   const selectedJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
-  const empty = emptyStateFor("calendar_day");
+  const selectedDate = selectedDay ? new Date(year, month, selectedDay) : null;
+  const isSelectedToday = !!selectedDate
+    && selectedDate.getDate() === today.getDate()
+    && selectedDate.getMonth() === today.getMonth()
+    && selectedDate.getFullYear() === today.getFullYear();
+
+  async function handleScheduleQuote(quote: Quote) {
+    if (!selectedDate) return;
+    setSchedulingQuoteId(quote.id);
+    setScheduleMessage("");
+    const scheduledStart = new Date(selectedDate);
+    scheduledStart.setHours(9, 0, 0, 0);
+    const scheduledEnd = new Date(scheduledStart);
+    scheduledEnd.setHours(12, 0, 0, 0);
+
+    const jobResponse = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: quote.client_id,
+        quote_id: quote.id,
+        title: `${quote.client_name} job`,
+        description: quote.notes,
+        scheduled_start: scheduledStart.toISOString(),
+        scheduled_end: scheduledEnd.toISOString(),
+        address: quote.client_address,
+      }),
+    });
+
+    if (jobResponse.ok) {
+      await fetch(`/api/quotes/${quote.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduled_start: scheduledStart.toISOString(),
+          scheduled_end: scheduledEnd.toISOString(),
+        }),
+      });
+      const newJob = await jobResponse.json();
+      setJobs(current => [...current, newJob]);
+      setApprovedQuotes(current => current.filter(item => item.id !== quote.id));
+      setScheduleMessage(`${quote.client_name} scheduled for ${formatTime(scheduledStart.toISOString())}.`);
+    } else {
+      setScheduleMessage("Could not schedule that quote. Try again.");
+    }
+    setSchedulingQuoteId(null);
+  }
 
   function prevMonth() {
     if (month === 0) {
@@ -74,15 +132,15 @@ export default function CalendarPage() {
       <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
         <Surface className="p-3">
         <div className="flex items-center justify-between pb-3">
-          <button onClick={prevMonth} className="grid h-10 w-10 place-items-center rounded-lg text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]">
+          <button onClick={prevMonth} className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-white">
             <CaretLeft size={20} weight="bold" />
             <span className="sr-only">Previous month</span>
           </button>
           <div className="flex items-center gap-2">
             <CalendarBlank size={20} weight="duotone" className="text-[var(--tr-green)]" />
-            <h1 className="text-base font-semibold text-[var(--tr-text)]">{monthName} {year}</h1>
+            <h1 className="text-base font-semibold text-white">{monthName} {year}</h1>
           </div>
-          <button onClick={nextMonth} className="grid h-10 w-10 place-items-center rounded-lg text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]">
+          <button onClick={nextMonth} className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-white">
             <CaretRight size={20} weight="bold" />
             <span className="sr-only">Next month</span>
           </button>
@@ -90,7 +148,7 @@ export default function CalendarPage() {
 
         <div className="grid grid-cols-7 text-center">
           {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
-            <div key={day} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tr-text-faint)]">{day}</div>
+            <div key={day} className="py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{day}</div>
           ))}
         </div>
 
@@ -109,17 +167,17 @@ export default function CalendarPage() {
                 onClick={() => setSelectedDay(day)}
                 className={`relative grid aspect-square place-items-center overflow-hidden rounded-lg text-sm font-semibold transition-colors ${
                   isSelected
-                    ? "bg-[var(--tr-green)] text-[var(--tr-bg)] shadow-sm"
+                    ? "bg-[var(--tr-green)] text-[#052112] shadow-sm shadow-emerald-950/40"
                     : hasJobs
-                      ? "border border-[var(--tr-green)]/40 bg-[var(--tr-success-bg)] text-[var(--tr-green)] ring-1 ring-[var(--tr-green)]/15"
+                      ? "border border-[var(--tr-green)]/40 bg-[var(--tr-green)]/10 text-emerald-100 ring-1 ring-[var(--tr-green)]/15"
                     : isToday
                       ? "bg-[var(--tr-green)]/15 text-[var(--tr-green)]"
-                      : "text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]"
+                      : "text-slate-300 hover:bg-slate-700/50"
                 }`}
               >
                 <span className="leading-none">{day}</span>
                 {hasJobs && !isSelected && (
-                  <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--tr-green)] px-1 text-[9px] font-black leading-none text-[var(--tr-bg)] shadow-sm">
+                  <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--tr-green)] px-1 text-[9px] font-black leading-none text-[#052112] shadow-sm shadow-emerald-950/30">
                     {jobCount}
                   </span>
                 )}
@@ -132,10 +190,10 @@ export default function CalendarPage() {
         {selectedDay && (
         <section className="xl:pt-1">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--tr-text-muted)]">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               {monthName} {selectedDay}
             </h2>
-            <span className="text-xs text-[var(--tr-text-faint)]">
+            <span className="text-xs text-slate-500">
               {selectedJobs.length} {selectedJobs.length === 1 ? "job" : "jobs"}
             </span>
           </div>
@@ -146,19 +204,19 @@ export default function CalendarPage() {
                 <Surface key={job.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[var(--tr-text)]">{job.title}</p>
-                      <p className="mt-1 text-xs text-[var(--tr-text-muted)]">
+                      <p className="text-sm font-semibold text-white">{job.title}</p>
+                      <p className="mt-1 text-xs text-slate-400">
                         {formatTime(job.scheduled_start)}
                         {job.scheduled_end && ` - ${formatTime(job.scheduled_end)}`}
                       </p>
                       {job.address && (
-                        <p className="mt-2 flex items-start gap-1.5 text-xs text-[var(--tr-text-faint)]">
-                          <MapPin size={14} weight="duotone" className="mt-0.5 shrink-0 text-[var(--tr-text-faint)]" />
+                        <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-500">
+                          <MapPin size={14} weight="duotone" className="mt-0.5 shrink-0 text-slate-500" />
                           <span>{job.address}</span>
                         </p>
                       )}
                       {job.quote_id && (
-                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-primary)]">
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
                           Open quote
                         </Link>
                       )}
@@ -171,8 +229,33 @@ export default function CalendarPage() {
           ) : (
             <Surface className="p-8 text-center">
               <CalendarBlank size={30} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-              <p className="text-sm font-medium text-[var(--tr-text)]">{empty.title}</p>
-              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
+              <p className="text-sm font-medium text-white">
+                {isSelectedToday ? "No scheduled jobs for today." : "No jobs scheduled for this day."}
+              </p>
+              {approvedQuotes.length > 0 ? (
+                <div className="mt-5 space-y-3 text-left">
+                  <p className="text-sm font-semibold text-white">Schedule approved work</p>
+                  {approvedQuotes.map(quote => (
+                    <div key={quote.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{quote.client_name}</p>
+                          <p className="mt-1 text-xs text-[var(--tr-text-muted)]">{quote.client_address ?? "No address saved"}</p>
+                        </div>
+                        <Button size="sm" variant="secondary" loading={schedulingQuoteId === quote.id} onClick={() => handleScheduleQuote(quote)}>
+                          Schedule
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {scheduleMessage && <p className="text-sm text-[var(--tr-text-muted)]">{scheduleMessage}</p>}
+                </div>
+              ) : (
+                <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+                  <Plus size={17} weight="bold" />
+                  Create quote
+                </Link>
+              )}
             </Surface>
           )}
         </section>

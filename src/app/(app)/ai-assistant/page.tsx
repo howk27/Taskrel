@@ -1,5 +1,119 @@
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
+import { Lightning, Plus } from "@/components/ui/icons";
+import { buildTaskrelInsights } from "@/lib/insights";
+import { buildDashboardCommandCenter, type DashboardCommandItem } from "@/lib/workflows/dashboard-command-center";
+import { formatCurrency } from "@/lib/format";
 
-export default function AiAssistantPage() {
-  redirect("/dashboard");
+export default async function AiAssistantPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: contractor } = await supabase
+    .from("contractors")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!contractor) redirect("/onboarding");
+
+  const [quotes, invoices, jobs, clients] = await Promise.all([
+    supabase.from("quotes").select("id, client_name, client_address, client_email, client_phone, total, status, created_at, updated_at, scheduled_start, sent_via, line_items, notes").eq("contractor_id", contractor.id),
+    supabase.from("invoices").select("id, invoice_number, client_name, client_email, client_phone, total, amount_paid, status, due_date, paid_at, stripe_payment_link, sent_via, created_at, updated_at").eq("contractor_id", contractor.id),
+    supabase.from("jobs").select("id, title, status, scheduled_start, scheduled_end, address, quote_id, created_at, updated_at").eq("contractor_id", contractor.id),
+    supabase.from("clients").select("id, name, email, phone").eq("contractor_id", contractor.id),
+  ]);
+
+  const commandCenter = buildDashboardCommandCenter({
+    quotes: quotes.data ?? [],
+    invoices: invoices.data ?? [],
+    jobs: jobs.data ?? [],
+  });
+  const insights = buildTaskrelInsights({
+    quotes: quotes.data ?? [],
+    invoices: invoices.data ?? [],
+    jobs: jobs.data ?? [],
+    clients: clients.data ?? [],
+  });
+  const unresolved = [
+    ...commandCenter.today.items,
+    ...commandCenter.quoteFollowUp.items,
+    ...commandCenter.moneyToCollect.items,
+  ].slice(0, 8);
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
+      <PageHeader
+        title="Taskrel notices"
+        subtitle="Unresolved recommendations from your real quotes, invoices, jobs, and clients."
+        action={
+          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] md:inline-flex">
+            <Plus size={18} weight="bold" />
+            New quote
+          </Link>
+        }
+      />
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
+        <Surface className="p-5">
+          <div className="mb-5 flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--tr-violet)]/15 text-[var(--tr-violet)]">
+              <Lightning size={24} weight="duotone" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-white">Open recommendations</h2>
+              <p className="text-sm text-[var(--tr-text-muted)]">These are the same work items surfaced on the dashboard.</p>
+            </div>
+          </div>
+          {unresolved.length > 0 ? (
+            <div className="divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10 bg-slate-950/20">
+              {unresolved.map(item => <NoticeRow key={`${item.href}-${item.id}`} item={item} />)}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-[var(--tr-border)] p-8 text-center">
+              <p className="font-semibold text-white">No unresolved recommendations</p>
+              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Taskrel will show follow-ups, collection work, and schedule items here when they appear.</p>
+            </div>
+          )}
+        </Surface>
+
+        <Surface className="p-5">
+          <h2 className="text-lg font-bold text-white">Watch list</h2>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Risks that block smooth quote-to-payment flow.</p>
+          <div className="mt-4 space-y-3">
+            {insights.risks.length > 0 ? insights.risks.map(risk => (
+              <Link key={risk.id} href={risk.href ?? "#"} className="block rounded-lg border border-white/10 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.06]">
+                <p className="text-sm font-bold text-white">{risk.title}</p>
+                <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{risk.body}</p>
+                {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{risk.actionLabel}</p>}
+              </Link>
+            )) : (
+              <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">No urgent risks found right now.</p>
+            )}
+          </div>
+        </Surface>
+      </section>
+    </div>
+  );
+}
+
+function NoticeRow({ item }: { item: DashboardCommandItem }) {
+  return (
+    <Link href={item.href} className="block p-4 transition-colors hover:bg-white/[0.04]">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white">{item.title}</p>
+          <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{item.body}</p>
+          <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{item.actionLabel}</p>
+        </div>
+        {typeof item.value === "number" && (
+          <p className="shrink-0 text-sm font-black text-white">{formatCurrency(item.value)}</p>
+        )}
+      </div>
+    </Link>
+  );
 }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMissingEnv } from "@/lib/env";
 import { getStripe } from "@/lib/stripe";
 import { describeSendGridError } from "@/lib/sendgrid-error";
+import { buildDeliveryEventRows, type DeliveryEventAttempt } from "@/lib/delivery-events";
 import twilio from "twilio";
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,13 +22,14 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("business_name, stripe_connect_account_id")
+    .select("id, business_name, stripe_connect_account_id")
     .eq("user_id", user.id)
     .single();
 
   const sent: string[] = [];
   const errors: string[] = [];
   const details: { channel: string; code: string; message: string }[] = [];
+  const deliveryAttempts: DeliveryEventAttempt[] = [];
 
   let paymentLink = invoice.stripe_payment_link;
   let paymentLinkState: "ready" | "created" | "missing_connect" | "stripe_config" | "error" = paymentLink ? "ready" : "missing_connect";
@@ -37,6 +39,14 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       paymentLinkState = "stripe_config";
       errors.push("stripe_config");
       details.push({ channel: "stripe", code: "stripe_config", message: "Stripe is not configured." });
+      deliveryAttempts.push({
+        channel: "stripe",
+        provider: "stripe",
+        recipient: invoice.client_email ?? invoice.client_phone,
+        status: "error",
+        code: "stripe_config",
+        message: "Stripe is not configured.",
+      });
       console.warn("Stripe payment link skipped: STRIPE_SECRET_KEY is not configured.");
     } else {
       try {
@@ -55,11 +65,28 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         paymentLink = link.url;
         paymentLinkState = "created";
         await supabase.from("invoices").update({ stripe_payment_link: paymentLink }).eq("id", id);
+        deliveryAttempts.push({
+          channel: "stripe",
+          provider: "stripe",
+          recipient: invoice.client_email ?? invoice.client_phone,
+          status: "success",
+          code: "payment_link_created",
+          message: "Online payment link created.",
+          metadata: { payment_link: paymentLink },
+        });
       } catch (err) {
         paymentLinkState = "error";
         console.error("Stripe payment link error:", err);
         errors.push("stripe");
         details.push({ channel: "stripe", code: "stripe", message: "Stripe could not create a payment link." });
+        deliveryAttempts.push({
+          channel: "stripe",
+          provider: "stripe",
+          recipient: invoice.client_email ?? invoice.client_phone,
+          status: "error",
+          code: "stripe",
+          message: "Stripe could not create a payment link.",
+        });
       }
     }
   }
@@ -71,6 +98,14 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       errors.push("email_config");
       details.push({
         channel: "email",
+        code: "email_config",
+        message: `Missing email configuration: ${missingEmailEnv.join(", ")}.`,
+      });
+      deliveryAttempts.push({
+        channel: "email",
+        provider: "sendgrid",
+        recipient: invoice.client_email,
+        status: "error",
         code: "email_config",
         message: `Missing email configuration: ${missingEmailEnv.join(", ")}.`,
       });
@@ -94,17 +129,41 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
           `,
         });
         sent.push("email");
+        deliveryAttempts.push({
+          channel: "email",
+          provider: "sendgrid",
+          recipient: invoice.client_email,
+          status: "success",
+          code: "sent",
+          message: "Invoice email sent.",
+        });
       } catch (err) {
         const emailError = describeSendGridError(err);
         console.error("SendGrid error:", emailError, err);
         errors.push("email");
         details.push({ channel: "email", code: emailError.code, message: emailError.message });
+        deliveryAttempts.push({
+          channel: "email",
+          provider: "sendgrid",
+          recipient: invoice.client_email,
+          status: "error",
+          code: emailError.code,
+          message: emailError.message,
+        });
       }
     }
   } else {
     errors.push("email_missing_client");
     details.push({
       channel: "email",
+      code: "email_missing_client",
+      message: "This invoice does not have a client email address.",
+    });
+    deliveryAttempts.push({
+      channel: "email",
+      provider: "sendgrid",
+      recipient: null,
+      status: "error",
       code: "email_missing_client",
       message: "This invoice does not have a client email address.",
     });
@@ -117,6 +176,14 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       errors.push("sms_config");
       details.push({
         channel: "sms",
+        code: "sms_config",
+        message: `Missing SMS configuration: ${missingSmsEnv.join(", ")}.`,
+      });
+      deliveryAttempts.push({
+        channel: "sms",
+        provider: "twilio",
+        recipient: invoice.client_phone,
+        status: "error",
         code: "sms_config",
         message: `Missing SMS configuration: ${missingSmsEnv.join(", ")}.`,
       });
@@ -133,10 +200,26 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
           to: invoice.client_phone,
         });
         sent.push("sms");
+        deliveryAttempts.push({
+          channel: "sms",
+          provider: "twilio",
+          recipient: invoice.client_phone,
+          status: "success",
+          code: "sent",
+          message: "Invoice SMS sent.",
+        });
       } catch (err) {
         console.error("Twilio error:", err);
         errors.push("sms");
         details.push({ channel: "sms", code: "sms", message: "Twilio could not send the SMS." });
+        deliveryAttempts.push({
+          channel: "sms",
+          provider: "twilio",
+          recipient: invoice.client_phone,
+          status: "error",
+          code: "sms",
+          message: "Twilio could not send the SMS.",
+        });
       }
     }
   } else {
@@ -146,6 +229,30 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       code: "sms_missing_client",
       message: "This invoice does not have a client phone number.",
     });
+    deliveryAttempts.push({
+      channel: "sms",
+      provider: "twilio",
+      recipient: null,
+      status: "error",
+      code: "sms_missing_client",
+      message: "This invoice does not have a client phone number.",
+    });
+  }
+
+  if (deliveryAttempts.length > 0) {
+    const { error: deliveryEventError } = await supabase
+      .from("delivery_events")
+      .insert(buildDeliveryEventRows({
+        contractorId: invoice.contractor_id,
+        actorUserId: user.id,
+        entityType: "invoice",
+        entityId: id,
+        action: "send",
+        attempts: deliveryAttempts,
+      }));
+    if (deliveryEventError) {
+      console.error("Delivery event logging failed:", deliveryEventError);
+    }
   }
 
   if (sent.length > 0) {

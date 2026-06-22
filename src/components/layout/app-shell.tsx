@@ -9,6 +9,7 @@ import {
   FileText,
   Gear,
   HouseLine,
+  Lightning,
   MagnifyingGlass,
   Moon,
   Plus,
@@ -33,6 +34,7 @@ const nav = [
   { href: "/quotes", label: "Quotes", Icon: FileText },
   { href: "/invoices", label: "Invoices", Icon: Receipt },
   { href: "/clients", label: "Clients", Icon: UserList },
+  { href: "/ai-assistant", label: "Notices", Icon: Lightning },
   { href: "/settings", label: "Settings", Icon: Gear },
 ];
 

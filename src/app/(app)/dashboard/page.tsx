@@ -1,36 +1,42 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { Badge, statusVariant } from "@/components/ui/badge";
 import { ChartCard, PipelineDonut, RevenueAreaChart, ValueBarChart } from "@/components/charts/taskrel-charts";
-import { DashboardWorkQueue } from "@/components/dashboard/dashboard-work-queue";
-import { CalendarBlank, FileText, Receipt } from "@/components/ui/icons";
+import { CalendarBlank, FileText, Plus, Receipt, Wrench } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { buildTaskrelInsights } from "@/lib/insights";
-import { getCurrentWorkspace } from "@/lib/auth/workspace";
-import { emptyStateFor } from "@/lib/readiness/setup-readiness";
+import { buildDashboardCommandCenter, type DashboardCommandLane } from "@/lib/workflows/dashboard-command-center";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
-  const { supabase, contractor } = await getCurrentWorkspace();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: contractor } = await supabase
+    .from("contractors")
+    .select("id, onboarding_complete")
+    .eq("user_id", user.id)
+    .single();
 
   if (!contractor?.onboarding_complete) redirect("/onboarding");
 
   const [quotesResult, jobsResult, invoicesResult, clientsResult] = await Promise.all([
     supabase
       .from("quotes")
-      .select("id, client_name, client_address, total, subtotal, tax_amount, status, line_items, notes, created_at, scheduled_start, scheduled_end, sent_via, template_preset")
+      .select("id, client_name, client_address, client_email, client_phone, total, subtotal, tax_amount, status, line_items, notes, created_at, updated_at, scheduled_start, scheduled_end, sent_via, template_preset")
       .eq("contractor_id", contractor.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("jobs")
-      .select("id, title, quote_id, address, scheduled_start, scheduled_end, status")
+      .select("id, title, quote_id, address, scheduled_start, scheduled_end, status, created_at, updated_at")
       .eq("contractor_id", contractor.id)
       .order("scheduled_start", { ascending: true }),
     supabase
       .from("invoices")
-      .select("id, client_name, total, amount_paid, status, due_date, paid_at, created_at")
+      .select("id, invoice_number, client_name, client_email, client_phone, total, amount_paid, status, due_date, paid_at, stripe_payment_link, sent_via, created_at, updated_at")
       .eq("contractor_id", contractor.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -44,120 +50,38 @@ export default async function DashboardPage() {
   const invoices = invoicesResult.data ?? [];
   const clients = clientsResult.data ?? [];
   const insights = buildTaskrelInsights({ quotes, jobs, invoices, clients });
-  const activeQuotes = quotes.filter(quote => ["draft", "sent", "approved"].includes(quote.status));
-  const upcomingJobs = jobs
-    .filter(job => ["scheduled", "in_progress"].includes(job.status))
-    .filter(job => new Date(job.scheduled_start) >= new Date())
-    .slice(0, 4);
-  const quotesEmpty = emptyStateFor("quotes");
-  const jobsEmpty = emptyStateFor("jobs");
+  const commandCenter = buildDashboardCommandCenter({ quotes, jobs, invoices });
+  const activeWorkCount = commandCenter.today.items.length + commandCenter.quoteFollowUp.items.length + commandCenter.moneyToCollect.items.length;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
-        title="Dashboard"
-        subtitle="Quotes, schedule, and payments that need attention."
+        title="Today in Taskrel"
+        subtitle={`${activeWorkCount} ${activeWorkCount === 1 ? "thing needs" : "things need"} attention across jobs, quotes, and payments.`}
+        action={(
+          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff] md:inline-flex">
+            <Plus size={18} weight="bold" />
+            New quote
+          </Link>
+        )}
       />
 
+      <section className="grid gap-3 lg:grid-cols-3" aria-label="Dashboard command center">
+        <CommandLane lane={commandCenter.today} icon={<Wrench size={22} weight="duotone" />} href="/jobs" />
+        <CommandLane lane={commandCenter.quoteFollowUp} icon={<FileText size={22} weight="duotone" />} href="/quotes" money />
+        <CommandLane lane={commandCenter.moneyToCollect} icon={<Receipt size={22} weight="duotone" />} href="/invoices" money />
+      </section>
+
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric icon={<FileText size={21} />} label="Active quotes" value={formatCurrency(insights.summaryMetrics.activeQuoteValue)} />
+        <Metric icon={<FileText size={21} />} label="Active quote value" value={formatCurrency(insights.summaryMetrics.activeQuoteValue)} />
         <Metric icon={<CalendarBlank size={21} />} label="Scheduled jobs" value={String(insights.summaryMetrics.scheduledJobsCount)} />
         <Metric icon={<Receipt size={21} />} label="Unpaid invoices" value={formatCurrency(insights.summaryMetrics.unpaidInvoiceValue)} tone="amber" />
         <Metric icon={<Receipt size={21} />} label="Paid this month" value={formatCurrency(insights.summaryMetrics.paidThisMonth)} tone="green" />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        <Surface className="p-5">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-[var(--tr-text)]">Active quotes</h2>
-              <p className="text-sm text-[var(--tr-text-muted)]">Expand a quote to see what was sent and what to do next.</p>
-            </div>
-            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-primary)]">View all</Link>
-          </div>
-          {activeQuotes.length > 0 ? (
-            <DashboardWorkQueue quotes={activeQuotes} />
-          ) : (
-            <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
-              <FileText size={34} weight="duotone" className="mx-auto mb-3 text-[var(--tr-text-faint)]" />
-              <p className="text-sm font-semibold text-white">{quotesEmpty.title}</p>
-              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{quotesEmpty.body}</p>
-              {quotesEmpty.href && quotesEmpty.actionLabel ? (
-                <Link
-                  href={quotesEmpty.href}
-                  className="tr-primary-action mt-5 inline-flex h-11 items-center rounded-lg px-4 text-sm font-bold"
-                >
-                  {quotesEmpty.actionLabel}
-                </Link>
-              ) : null}
-            </div>
-          )}
-        </Surface>
-
-        <div className="space-y-4">
-          <Surface className="p-5">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-[var(--tr-text)]">Scheduled work</h2>
-              <Link href="/jobs" className="shrink-0 text-sm font-semibold text-[var(--tr-primary)]">View jobs</Link>
-            </div>
-            {upcomingJobs.length > 0 ? (
-              <div className="divide-y divide-[var(--tr-border-soft)]">
-                {upcomingJobs.map(job => (
-                  <div key={job.id} className="py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-[var(--tr-text)]">{job.title}</p>
-                        <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{formatDate(job.scheduled_start)}</p>
-                        {job.quote_id && (
-                          <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-primary)]">
-                            Open quote
-                          </Link>
-                        )}
-                      </div>
-                      <Badge variant={statusVariant(job.status)}>{job.status.replace("_", " ")}</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
-                <CalendarBlank size={34} weight="duotone" className="mx-auto mb-3 text-[var(--tr-text-faint)]" />
-                <p className="text-sm font-semibold text-white">{jobsEmpty.title}</p>
-                <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{jobsEmpty.body}</p>
-                {jobsEmpty.href && jobsEmpty.actionLabel ? (
-                  <Link
-                    href={jobsEmpty.href}
-                    className="tr-primary-action mt-5 inline-flex h-11 items-center rounded-lg px-4 text-sm font-bold"
-                  >
-                    {jobsEmpty.actionLabel}
-                  </Link>
-                ) : null}
-              </div>
-            )}
-          </Surface>
-
-          <Surface className="p-5">
-            <h2 className="text-lg font-bold text-[var(--tr-text)]">Needs attention</h2>
-            <div className="mt-4 divide-y divide-[var(--tr-border-soft)]">
-              {insights.risks.length > 0 ? insights.risks.map(risk => (
-                <Link key={risk.id} href={risk.href ?? "#"} className="block py-3 first:pt-0 last:pb-0">
-                  <p className="text-sm font-bold text-[var(--tr-text)]">{risk.title}</p>
-                  <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{risk.body}</p>
-                  {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-primary)]">{risk.actionLabel}</p>}
-                </Link>
-              )) : (
-                <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">
-                  No urgent risks found. Taskrel will flag missing contact, unpaid invoices, stale quotes, and upcoming work here.
-                </p>
-              )}
-            </div>
-          </Surface>
-        </div>
-      </section>
-
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-[var(--tr-text)]">Business snapshot</h2>
+          <h2 className="text-lg font-bold text-white">Business snapshot</h2>
           <p className="text-sm text-[var(--tr-text-muted)]">Trends that help you understand the work queue.</p>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -176,6 +100,66 @@ export default async function DashboardPage() {
   );
 }
 
+function CommandLane({
+  lane,
+  icon,
+  href,
+  money,
+}: {
+  lane: DashboardCommandLane;
+  icon: ReactNode;
+  href: string;
+  money?: boolean;
+}) {
+  return (
+    <Surface className="flex min-h-[23rem] flex-col p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[var(--tr-blue)]">
+            {icon}
+            <h2 className="text-base font-bold text-white">{lane.title}</h2>
+          </div>
+          <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{lane.subtitle}</p>
+        </div>
+        <p className="shrink-0 text-right text-lg font-black text-white tabular-nums">
+          {money ? formatCurrency(lane.total) : lane.total}
+        </p>
+      </div>
+
+      <div className="mt-4 flex-1 divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10 bg-slate-950/20">
+        {lane.items.length > 0 ? lane.items.map(item => (
+          <Link key={item.id} href={item.href} className="block p-3 transition-colors hover:bg-white/[0.04]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-white">{item.title}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--tr-text-muted)]">{item.body}</p>
+              </div>
+              {typeof item.value === "number" && (
+                <p className="shrink-0 text-sm font-bold text-white">{formatCurrency(item.value)}</p>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="truncate text-xs text-[var(--tr-text-faint)]">{item.meta}</span>
+              <span className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">{item.actionLabel}</span>
+            </div>
+          </Link>
+        )) : (
+          <div className="grid h-full min-h-48 place-items-center p-6 text-center">
+            <div>
+              <p className="text-sm font-semibold text-white">{lane.emptyTitle}</p>
+              <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{lane.emptyBody}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Link href={href} className="mt-4 inline-flex h-10 items-center justify-center rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-2)] px-3 text-sm font-semibold text-white hover:bg-[var(--tr-surface-3)]">
+        View all
+      </Link>
+    </Surface>
+  );
+}
+
 function Metric({
   icon,
   label,
@@ -187,11 +171,11 @@ function Metric({
   value: string;
   tone?: "blue" | "green" | "amber";
 }) {
-  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-primary)]";
+  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-blue)]";
   return (
     <Surface className="p-4">
       <div className={`mb-3 ${toneClass}`}>{icon}</div>
-      <p className="text-xl font-black tracking-tight text-[var(--tr-text)]">{value}</p>
+      <p className="text-xl font-black tracking-tight text-white">{value}</p>
       <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--tr-text-faint)]">{label}</p>
     </Surface>
   );

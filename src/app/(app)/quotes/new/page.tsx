@@ -278,7 +278,7 @@ export default function NewQuotePage() {
   if (step === "generating") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 gap-4">
-        <span className="h-10 w-10 animate-spin rounded-full border-4 border-[#F97316] border-r-transparent" />
+        <span className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--tr-blue)] border-r-transparent" />
         <p className="text-white font-medium">Generating your quote...</p>
         <p className="text-slate-400 text-sm">Usually takes 5-10 seconds</p>
       </div>
@@ -367,7 +367,7 @@ export default function NewQuotePage() {
                         </span>
                       </button>
                       {expandedLineItemIndex === i && (
-                        <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                        <div className="mt-3 space-y-3 rounded-lg border border-white/10 bg-slate-950/30 p-3">
                           <label className="block">
                             <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
                             <textarea

@@ -7,9 +7,10 @@ import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CalendarBlank, CheckCircle, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
+import { deliveryEventSummary } from "@/lib/delivery-events";
 import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
@@ -180,7 +181,7 @@ export default function QuoteDetailPage() {
       return;
     }
     applyQuoteResult({ ok: true, data });
-    setPropertyMessage(snapshot ? "Property value saved for pricing intelligence." : "Property value removed.");
+    setPropertyMessage(snapshot ? "Property value saved for the pricing check." : "Property value removed.");
   }
 
   async function handleSaveManualPropertyValue() {
@@ -247,15 +248,14 @@ export default function QuoteDetailPage() {
     ? renderQuoteDocumentHtml({ quote, business: quote.business_snapshot, preset: previewPreset })
     : "";
   const workflowState = getQuoteWorkflowState(quote);
-  const readinessBlockers = workflowState.readiness.filter(item => !item.complete);
-  const readyForNextStep = readinessBlockers.length === 0;
+  const deliverySummary = deliveryEventSummary(quote.delivery_events ?? []);
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
       <div className="flex items-start gap-3">
         <button
           onClick={() => router.back()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-700 bg-[#172235] text-slate-400 hover:text-white"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface)] text-slate-400 hover:text-white"
         >
           <ArrowLeft size={20} weight="bold" />
           <span className="sr-only">Back</span>
@@ -273,12 +273,18 @@ export default function QuoteDetailPage() {
           <Surface className="p-5">
             <p className="text-sm font-bold text-[var(--tr-text-muted)]">Quote total</p>
             <p className="mt-2 text-4xl font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
-            <div className="mt-4 rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--tr-text-faint)]">Current step</p>
-              <p className="mt-1 text-base font-bold text-white">{dirty ? "Save edits" : workflowState.nextAction}</p>
-              <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
-                {dirty ? "Save pricing changes before sending or creating an invoice." : workflowState.nextActionDetail}
-              </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-[var(--tr-blue)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-blue)]">
+                {workflowState.nextAction}
+              </span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${deliveryClass(workflowState.deliveryTone)}`}>
+                {workflowState.deliveryLabel}
+              </span>
+              {dirty && (
+                <span className="rounded-full bg-[var(--tr-amber)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-amber)]">
+                  Unsaved edits
+                </span>
+              )}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <SummaryMeta icon={<FileText size={15} weight="duotone" />} label="Status" value={quote.status} />
@@ -289,81 +295,72 @@ export default function QuoteDetailPage() {
           </Surface>
 
           <Surface className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-white">{readyForNextStep ? "Ready" : "Needs attention"}</h2>
-                <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
-                  {readyForNextStep
-                    ? "This quote has the basics needed for the next step."
-                    : `${readinessBlockers.length} item${readinessBlockers.length === 1 ? "" : "s"} to finish before this quote moves forward.`}
-                </p>
-              </div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${readyForNextStep ? "bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-500/30" : "bg-[var(--tr-badge-warning-bg)] text-[var(--tr-badge-warning-text)] ring-1 ring-[var(--tr-badge-warning-ring)]"}`}>
-                {workflowState.completedReadiness}/{workflowState.totalReadiness}
-              </span>
+            <h2 className="text-lg font-bold text-white">Review readiness</h2>
+            <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
+              {workflowState.completedReadiness} of {workflowState.totalReadiness} checks ready before this quote is sent or converted.
+            </p>
+            <div className="mt-4 space-y-2">
+              {workflowState.readiness.map(item => (
+                <ReadinessRow key={item.key} item={item} />
+              ))}
             </div>
-            {!readyForNextStep && (
-              <div className="mt-4 space-y-2">
-                {readinessBlockers.map(item => (
-                  <ReadinessRow key={item.key} item={item} />
-                ))}
-              </div>
-            )}
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-bold text-white">Next action</h2>
+            <h2 className="text-lg font-bold text-white">Send proof</h2>
             <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
-              {dirty
-                ? "Save pricing changes first so the client document matches the work."
-                : workflowState.nextActionDetail}
+              {deliverySummary.latestSuccessLabel ?? "No successful send recorded yet."}
             </p>
+            <div className="mt-4 space-y-2">
+              {(quote.delivery_events ?? []).slice(0, 4).map(event => (
+                <div key={event.id} className={`rounded-lg border p-3 ${event.status === "success" ? "border-emerald-300/20 bg-emerald-300/10" : "border-amber-300/20 bg-amber-300/10"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-emerald-100" : "text-amber-100"}`}>
+                      {event.channel.toUpperCase()} / {event.status}
+                    </p>
+                    <p className="shrink-0 text-xs text-[var(--tr-text-faint)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
+                  {event.recipient && <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{event.recipient}</p>}
+                </div>
+              ))}
+            </div>
+          </Surface>
+
+          <Surface className="p-5">
+            <h2 className="text-lg font-bold text-white">Actions</h2>
+            {dirty && (
+              <p className="mt-2 rounded-lg bg-[var(--tr-amber)]/10 p-3 text-sm leading-5 text-amber-100">
+                Save pricing changes before sending or converting so the client document matches your latest totals.
+              </p>
+            )}
             <div className="mt-4 space-y-3">
               {dirty && (
-                <Button className="w-full" onClick={handleSaveQuote} loading={savingQuote}>
+                <Button variant="secondary" className="w-full" onClick={handleSaveQuote} loading={savingQuote}>
                   <FileText size={18} weight="duotone" />
                   Save pricing changes
                 </Button>
               )}
-              {!dirty && quote.status === "draft" && (
-                <Button className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={sendVia.length === 0}>
-                  <EnvelopeSimple size={18} weight="duotone" />
-                  Send quote
-                </Button>
-              )}
-              {!dirty && quote.status === "sent" && (
+              {["draft", "sent", "approved"].includes(quote.status) && (
                 <Button className="w-full" onClick={handleConvertToInvoice} loading={converting} disabled={dirty}>
                   <Receipt size={18} weight="duotone" />
-                  Client approved - create invoice
+                  {quote.status === "approved" ? "Create Invoice" : "Approve & Convert"}
                 </Button>
               )}
-              {!dirty && quote.status === "approved" && (
-                <Button className="w-full" onClick={handleConvertToInvoice} loading={converting}>
-                  <Receipt size={18} weight="duotone" />
-                  Create invoice
+              {quote.status === "draft" && (
+                <Button className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={dirty || sendVia.length === 0}>
+                  <EnvelopeSimple size={18} weight="duotone" />
+                  Send Quote
+                </Button>
+              )}
+              {quote.status === "sent" && (
+                <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={dirty || sendVia.length === 0}>
+                  <EnvelopeSimple size={18} weight="duotone" />
+                  Resend Quote
                 </Button>
               )}
               {sendVia.length === 0 && (
                 <p className="text-sm text-[var(--tr-text-muted)]">Add an email or phone to send this quote.</p>
-              )}
-              {!dirty && quote.status === "sent" && (
-                <div className="rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
-                  <p className="text-sm font-semibold text-white">Already sent</p>
-                  <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
-                    Resend only when the client asks for another copy or contact details changed.
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 w-full"
-                    onClick={() => handleSend(sendVia)}
-                    loading={sending}
-                    disabled={sendVia.length === 0}
-                  >
-                    <EnvelopeSimple size={16} weight="duotone" />
-                    Resend quote
-                  </Button>
-                </div>
               )}
               {sendError && (
                 <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{sendError}</p>
@@ -429,13 +426,13 @@ export default function QuoteDetailPage() {
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
-                        <span className="mt-2 inline-flex rounded-full bg-[var(--tr-badge-info-bg)] px-2 py-1 text-[11px] font-bold text-[var(--tr-badge-info-text)] ring-1 ring-[var(--tr-badge-info-ring)]">
+                        <span className="mt-2 inline-flex rounded-full bg-[var(--tr-blue)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-blue)]">
                           {expandedLineItemIndex === index ? "Done" : "Edit"}
                         </span>
                       </span>
                     </button>
                     {expandedLineItemIndex === index && (
-                      <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-3">
+                      <div className="mt-3 space-y-3 rounded-lg border border-white/10 bg-slate-950/30 p-3">
                         <label className="block">
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
                           <textarea
@@ -625,6 +622,12 @@ function ReadinessRow({ item }: { item: QuoteReadinessItem }) {
   );
 }
 
+function deliveryClass(tone: "ready" | "sent" | "missing") {
+  if (tone === "sent") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
+  if (tone === "ready") return "bg-[var(--tr-blue)]/12 text-[var(--tr-blue)]";
+  return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
+}
+
 function PricingIntelligencePanel({
   recommendation,
   valuation,
@@ -652,7 +655,7 @@ function PricingIntelligencePanel({
 }) {
   return (
     <Surface className="p-5">
-      <h2 className="text-lg font-bold text-white">Pricing intelligence</h2>
+      <h2 className="text-lg font-bold text-white">Pricing check</h2>
       <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
         Internal only. These values help you price the work, but they do not appear on the client quote.
       </p>
@@ -675,7 +678,7 @@ function PricingIntelligencePanel({
         </p>
       )}
 
-      <div className="mt-5 space-y-3 rounded-xl border border-white/10 bg-[#0F172A] p-4">
+      <div className="mt-5 space-y-3 rounded-lg border border-white/10 bg-slate-950/30 p-4">
         <div>
           <p className="text-sm font-semibold text-white">Property value</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">
