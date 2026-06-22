@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Taskrel",
-  description: "Quote, schedule, and invoice — from your phone.",
+  description: "Quote, schedule, and invoice from your phone.",
   applicationName: "Taskrel",
   appleWebApp: {
     capable: true,
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B1326",
+  themeColor: "#11100d",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

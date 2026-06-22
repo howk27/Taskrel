@@ -46,7 +46,7 @@ export default async function InvoicesPage() {
         title="Invoices"
         subtitle="Send what is ready, collect what is due, and keep payment proof visible."
         action={(
-          <Link href="/quotes" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff] md:inline-flex">
+          <Link href="/quotes" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] hover:bg-[var(--tr-amber)] md:inline-flex">
             <Plus size={18} weight="bold" />
             Review quotes
           </Link>
@@ -66,7 +66,7 @@ export default async function InvoicesPage() {
               <h2 className="text-lg font-bold text-white">Invoice work queue</h2>
               <p className="text-sm text-[var(--tr-text-muted)]">Derived from delivery, due date, balance, and payment proof.</p>
             </div>
-            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">Create from quote</Link>
+            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-orange)]">Create from quote</Link>
           </div>
           <div className="divide-y divide-white/10">
             {activeInvoices.map(({ invoice, state }) => (
@@ -89,7 +89,7 @@ export default async function InvoicesPage() {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-base font-black text-white">{formatCurrency(state.balanceDue)}</p>
-                    <p className="mt-2 text-sm font-semibold text-[var(--tr-blue)]">{state.nextAction}</p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--tr-orange)]">{state.nextAction}</p>
                   </div>
                 </div>
               </Link>
@@ -101,7 +101,7 @@ export default async function InvoicesPage() {
           <Receipt size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
           <p className="font-semibold text-white">{invoiceRows.length > 0 ? "No invoice work right now" : "No invoices yet"}</p>
           <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approved quotes can become invoices when work is ready to bill.</p>
-          <Link href="/quotes" className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+          <Link href="/quotes" className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]">
             View quotes
           </Link>
         </Surface>

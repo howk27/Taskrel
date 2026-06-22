@@ -51,7 +51,7 @@ export default async function AiAssistantPage() {
         title="Taskrel notices"
         subtitle="Unresolved recommendations from your real quotes, invoices, jobs, and clients."
         action={
-          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] md:inline-flex">
+          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] md:inline-flex">
             <Plus size={18} weight="bold" />
             New quote
           </Link>
@@ -89,7 +89,7 @@ export default async function AiAssistantPage() {
               <Link key={risk.id} href={risk.href ?? "#"} className="block rounded-lg border border-white/10 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.06]">
                 <p className="text-sm font-bold text-white">{risk.title}</p>
                 <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{risk.body}</p>
-                {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{risk.actionLabel}</p>}
+                {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-orange)]">{risk.actionLabel}</p>}
               </Link>
             )) : (
               <p className="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">No urgent risks found right now.</p>
@@ -108,7 +108,7 @@ function NoticeRow({ item }: { item: DashboardCommandItem }) {
         <div className="min-w-0">
           <p className="text-sm font-bold text-white">{item.title}</p>
           <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{item.body}</p>
-          <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{item.actionLabel}</p>
+          <p className="mt-3 text-sm font-semibold text-[var(--tr-orange)]">{item.actionLabel}</p>
         </div>
         {typeof item.value === "number" && (
           <p className="shrink-0 text-sm font-black text-white">{formatCurrency(item.value)}</p>

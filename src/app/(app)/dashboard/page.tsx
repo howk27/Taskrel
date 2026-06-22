@@ -2,13 +2,16 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { ChartCard, PipelineDonut, RevenueAreaChart, ValueBarChart } from "@/components/charts/taskrel-charts";
+import { LaunchReadinessChecklist } from "@/components/dashboard/launch-readiness-checklist";
 import { CalendarBlank, FileText, Plus, Receipt, Wrench } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { getMissingEnv } from "@/lib/env";
 import { formatCurrency } from "@/lib/format";
 import { buildTaskrelInsights } from "@/lib/insights";
-import { buildDashboardCommandCenter, type DashboardCommandLane } from "@/lib/workflows/dashboard-command-center";
+import { buildLaunchReadiness } from "@/lib/launch-readiness";
 import { createClient } from "@/lib/supabase/server";
+import { buildDashboardCommandCenter, type DashboardCommandLane } from "@/lib/workflows/dashboard-command-center";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -17,7 +20,7 @@ export default async function DashboardPage() {
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("id, onboarding_complete")
+    .select("id, onboarding_complete, business_name, business_phone, business_website, license_text, logo_url, quote_default_terms, quote_policy_text, quote_template_preset, stripe_connect_account_id")
     .eq("user_id", user.id)
     .single();
 
@@ -26,7 +29,7 @@ export default async function DashboardPage() {
   const [quotesResult, jobsResult, invoicesResult, clientsResult] = await Promise.all([
     supabase
       .from("quotes")
-      .select("id, client_name, client_address, client_email, client_phone, total, subtotal, tax_amount, status, line_items, notes, created_at, updated_at, scheduled_start, scheduled_end, sent_via, template_preset")
+      .select("id, client_name, client_address, client_email, client_phone, total, subtotal, tax_amount, status, line_items, notes, created_at, updated_at, scheduled_start, scheduled_end, sent_via, template_preset, follow_up_due_at, last_followed_up_at")
       .eq("contractor_id", contractor.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -52,6 +55,24 @@ export default async function DashboardPage() {
   const insights = buildTaskrelInsights({ quotes, jobs, invoices, clients });
   const commandCenter = buildDashboardCommandCenter({ quotes, jobs, invoices });
   const activeWorkCount = commandCenter.today.items.length + commandCenter.quoteFollowUp.items.length + commandCenter.moneyToCollect.items.length;
+  const launchReadiness = buildLaunchReadiness({
+    contractor: {
+      business_name: contractor.business_name,
+      business_phone: contractor.business_phone,
+      business_website: contractor.business_website,
+      license_text: contractor.license_text,
+      logo_url: contractor.logo_url,
+      quote_default_terms: contractor.quote_default_terms,
+      quote_policy_text: contractor.quote_policy_text,
+      quote_template_preset: contractor.quote_template_preset,
+      stripe_connect_account_id: contractor.stripe_connect_account_id,
+    },
+    delivery: {
+      emailConfigured: getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]).length === 0,
+      smsConfigured: getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]).length === 0,
+    },
+    quoteCount: quotes.length,
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
@@ -59,12 +80,14 @@ export default async function DashboardPage() {
         title="Today in Taskrel"
         subtitle={`${activeWorkCount} ${activeWorkCount === 1 ? "thing needs" : "things need"} attention across jobs, quotes, and payments.`}
         action={(
-          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff] md:inline-flex">
+          <Link href="/quotes/new" className="hidden h-11 items-center gap-2 rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205] hover:bg-[var(--tr-amber)] md:inline-flex">
             <Plus size={18} weight="bold" />
             New quote
           </Link>
         )}
       />
+
+      <LaunchReadinessChecklist readiness={launchReadiness} />
 
       <section className="grid gap-3 lg:grid-cols-3" aria-label="Dashboard command center">
         <CommandLane lane={commandCenter.today} icon={<Wrench size={22} weight="duotone" />} href="/jobs" />
@@ -115,7 +138,7 @@ function CommandLane({
     <Surface className="flex min-h-[23rem] flex-col p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[var(--tr-blue)]">
+          <div className="flex items-center gap-2 text-[var(--tr-orange)]">
             {icon}
             <h2 className="text-base font-bold text-white">{lane.title}</h2>
           </div>
@@ -140,7 +163,7 @@ function CommandLane({
             </div>
             <div className="mt-3 flex items-center justify-between gap-3">
               <span className="truncate text-xs text-[var(--tr-text-faint)]">{item.meta}</span>
-              <span className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">{item.actionLabel}</span>
+              <span className="shrink-0 text-sm font-semibold text-[var(--tr-orange)]">{item.actionLabel}</span>
             </div>
           </Link>
         )) : (
@@ -164,14 +187,14 @@ function Metric({
   icon,
   label,
   value,
-  tone = "blue",
+  tone = "orange",
 }: {
   icon: ReactNode;
   label: string;
   value: string;
-  tone?: "blue" | "green" | "amber";
+  tone?: "orange" | "green" | "amber";
 }) {
-  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-blue)]";
+  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-orange)]";
   return (
     <Surface className="p-4">
       <div className={`mb-3 ${toneClass}`}>{icon}</div>

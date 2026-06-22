@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
+import { buildPremiumAccessCodes, premiumAccessCodeConfigError } from "@/lib/billing-access";
 import { getConfiguredEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 function configuredCodes() {
-  return new Set(
-    (getConfiguredEnv("TASKREL_PREMIUM_ACCESS_CODES") ?? "")
-      .split(/[\s,;]+/)
-      .map(code => code.trim().toLowerCase())
-      .filter(Boolean)
-  );
+  return buildPremiumAccessCodes(getConfiguredEnv("TASKREL_PREMIUM_ACCESS_CODES"));
 }
 
 export async function POST(request: Request) {
   const codes = configuredCodes();
   if (codes.size === 0) {
     return NextResponse.json(
-      { error: "Closed-test access codes are not configured." },
+      { error: premiumAccessCodeConfigError },
       { status: 503 }
     );
   }
