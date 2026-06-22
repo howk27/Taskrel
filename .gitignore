@@ -51,3 +51,6 @@ next-env.d.ts
 
 # local Codex worktrees
 /.worktrees/
+
+# local pnpm package store
+/.pnpm-store/
