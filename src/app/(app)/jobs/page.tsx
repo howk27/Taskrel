@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -8,17 +7,10 @@ import { CalendarBlank, CheckCircle, MapPin, Wrench } from "@/components/ui/icon
 import { formatDate, formatTime } from "@/lib/format";
 import { ChartCard, ValueBarChart } from "@/components/charts/taskrel-charts";
 import { buildTaskrelInsights } from "@/lib/insights";
+import { getCurrentWorkspace } from "@/lib/auth/workspace";
 
 export default async function JobsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: contractor } = await supabase
-    .from("contractors")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { supabase, contractor } = await getCurrentWorkspace();
 
   if (!contractor) redirect("/onboarding");
 
@@ -63,16 +55,16 @@ export default async function JobsPage() {
       <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <Surface className="p-5">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Active work</h2>
-            <Link href="/calendar" className="text-sm font-semibold text-[var(--tr-blue)]">Calendar view</Link>
+            <h2 className="text-lg font-bold text-[var(--tr-text)]">Active work</h2>
+            <Link href="/calendar" className="text-sm font-semibold text-[var(--tr-primary)]">Calendar view</Link>
           </div>
           {activeJobs.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="divide-y divide-[var(--tr-border-soft)]">
               {activeJobs.map(job => (
-                <article key={job.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <article key={job.id} className="py-4 first:pt-0 last:pb-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-base font-bold text-white">{job.title}</p>
+                      <p className="truncate text-base font-bold text-[var(--tr-text)]">{job.title}</p>
                       <p className="mt-1 flex items-center gap-2 text-sm text-[var(--tr-text-muted)]">
                         <CalendarBlank size={16} />
                         {formatDate(job.scheduled_start)} at {formatTime(job.scheduled_start)}
@@ -92,7 +84,7 @@ export default async function JobsPage() {
           ) : (
             <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
               <Wrench size={34} className="mx-auto text-[var(--tr-text-faint)]" />
-              <p className="mt-3 text-sm font-semibold text-white">No active jobs yet</p>
+              <p className="mt-3 text-sm font-semibold text-[var(--tr-text)]">No active jobs yet</p>
               <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approved quotes with scheduled dates will become jobs.</p>
             </div>
           )}
@@ -102,14 +94,14 @@ export default async function JobsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--tr-green)]">Next job</p>
           {nextJob ? (
             <div className="mt-3">
-              <h2 className="text-2xl font-black text-white">{nextJob.title}</h2>
+              <h2 className="text-2xl font-black text-[var(--tr-text)]">{nextJob.title}</h2>
               <p className="mt-2 text-sm text-[var(--tr-text-muted)]">
                 {formatDate(nextJob.scheduled_start)} at {formatTime(nextJob.scheduled_start)}
               </p>
-              <div className="mt-5 space-y-3">
+              <div className="mt-5 divide-y divide-[var(--tr-border-soft)]">
                 {["Confirm client", "Review materials", "Capture completion notes"].map(item => (
-                  <div key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm text-white">
-                    <CheckCircle size={18} className="text-[var(--tr-green)]" />
+                  <div key={item} className="flex items-center gap-3 py-3 text-sm text-[var(--tr-text)] first:pt-0 last:pb-0">
+                    <CheckCircle size={18} className="shrink-0 text-[var(--tr-green)]" />
                     {item}
                   </div>
                 ))}

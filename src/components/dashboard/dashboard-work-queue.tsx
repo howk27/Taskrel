@@ -6,7 +6,6 @@ import Link from "next/link";
 import type { QuoteLineItem, QuoteStatus } from "@/types";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { CalendarBlank, EnvelopeSimple, FileText, MapPin } from "@/components/ui/icons";
-import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export type DashboardQuote = {
@@ -56,77 +55,77 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
 
   if (activeQuotes.length === 0) {
     return (
-      <Surface className="p-8 text-center">
+      <div className="rounded-lg border border-dashed border-[var(--tr-border)] p-8 text-center">
         <FileText size={32} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-        <p className="font-semibold text-white">No active quotes</p>
+        <p className="font-semibold text-[var(--tr-text)]">No active quotes</p>
         <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Draft, sent, and approved quotes will appear here.</p>
-      </Surface>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-[var(--tr-border-soft)]">
       {activeQuotes.map(quote => {
         const expanded = expandedId === quote.id;
         const topItems = quote.line_items.slice(0, 3);
         const hiddenItemCount = Math.max(quote.line_items.length - topItems.length, 0);
 
         return (
-          <Surface key={quote.id} className={`overflow-hidden ${expanded ? "border-[var(--tr-blue)]/50" : ""}`}>
+          <div key={quote.id} className="py-3 first:pt-0 last:pb-0">
             <button
               type="button"
               onClick={() => setExpandedId(expanded ? null : quote.id)}
-              className="flex w-full items-start justify-between gap-4 p-4 text-left transition-colors hover:bg-white/[0.03]"
+              className="flex w-full items-start justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--tr-surface-2)]"
               aria-expanded={expanded}
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-blue)]" />
-                  <p className="truncate text-sm font-bold text-white">{quote.client_name}</p>
+                  <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-primary)]" />
+                  <p className="truncate text-sm font-bold text-[var(--tr-text)]">{quote.client_name}</p>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--tr-text-muted)]">
                   <span>{deliveryMethod(quote.sent_via)}</span>
                   <span aria-hidden="true">/</span>
                   <span>{quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"}</span>
                   <span aria-hidden="true">/</span>
-                  <span className="font-semibold text-[var(--tr-blue)]">{nextAction(quote.status)}</span>
+                  <span className="font-semibold text-[var(--tr-primary)]">{nextAction(quote.status)}</span>
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-base font-black text-white">{formatCurrency(quote.total)}</p>
+                <p className="text-base font-black text-[var(--tr-text)]">{formatCurrency(quote.total)}</p>
                 <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
               </div>
             </button>
 
             {expanded && (
-              <div className="border-t border-white/10 px-4 pb-4 pt-3">
+              <div className="px-2 pb-2 pt-3">
                 {quote.client_address && (
                   <p className="mb-3 flex items-start gap-2 text-sm text-[var(--tr-text-muted)]">
-                    <MapPin size={16} weight="duotone" className="mt-0.5 shrink-0 text-slate-500" />
+                    <MapPin size={16} weight="duotone" className="mt-0.5 shrink-0 text-[var(--tr-text-faint)]" />
                     <span>{quote.client_address}</span>
                   </p>
                 )}
 
-                <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/30">
-                  <div className="divide-y divide-white/10">
+                <div className="overflow-hidden rounded-lg border border-[var(--tr-border-soft)]">
+                  <div className="divide-y divide-[var(--tr-border-soft)]">
                     {topItems.map((item, index) => (
                       <div key={`${item.description}-${index}`} className="flex items-start justify-between gap-3 px-3 py-2.5">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-white">{item.description}</p>
+                          <p className="text-sm font-medium text-[var(--tr-text)]">{item.description}</p>
                           <p className="text-xs text-[var(--tr-text-faint)]">
                             {item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}
                           </p>
                         </div>
-                        <p className="shrink-0 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                        <p className="shrink-0 text-sm font-semibold text-[var(--tr-text)]">{formatCurrency(item.total)}</p>
                       </div>
                     ))}
                   </div>
                   {hiddenItemCount > 0 && (
-                    <p className="border-t border-white/10 px-3 py-2 text-xs text-[var(--tr-text-muted)]">
+                    <p className="border-t border-[var(--tr-border-soft)] px-3 py-2 text-xs text-[var(--tr-text-muted)]">
                       {hiddenItemCount} more {hiddenItemCount === 1 ? "item" : "items"} in full quote
                     </p>
                   )}
-                  <div className="space-y-1 border-t border-white/10 px-3 py-3">
+                  <div className="space-y-1 border-t border-[var(--tr-border-soft)] px-3 py-3">
                     <div className="flex justify-between text-sm text-[var(--tr-text-muted)]">
                       <span>Subtotal</span>
                       <span>{formatCurrency(quote.subtotal)}</span>
@@ -143,7 +142,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                 </div>
 
                 {quote.notes && (
-                  <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="mt-3 border-t border-[var(--tr-border-soft)] pt-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Client note</p>
                     <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{quote.notes}</p>
                   </div>
@@ -157,13 +156,13 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
 
                 <Link
                   href={`/quotes/${quote.id}`}
-                  className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff] sm:w-auto"
+                  className="tr-primary-action mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg px-4 text-sm font-bold sm:w-auto"
                 >
                   Open quote
                 </Link>
               </div>
             )}
-          </Surface>
+          </div>
         );
       })}
     </div>
@@ -182,11 +181,11 @@ function QueueMeta({
   strong?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 gap-2 rounded-lg bg-slate-950/30 p-2">
-      <span className="mt-0.5 shrink-0 text-slate-500">{icon}</span>
+    <div className="flex min-w-0 gap-2 rounded-lg bg-[var(--tr-bg-soft)] p-2">
+      <span className="mt-0.5 shrink-0 text-[var(--tr-text-faint)]">{icon}</span>
       <span className="min-w-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-        <span className={`block truncate text-xs ${strong ? "font-semibold text-[var(--tr-blue)]" : "text-slate-300"}`}>{value}</span>
+        <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--tr-text-faint)]">{label}</span>
+        <span className={`block truncate text-xs ${strong ? "font-semibold text-[var(--tr-primary)]" : "text-[var(--tr-text-muted)]"}`}>{value}</span>
       </span>
     </div>
   );

@@ -313,7 +313,7 @@ export default function NewQuotePage() {
                         </span>
                         <span className="shrink-0 text-right">
                           <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
-                          <span className="mt-2 inline-flex rounded-full bg-[var(--tr-blue)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-blue)]">
+                          <span className="mt-2 inline-flex rounded-full bg-[var(--tr-badge-info-bg)] px-2 py-1 text-[11px] font-bold text-[var(--tr-badge-info-text)] ring-1 ring-[var(--tr-badge-info-ring)]">
                             {expandedLineItemIndex === i ? "Done" : "Edit"}
                           </span>
                         </span>
@@ -486,7 +486,7 @@ export default function NewQuotePage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Suggested add-ons</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {quote.suggested_addons.map(addon => (
-                      <span key={addon.label} className="inline-flex items-center gap-1 rounded-full border border-[var(--tr-violet)]/30 bg-[var(--tr-violet)]/10 px-3 py-1.5 text-xs font-semibold text-violet-100">
+                      <span key={addon.label} className="inline-flex items-center gap-1 rounded-full bg-[var(--tr-badge-info-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--tr-badge-info-text)] ring-1 ring-[var(--tr-badge-info-ring)]">
                         <Plus size={13} />
                         {addon.label} (${addon.price})
                       </span>

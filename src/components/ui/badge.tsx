@@ -1,11 +1,11 @@
 type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
 
 const variants: Record<BadgeVariant, string> = {
-  default:  "bg-slate-700/70 text-slate-200 ring-1 ring-white/10",
-  success:  "bg-emerald-400/12 text-emerald-200 ring-1 ring-emerald-300/25",
-  warning:  "bg-amber-400/14 text-amber-200 ring-1 ring-amber-300/25",
-  error:    "bg-red-400/12 text-red-200 ring-1 ring-red-300/25",
-  info:     "bg-sky-400/12 text-sky-200 ring-1 ring-sky-300/25",
+  default: "bg-[var(--tr-badge-default-bg)] text-[var(--tr-badge-default-text)] ring-1 ring-[var(--tr-badge-default-ring)]",
+  success: "bg-[var(--tr-badge-success-bg)] text-[var(--tr-badge-success-text)] ring-1 ring-[var(--tr-badge-success-ring)]",
+  warning: "bg-[var(--tr-badge-warning-bg)] text-[var(--tr-badge-warning-text)] ring-1 ring-[var(--tr-badge-warning-ring)]",
+  error: "bg-[var(--tr-badge-error-bg)] text-[var(--tr-badge-error-text)] ring-1 ring-[var(--tr-badge-error-ring)]",
+  info: "bg-[var(--tr-badge-info-bg)] text-[var(--tr-badge-info-text)] ring-1 ring-[var(--tr-badge-info-ring)]",
 };
 
 export function Badge({

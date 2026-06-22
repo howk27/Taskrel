@@ -4,18 +4,12 @@ import { EnvelopeSimple, MapPin, Plus, UserList } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatDate } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentWorkspace } from "@/lib/auth/workspace";
 
 export default async function ClientsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, contractor } = await getCurrentWorkspace();
 
-  const { data: contractor } = await supabase
-    .from("contractors")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  if (!contractor) redirect("/onboarding");
 
   const { data: clients } = await supabase
     .from("clients")
@@ -36,7 +30,7 @@ export default async function ClientsPage() {
         action={(
           <Link
             href="/quotes/new"
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f] hover:bg-[#a9c6ff]"
+            className="tr-primary-action inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold"
           >
             <Plus size={18} weight="bold" />
             New quote
@@ -55,11 +49,11 @@ export default async function ClientsPage() {
           {clientRows.map(client => (
             <Surface key={client.id} className="p-4">
               <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--tr-blue)]/15 text-[var(--tr-blue)]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--tr-primary-fill)] text-[var(--tr-primary)]">
                   <UserList size={22} weight="duotone" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{client.name}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--tr-text)]">{client.name}</p>
                   <p className="mt-1 text-xs text-[var(--tr-text-faint)]">Added {formatDate(client.created_at)}</p>
                 </div>
               </div>
@@ -84,9 +78,9 @@ export default async function ClientsPage() {
       ) : (
         <Surface className="p-10 text-center">
           <UserList size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-          <p className="font-semibold text-white">No clients yet</p>
+          <p className="font-semibold text-[var(--tr-text)]">No clients yet</p>
           <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Clients are added automatically when you send a quote.</p>
-          <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+          <Link href="/quotes/new" className="tr-primary-action mt-5 inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold">
             <Plus size={17} weight="bold" />
             Create a quote
           </Link>
@@ -100,7 +94,7 @@ function ClientMetric({ label, value }: { label: string; value: string }) {
   return (
     <Surface className="p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">{label}</p>
-      <p className="mt-2 text-2xl font-black text-white">{value}</p>
+      <p className="mt-2 text-2xl font-black text-[var(--tr-text)]">{value}</p>
     </Surface>
   );
 }

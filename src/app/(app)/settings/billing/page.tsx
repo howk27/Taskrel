@@ -63,30 +63,30 @@ export default function BillingPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
-      <h1 className="text-lg font-semibold text-white">Billing & Payments</h1>
+      <h1 className="text-lg font-semibold text-[var(--tr-text)]">Billing & Payments</h1>
 
       {subscribed && (
-        <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
+        <div className="rounded-lg bg-[var(--tr-success-bg)] p-4 text-sm font-medium text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-success-bg)]">
           Subscription activated. Welcome to Taskrel.
         </div>
       )}
 
       {connectSuccess && (
-        <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
+        <div className="rounded-lg bg-[var(--tr-success-bg)] p-4 text-sm font-medium text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-success-bg)]">
           Stripe Connect setup complete. You can now accept client payments.
         </div>
       )}
 
       {message && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+        <div className="rounded-lg bg-[var(--tr-warning-bg)] p-4 text-sm font-medium text-[var(--tr-amber)] shadow-[inset_0_0_0_1px_var(--tr-warning-bg)]">
           {message}
         </div>
       )}
 
-      <div className="space-y-3 rounded-xl bg-[#1E293B] p-5">
+      <div className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
         <div>
-          <h2 className="font-semibold text-white">Taskrel - $19/month</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="font-semibold text-[var(--tr-text)]">Taskrel - $19/month</h2>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
             Unlimited quotes, invoices, and jobs. Cancel anytime.
           </p>
         </div>
@@ -95,10 +95,10 @@ export default function BillingPage() {
         </Button>
       </div>
 
-      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-xl bg-[#1E293B] p-5">
+      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
         <div>
-          <h2 className="font-semibold text-white">Closed-test premium access</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="font-semibold text-[var(--tr-text)]">Closed-test premium access</h2>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
             Use a Taskrel access code to unlock premium while Stripe billing is being tested.
           </p>
         </div>
@@ -114,10 +114,10 @@ export default function BillingPage() {
         </Button>
       </form>
 
-      <div className="space-y-3 rounded-xl bg-[#1E293B] p-5">
+      <div className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
         <div>
-          <h2 className="font-semibold text-white">Accept Client Payments</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="font-semibold text-[var(--tr-text)]">Accept Client Payments</h2>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
             Connect your Stripe account to collect payments directly from your invoices. Money goes straight to you - Taskrel never touches it.
           </p>
         </div>

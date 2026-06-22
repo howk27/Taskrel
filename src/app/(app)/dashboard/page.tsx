@@ -9,18 +9,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { buildTaskrelInsights } from "@/lib/insights";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentWorkspace } from "@/lib/auth/workspace";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: contractor } = await supabase
-    .from("contractors")
-    .select("id, onboarding_complete")
-    .eq("user_id", user.id)
-    .single();
+  const { supabase, contractor } = await getCurrentWorkspace();
 
   if (!contractor?.onboarding_complete) redirect("/onboarding");
 
@@ -75,10 +67,10 @@ export default async function DashboardPage() {
         <Surface className="p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-white">Active quotes</h2>
+              <h2 className="text-lg font-bold text-[var(--tr-text)]">Active quotes</h2>
               <p className="text-sm text-[var(--tr-text-muted)]">Expand a quote to see what was sent and what to do next.</p>
             </div>
-            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View all</Link>
+            <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-primary)]">View all</Link>
           </div>
           <DashboardWorkQueue quotes={activeQuotes} />
         </Surface>
@@ -86,19 +78,19 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           <Surface className="p-5">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-white">Scheduled work</h2>
-              <Link href="/jobs" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View jobs</Link>
+              <h2 className="text-lg font-bold text-[var(--tr-text)]">Scheduled work</h2>
+              <Link href="/jobs" className="shrink-0 text-sm font-semibold text-[var(--tr-primary)]">View jobs</Link>
             </div>
             {upcomingJobs.length > 0 ? (
-              <div className="space-y-3">
+              <div className="divide-y divide-[var(--tr-border-soft)]">
                 {upcomingJobs.map(job => (
-                  <div key={job.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div key={job.id} className="py-3 first:pt-0 last:pb-0">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-semibold text-white">{job.title}</p>
+                        <p className="font-semibold text-[var(--tr-text)]">{job.title}</p>
                         <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{formatDate(job.scheduled_start)}</p>
                         {job.quote_id && (
-                          <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-blue)]">
+                          <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-primary)]">
                             Open quote
                           </Link>
                         )}
@@ -116,16 +108,16 @@ export default async function DashboardPage() {
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-bold text-white">Needs attention</h2>
-            <div className="mt-4 space-y-3">
+            <h2 className="text-lg font-bold text-[var(--tr-text)]">Needs attention</h2>
+            <div className="mt-4 divide-y divide-[var(--tr-border-soft)]">
               {insights.risks.length > 0 ? insights.risks.map(risk => (
-                <Link key={risk.id} href={risk.href ?? "#"} className="block rounded-xl border border-white/10 bg-white/[0.03] p-4 hover:bg-white/[0.06]">
-                  <p className="text-sm font-bold text-white">{risk.title}</p>
+                <Link key={risk.id} href={risk.href ?? "#"} className="block py-3 first:pt-0 last:pb-0">
+                  <p className="text-sm font-bold text-[var(--tr-text)]">{risk.title}</p>
                   <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{risk.body}</p>
-                  {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-blue)]">{risk.actionLabel}</p>}
+                  {risk.actionLabel && <p className="mt-3 text-sm font-semibold text-[var(--tr-primary)]">{risk.actionLabel}</p>}
                 </Link>
               )) : (
-                <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">
+                <p className="text-sm text-[var(--tr-text-muted)]">
                   No urgent risks found in quotes, invoices, jobs, or clients.
                 </p>
               )}
@@ -136,7 +128,7 @@ export default async function DashboardPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-white">Business snapshot</h2>
+          <h2 className="text-lg font-bold text-[var(--tr-text)]">Business snapshot</h2>
           <p className="text-sm text-[var(--tr-text-muted)]">Trends that help you understand the work queue.</p>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -166,11 +158,11 @@ function Metric({
   value: string;
   tone?: "blue" | "green" | "amber";
 }) {
-  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-blue)]";
+  const toneClass = tone === "green" ? "text-[var(--tr-green)]" : tone === "amber" ? "text-[var(--tr-amber)]" : "text-[var(--tr-primary)]";
   return (
     <Surface className="p-4">
       <div className={`mb-3 ${toneClass}`}>{icon}</div>
-      <p className="text-xl font-black tracking-tight text-white">{value}</p>
+      <p className="text-xl font-black tracking-tight text-[var(--tr-text)]">{value}</p>
       <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--tr-text-faint)]">{label}</p>
     </Surface>
   );

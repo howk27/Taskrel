@@ -1,20 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { QuotesWorkflow } from "@/components/quotes/quotes-workflow";
+import { getCurrentWorkspace } from "@/lib/auth/workspace";
 
 export default async function QuotesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const { data: contractor } = await supabase
-    .from("contractors")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { supabase, contractor } = await getCurrentWorkspace();
 
   if (!contractor) redirect("/onboarding");
 

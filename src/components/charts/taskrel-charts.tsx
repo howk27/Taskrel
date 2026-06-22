@@ -41,7 +41,7 @@ export function ChartCard({
   return (
     <Surface className="p-4">
       <div className="mb-4">
-        <h3 className="text-base font-bold text-white">{title}</h3>
+        <h3 className="text-base font-bold text-[var(--tr-text)]">{title}</h3>
         {subtitle && <p className="text-sm text-[var(--tr-text-muted)]">{subtitle}</p>}
       </div>
       <div className="h-56 min-w-0">{children}</div>

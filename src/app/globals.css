@@ -1,26 +1,174 @@
 @import "tailwindcss";
 
 :root {
-  --tr-bg: #0b1326;
-  --tr-bg-soft: #101827;
-  --tr-shell: #151922;
-  --tr-surface: #172235;
-  --tr-surface-2: #1e2b42;
-  --tr-surface-3: #26344f;
-  --tr-border: #2d3748;
-  --tr-border-soft: rgba(148, 163, 184, 0.22);
-  --tr-text: #f5f7fb;
-  --tr-text-muted: #b9c1d4;
-  --tr-text-faint: #7c879d;
-  --tr-blue: #8fb3ff;
-  --tr-blue-strong: #4f8cff;
-  --tr-green: #66d19e;
-  --tr-amber: #f5b86b;
-  --tr-orange: #f28c52;
-  --tr-violet: #a78bfa;
-  --tr-red: #f87171;
+  --tr-bg: oklch(0.145 0.006 245);
+  --tr-bg-soft: oklch(0.18 0.008 245);
+  --tr-shell: oklch(0.16 0.007 245);
+  --tr-surface: oklch(0.215 0.01 245);
+  --tr-surface-2: oklch(0.265 0.012 245);
+  --tr-surface-3: oklch(0.32 0.014 245);
+  --tr-border: color-mix(in srgb, var(--tr-text) 14%, transparent);
+  --tr-border-soft: color-mix(in srgb, var(--tr-text) 8%, transparent);
+  --tr-text: oklch(0.965 0.006 245);
+  --tr-text-muted: oklch(0.755 0.018 245);
+  --tr-text-faint: oklch(0.58 0.018 245);
+  --tr-primary: oklch(0.72 0.09 263);
+  --tr-primary-hover: oklch(0.78 0.095 263);
+  --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 48%, var(--tr-border));
+  --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 10%, var(--tr-surface));
+  --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 16%, var(--tr-surface-2));
+  --tr-blue: var(--tr-primary);
+  --tr-blue-strong: var(--tr-primary-hover);
+  --tr-green: oklch(0.73 0.13 150);
+  --tr-amber: oklch(0.76 0.135 82);
+  --tr-orange: var(--tr-primary);
+  --tr-violet: oklch(0.72 0.11 300);
+  --tr-red: oklch(0.68 0.17 28);
+  --tr-success-bg: color-mix(in srgb, var(--tr-green) 16%, transparent);
+  --tr-warning-bg: color-mix(in srgb, var(--tr-amber) 16%, transparent);
+  --tr-error-bg: color-mix(in srgb, var(--tr-red) 16%, transparent);
+  --tr-badge-default-bg: color-mix(in srgb, var(--tr-text) 10%, transparent);
+  --tr-badge-default-text: var(--tr-text-muted);
+  --tr-badge-default-ring: color-mix(in srgb, var(--tr-text) 16%, transparent);
+  --tr-badge-success-bg: color-mix(in srgb, var(--tr-green) 16%, transparent);
+  --tr-badge-success-text: var(--tr-green);
+  --tr-badge-success-ring: color-mix(in srgb, var(--tr-green) 30%, transparent);
+  --tr-badge-warning-bg: color-mix(in srgb, var(--tr-amber) 18%, transparent);
+  --tr-badge-warning-text: var(--tr-amber);
+  --tr-badge-warning-ring: color-mix(in srgb, var(--tr-amber) 32%, transparent);
+  --tr-badge-error-bg: color-mix(in srgb, var(--tr-red) 16%, transparent);
+  --tr-badge-error-text: var(--tr-red);
+  --tr-badge-error-ring: color-mix(in srgb, var(--tr-red) 30%, transparent);
+  --tr-badge-info-bg: color-mix(in srgb, var(--tr-primary) 16%, transparent);
+  --tr-badge-info-text: var(--tr-primary);
+  --tr-badge-info-ring: color-mix(in srgb, var(--tr-primary) 30%, transparent);
   --background: var(--tr-bg);
   --foreground: var(--tr-text);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --tr-bg: oklch(0.97 0.004 245);
+    --tr-bg-soft: oklch(0.935 0.006 245);
+    --tr-shell: oklch(0.995 0.002 245);
+    --tr-surface: oklch(0.995 0.002 245);
+    --tr-surface-2: oklch(0.955 0.006 245);
+    --tr-surface-3: oklch(0.91 0.009 245);
+    --tr-border: color-mix(in srgb, var(--tr-text) 16%, transparent);
+    --tr-border-soft: color-mix(in srgb, var(--tr-text) 10%, transparent);
+    --tr-text: oklch(0.19 0.018 245);
+    --tr-text-muted: oklch(0.43 0.022 245);
+    --tr-text-faint: oklch(0.56 0.02 245);
+    --tr-primary: oklch(0.44 0.12 263);
+    --tr-primary-hover: oklch(0.37 0.125 263);
+    --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 42%, var(--tr-border));
+    --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 7%, var(--tr-surface));
+    --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 11%, var(--tr-surface-2));
+    --tr-green: oklch(0.47 0.11 150);
+    --tr-amber: oklch(0.55 0.13 78);
+    --tr-violet: oklch(0.48 0.11 300);
+    --tr-red: oklch(0.49 0.17 28);
+    --tr-success-bg: color-mix(in srgb, var(--tr-green) 12%, transparent);
+    --tr-warning-bg: color-mix(in srgb, var(--tr-amber) 13%, transparent);
+    --tr-error-bg: color-mix(in srgb, var(--tr-red) 12%, transparent);
+    --tr-badge-default-bg: oklch(0.92 0.008 245);
+    --tr-badge-default-text: oklch(0.28 0.018 245);
+    --tr-badge-default-ring: oklch(0.78 0.014 245);
+    --tr-badge-success-bg: oklch(0.91 0.035 150);
+    --tr-badge-success-text: oklch(0.34 0.105 150);
+    --tr-badge-success-ring: oklch(0.75 0.08 150);
+    --tr-badge-warning-bg: oklch(0.92 0.05 78);
+    --tr-badge-warning-text: oklch(0.36 0.105 78);
+    --tr-badge-warning-ring: oklch(0.75 0.1 78);
+    --tr-badge-error-bg: oklch(0.93 0.04 28);
+    --tr-badge-error-text: oklch(0.36 0.15 28);
+    --tr-badge-error-ring: oklch(0.77 0.12 28);
+    --tr-badge-info-bg: oklch(0.91 0.035 263);
+    --tr-badge-info-text: oklch(0.32 0.12 263);
+    --tr-badge-info-ring: oklch(0.73 0.09 263);
+  }
+}
+
+[data-theme="dark"] {
+  --tr-bg: oklch(0.145 0.006 245);
+  --tr-bg-soft: oklch(0.18 0.008 245);
+  --tr-shell: oklch(0.16 0.007 245);
+  --tr-surface: oklch(0.215 0.01 245);
+  --tr-surface-2: oklch(0.265 0.012 245);
+  --tr-surface-3: oklch(0.32 0.014 245);
+  --tr-border: color-mix(in srgb, var(--tr-text) 14%, transparent);
+  --tr-border-soft: color-mix(in srgb, var(--tr-text) 8%, transparent);
+  --tr-text: oklch(0.965 0.006 245);
+  --tr-text-muted: oklch(0.755 0.018 245);
+  --tr-text-faint: oklch(0.58 0.018 245);
+  --tr-primary: oklch(0.72 0.09 263);
+  --tr-primary-hover: oklch(0.78 0.095 263);
+  --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 48%, var(--tr-border));
+  --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 10%, var(--tr-surface));
+  --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 16%, var(--tr-surface-2));
+  --tr-green: oklch(0.73 0.13 150);
+  --tr-amber: oklch(0.76 0.135 82);
+  --tr-violet: oklch(0.72 0.11 300);
+  --tr-red: oklch(0.68 0.17 28);
+  --tr-success-bg: color-mix(in srgb, var(--tr-green) 16%, transparent);
+  --tr-warning-bg: color-mix(in srgb, var(--tr-amber) 16%, transparent);
+  --tr-error-bg: color-mix(in srgb, var(--tr-red) 16%, transparent);
+  --tr-badge-default-bg: color-mix(in srgb, var(--tr-text) 10%, transparent);
+  --tr-badge-default-text: var(--tr-text-muted);
+  --tr-badge-default-ring: color-mix(in srgb, var(--tr-text) 16%, transparent);
+  --tr-badge-success-bg: color-mix(in srgb, var(--tr-green) 16%, transparent);
+  --tr-badge-success-text: var(--tr-green);
+  --tr-badge-success-ring: color-mix(in srgb, var(--tr-green) 30%, transparent);
+  --tr-badge-warning-bg: color-mix(in srgb, var(--tr-amber) 18%, transparent);
+  --tr-badge-warning-text: var(--tr-amber);
+  --tr-badge-warning-ring: color-mix(in srgb, var(--tr-amber) 32%, transparent);
+  --tr-badge-error-bg: color-mix(in srgb, var(--tr-red) 16%, transparent);
+  --tr-badge-error-text: var(--tr-red);
+  --tr-badge-error-ring: color-mix(in srgb, var(--tr-red) 30%, transparent);
+  --tr-badge-info-bg: color-mix(in srgb, var(--tr-primary) 16%, transparent);
+  --tr-badge-info-text: var(--tr-primary);
+  --tr-badge-info-ring: color-mix(in srgb, var(--tr-primary) 30%, transparent);
+}
+
+[data-theme="light"] {
+  --tr-bg: oklch(0.97 0.004 245);
+  --tr-bg-soft: oklch(0.935 0.006 245);
+  --tr-shell: oklch(0.995 0.002 245);
+  --tr-surface: oklch(0.995 0.002 245);
+  --tr-surface-2: oklch(0.955 0.006 245);
+  --tr-surface-3: oklch(0.91 0.009 245);
+  --tr-border: color-mix(in srgb, var(--tr-text) 16%, transparent);
+  --tr-border-soft: color-mix(in srgb, var(--tr-text) 10%, transparent);
+  --tr-text: oklch(0.19 0.018 245);
+  --tr-text-muted: oklch(0.43 0.022 245);
+  --tr-text-faint: oklch(0.56 0.02 245);
+  --tr-primary: oklch(0.44 0.12 263);
+  --tr-primary-hover: oklch(0.37 0.125 263);
+  --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 42%, var(--tr-border));
+  --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 7%, var(--tr-surface));
+  --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 11%, var(--tr-surface-2));
+  --tr-green: oklch(0.47 0.11 150);
+  --tr-amber: oklch(0.55 0.13 78);
+  --tr-violet: oklch(0.48 0.11 300);
+  --tr-red: oklch(0.49 0.17 28);
+  --tr-success-bg: color-mix(in srgb, var(--tr-green) 12%, transparent);
+  --tr-warning-bg: color-mix(in srgb, var(--tr-amber) 13%, transparent);
+  --tr-error-bg: color-mix(in srgb, var(--tr-red) 12%, transparent);
+  --tr-badge-default-bg: oklch(0.92 0.008 245);
+  --tr-badge-default-text: oklch(0.28 0.018 245);
+  --tr-badge-default-ring: oklch(0.78 0.014 245);
+  --tr-badge-success-bg: oklch(0.91 0.035 150);
+  --tr-badge-success-text: oklch(0.34 0.105 150);
+  --tr-badge-success-ring: oklch(0.75 0.08 150);
+  --tr-badge-warning-bg: oklch(0.92 0.05 78);
+  --tr-badge-warning-text: oklch(0.36 0.105 78);
+  --tr-badge-warning-ring: oklch(0.75 0.1 78);
+  --tr-badge-error-bg: oklch(0.93 0.04 28);
+  --tr-badge-error-text: oklch(0.36 0.15 28);
+  --tr-badge-error-ring: oklch(0.77 0.12 28);
+  --tr-badge-info-bg: oklch(0.91 0.035 263);
+  --tr-badge-info-text: oklch(0.32 0.12 263);
+  --tr-badge-info-ring: oklch(0.73 0.09 263);
 }
 
 @theme inline {
@@ -42,9 +190,7 @@ html {
 
 body {
   min-height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(79, 140, 255, 0.14), transparent 34rem),
-    linear-gradient(135deg, var(--tr-bg) 0%, #101827 58%, #11151f 100%);
+  background: var(--tr-bg);
   color: var(--tr-text);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -66,8 +212,8 @@ a,
 }
 
 ::selection {
-  background: rgba(143, 179, 255, 0.32);
-  color: white;
+  background: color-mix(in srgb, var(--tr-primary) 38%, transparent);
+  color: var(--tr-text);
 }
 
 ::-webkit-scrollbar {
@@ -95,19 +241,50 @@ a,
 }
 
 .tr-card {
-  border: 1px solid var(--tr-border-soft);
-  background: linear-gradient(180deg, rgba(30, 43, 66, 0.96), rgba(23, 34, 53, 0.96));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.18);
+  background: var(--tr-surface);
+  box-shadow: inset 0 0 0 1px var(--tr-border-soft);
+}
+
+.tr-primary-action {
+  background: var(--tr-primary-fill);
+  border: 1px solid var(--tr-primary-edge);
+  color: var(--tr-primary);
+  transition-property: background, color, transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tr-primary-action:hover {
+  background: var(--tr-primary-fill-hover);
+  color: var(--tr-primary-hover);
+}
+
+.tr-primary-action:active {
+  transform: scale(0.96);
+}
+
+.tr-primary-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tr-primary) 78%, transparent);
+  outline-offset: 2px;
 }
 
 .tr-input {
   border: 1px solid var(--tr-border);
-  background: rgba(11, 19, 38, 0.82);
+  background: var(--tr-bg-soft);
   color: var(--tr-text);
+}
+
+.tr-input::placeholder {
+  color: var(--tr-text-faint);
+  opacity: 1;
 }
 
 .tr-input:focus {
   border-color: transparent;
-  outline: 2px solid rgba(143, 179, 255, 0.75);
+  outline: 2px solid color-mix(in srgb, var(--tr-primary) 78%, transparent);
   outline-offset: 0;
+}
+
+[data-theme="light"] .text-white {
+  color: var(--tr-text);
 }

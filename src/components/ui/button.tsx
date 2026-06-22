@@ -12,15 +12,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
+  "inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none active:scale-[0.96]";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-[var(--tr-blue)] text-[#09204f] hover:bg-[#a9c6ff]",
+    "tr-primary-action",
   secondary:
-    "border border-[var(--tr-border)] bg-[var(--tr-surface-2)] text-white hover:bg-[var(--tr-surface-3)]",
+    "border border-[var(--tr-border)] bg-[var(--tr-surface-2)] text-[var(--tr-text)] hover:bg-[var(--tr-surface-3)]",
   ghost:
-    "bg-transparent text-slate-300 hover:text-white hover:bg-white/10",
+    "bg-transparent text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]",
   destructive:
     "bg-red-600 text-white hover:bg-red-700",
 };

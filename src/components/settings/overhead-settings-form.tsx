@@ -12,16 +12,16 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
   const [state, formAction, pending] = useActionState<SettingsActionState, FormData>(updateOverheadSettings, undefined);
 
   return (
-    <form action={formAction} className="space-y-4 rounded-lg border border-slate-700/70 bg-[#172235] p-4">
+    <form action={formAction} className="space-y-4 rounded-lg bg-[var(--tr-surface)] p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
       <div>
-        <p className="text-sm font-semibold text-white">Internal overhead costs</p>
-        <p className="mt-1 text-xs leading-5 text-slate-400">
+        <p className="text-sm font-semibold text-[var(--tr-text)]">Internal overhead costs</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--tr-text-muted)]">
           These costs stay internal. Taskrel uses them in quote pricing intelligence, but they do not appear on client-facing quotes.
         </p>
       </div>
 
       <label className="block">
-        <span className="text-sm font-medium text-slate-300">Default overhead percent</span>
+        <span className="text-sm font-medium text-[var(--tr-text-muted)]">Default overhead percent</span>
         <input
           name="overhead_percent"
           type="number"
@@ -29,19 +29,19 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
           max="100"
           step="0.001"
           defaultValue={Number(overheadPercent ?? 0)}
-          className="mt-1.5 w-full rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         />
       </label>
 
       <label className="block">
-        <span className="text-sm font-medium text-slate-300">Fixed overhead per job</span>
+        <span className="text-sm font-medium text-[var(--tr-text-muted)]">Fixed overhead per job</span>
         <input
           name="overhead_fixed_per_job"
           type="number"
           min="0"
           step="0.01"
           defaultValue={Number(overheadFixedPerJob ?? 0)}
-          className="mt-1.5 w-full rounded-lg border border-slate-700 bg-[#0F172A] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+          className="tr-input mt-1.5 w-full rounded-lg px-3 py-2.5 text-sm"
         />
       </label>
 
@@ -51,7 +51,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA6C0A] disabled:cursor-not-allowed disabled:opacity-60"
+        className="tr-primary-action w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Saving..." : "Save overhead settings"}
       </button>
