@@ -2,11 +2,66 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { QuoteTemplatePreset } from "@/types";
+import type { BusinessType, QuoteTemplatePreset, Trade } from "@/types";
 
 export type SettingsActionState = { error?: string; success?: string } | undefined;
 
 const presets: QuoteTemplatePreset[] = ["classic", "modern", "compact"];
+const businessTypes: BusinessType[] = [
+  "home_improvement",
+  "mechanical_services",
+  "outdoor_services",
+  "general_contracting",
+  "other",
+];
+const trades: Trade[] = ["painting", "roofing", "flooring", "landscaping", "hvac", "plumbing", "electrical"];
+
+export async function updateBusinessInformation(
+  _: SettingsActionState,
+  formData: FormData
+): Promise<SettingsActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Please log in again." };
+
+  const businessName = String(formData.get("business_name") ?? "").trim();
+  const businessType = String(formData.get("business_type") ?? "") as BusinessType;
+  const primaryTrade = String(formData.get("primary_trade") ?? "") as Trade;
+  const selectedTrades = formData.getAll("trades").map(String).filter(Boolean) as Trade[];
+
+  if (!businessName) return { error: "Add business name." };
+  if (!businessTypes.includes(businessType)) return { error: "Choose a business type." };
+  if (selectedTrades.length === 0 || selectedTrades.some((trade) => !trades.includes(trade))) {
+    return { error: "Choose at least one valid trade." };
+  }
+  if (!primaryTrade || !selectedTrades.includes(primaryTrade)) {
+    return { error: "Choose a primary trade." };
+  }
+
+  const { error } = await supabase
+    .from("contractors")
+    .update({
+      business_name: businessName,
+      business_type: businessType,
+      trade: primaryTrade,
+      primary_trade: primaryTrade,
+      trades: selectedTrades,
+      business_phone: String(formData.get("business_phone") ?? "").trim() || null,
+      business_website: String(formData.get("business_website") ?? "").trim() || null,
+      license_text: String(formData.get("license_text") ?? "").trim() || null,
+    })
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/onboarding");
+  revalidatePath("/quotes");
+  return { success: "Business information saved." };
+}
 
 export async function updateQuoteSettings(
   _: SettingsActionState,

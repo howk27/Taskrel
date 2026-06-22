@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { buildTaskrelInsights } from "@/lib/insights";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
@@ -56,6 +57,8 @@ export default async function DashboardPage() {
     .filter(job => ["scheduled", "in_progress"].includes(job.status))
     .filter(job => new Date(job.scheduled_start) >= new Date())
     .slice(0, 4);
+  const quotesEmpty = emptyStateFor("quotes");
+  const jobsEmpty = emptyStateFor("jobs");
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
@@ -80,7 +83,23 @@ export default async function DashboardPage() {
             </div>
             <Link href="/quotes" className="shrink-0 text-sm font-semibold text-[var(--tr-blue)]">View all</Link>
           </div>
-          <DashboardWorkQueue quotes={activeQuotes} />
+          {activeQuotes.length > 0 ? (
+            <DashboardWorkQueue quotes={activeQuotes} />
+          ) : (
+            <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
+              <FileText size={34} weight="duotone" className="mx-auto mb-3 text-[var(--tr-text-faint)]" />
+              <p className="text-sm font-semibold text-white">{quotesEmpty.title}</p>
+              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{quotesEmpty.body}</p>
+              {quotesEmpty.href && quotesEmpty.actionLabel ? (
+                <Link
+                  href={quotesEmpty.href}
+                  className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+                >
+                  {quotesEmpty.actionLabel}
+                </Link>
+              ) : null}
+            </div>
+          )}
         </Surface>
 
         <div className="space-y-4">
@@ -109,9 +128,19 @@ export default async function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center text-sm text-[var(--tr-text-muted)]">
-                No scheduled jobs yet. Approved quotes with dates will show here.
-              </p>
+              <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
+                <CalendarBlank size={34} weight="duotone" className="mx-auto mb-3 text-[var(--tr-text-faint)]" />
+                <p className="text-sm font-semibold text-white">{jobsEmpty.title}</p>
+                <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{jobsEmpty.body}</p>
+                {jobsEmpty.href && jobsEmpty.actionLabel ? (
+                  <Link
+                    href={jobsEmpty.href}
+                    className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+                  >
+                    {jobsEmpty.actionLabel}
+                  </Link>
+                ) : null}
+              </div>
             )}
           </Surface>
 
@@ -126,7 +155,7 @@ export default async function DashboardPage() {
                 </Link>
               )) : (
                 <p className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tr-text-muted)]">
-                  No urgent risks found in quotes, invoices, jobs, or clients.
+                  No urgent risks found. Taskrel will flag missing contact, unpaid invoices, stale quotes, and upcoming work here.
                 </p>
               )}
             </div>

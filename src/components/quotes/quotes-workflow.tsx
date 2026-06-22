@@ -18,6 +18,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 import { ChartCard, PipelineDonut, ValueBarChart } from "@/components/charts/taskrel-charts";
 import {
   getQuoteWorkflowState,
@@ -72,6 +73,7 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
 
   const selectedQuote = filteredQuotes[0] ?? quotes[0];
   const selectedState = selectedQuote ? getQuoteWorkflowState(selectedQuote) : null;
+  const empty = filteredQuotes.length === 0 && search.trim() ? emptyStateFor("quote_results") : emptyStateFor("quotes");
   const pipelineData = useMemo(() => {
     return ["draft", "sent", "approved", "rejected", "expired"].map(status => ({
       label: status[0].toUpperCase() + status.slice(1),
@@ -214,17 +216,28 @@ export function QuotesWorkflow({ quotes }: { quotes: QuoteListItem[] }) {
       ) : (
         <Surface className="p-8 text-center">
           <FileText size={34} weight="duotone" className="mx-auto mb-3 text-[var(--tr-text-faint)]" />
-          <p className="text-base font-bold text-white">No quotes in {filterLabel(filter).toLowerCase()}</p>
+          <p className="text-base font-bold text-white">{empty.title}</p>
           <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[var(--tr-text-muted)]">
-            {emptyCopy(filter)}
+            {empty.body}
           </p>
-          <Link
-            href="/quotes/new"
-            className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
-          >
-            <Plus size={18} weight="bold" />
-            New quote
-          </Link>
+          {empty.href ? (
+            <Link
+              href={empty.href}
+              className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+            >
+              <Plus size={18} weight="bold" />
+              {empty.actionLabel}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]"
+            >
+              <Plus size={18} weight="bold" />
+              {empty.actionLabel}
+            </button>
+          )}
         </Surface>
       )}
 
@@ -326,15 +339,4 @@ function deliveryClass(tone: "ready" | "sent" | "missing") {
   if (tone === "sent") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
   if (tone === "ready") return "bg-[var(--tr-blue)]/12 text-[var(--tr-blue)]";
   return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
-}
-
-function filterLabel(filter: QuoteWorkflowBucket) {
-  return filters.find(item => item.key === filter)?.label ?? "this view";
-}
-
-function emptyCopy(filter: QuoteWorkflowBucket) {
-  if (filter === "needs_review") return "Draft quotes that need review before sending will appear here.";
-  if (filter === "waiting") return "Sent quotes waiting on a client response will appear here.";
-  if (filter === "approved") return "Approved quotes ready for invoicing will appear here.";
-  return "Rejected or expired quotes will appear here for recordkeeping.";
 }

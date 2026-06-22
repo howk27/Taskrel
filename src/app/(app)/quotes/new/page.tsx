@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, CheckCircle, EnvelopeSimple, Lightning, Plus, SealCheck } from "@/components/ui/icons";
+import { ReadinessList } from "@/components/ui/readiness";
 import { Surface } from "@/components/ui/surface";
 import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, QuoteAssistantMetadata, QuoteLineItem } from "@/types";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/format";
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
+import { getQuoteFormReadiness, todayDateInput } from "@/lib/readiness/setup-readiness";
 
 type Step = "form" | "generating" | "review";
 
@@ -37,15 +39,36 @@ export default function NewQuotePage() {
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientAddress, setClientAddress] = useState("");
+  const [quoteDate, setQuoteDate] = useState(todayDateInput());
+  const [scheduledStart, setScheduledStart] = useState("");
+  const [scheduledEnd, setScheduledEnd] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [expandedLineItemIndex, setExpandedLineItemIndex] = useState<number | null>(0);
 
   // Generated quote
   const [quote, setQuote] = useState<GeneratedQuote | null>(null);
+  const formReadiness = getQuoteFormReadiness({
+    client_name: clientName,
+    client_email: clientEmail,
+    client_phone: clientPhone,
+    job_description: jobDescription,
+    quote_date: quoteDate,
+    scheduled_start: scheduledStart || null,
+  });
+  const canGenerate = formReadiness.every(item => item.state !== "error")
+    && formReadiness.find(item => item.key === "client")?.state === "complete"
+    && formReadiness.find(item => item.key === "scope")?.state === "complete"
+    && formReadiness.find(item => item.key === "quote_date")?.state === "complete";
+  const generateLabel = !clientName.trim()
+    ? "Add client name"
+    : jobDescription.replace(/\s/g, "").length < 20
+      ? "Describe job"
+      : "Generate Quote";
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
+    if (!canGenerate) return;
     setError("");
     setStep("generating");
 
@@ -87,8 +110,9 @@ export default function NewQuotePage() {
           client_email: clientEmail || null,
           client_phone: clientPhone || null,
           client_address: clientAddress || null,
-          scheduled_start: null,
-          scheduled_end: null,
+          scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
+          scheduled_end: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
+          created_at: quoteDate ? new Date(`${quoteDate}T12:00:00`).toISOString() : undefined,
           ...quotePayload,
           status: "draft",
         }),
@@ -188,6 +212,18 @@ export default function NewQuotePage() {
             </Surface>
 
             <Surface className="p-5">
+              <h2 className="mb-4 text-lg font-bold text-white">Dates</h2>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Input label="Quote date" type="date" value={quoteDate} onChange={event => setQuoteDate(event.target.value)} required />
+                <Input label="Scheduled start" type="datetime-local" value={scheduledStart} onChange={event => setScheduledStart(event.target.value)} />
+                <Input label="Scheduled end" type="datetime-local" value={scheduledEnd} onChange={event => setScheduledEnd(event.target.value)} />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-[var(--tr-text-muted)]">
+                Quote date appears on the client quote. Scheduled dates are optional and create calendar context later.
+              </p>
+            </Surface>
+
+            <Surface className="p-5">
               <h2 className="mb-4 text-lg font-bold text-white">Job notes</h2>
               <div className="space-y-3">
                 <textarea
@@ -223,10 +259,13 @@ export default function NewQuotePage() {
               <p>Write notes like you would text a crew lead. Taskrel will structure line items, assumptions, and review tips.</p>
               <p>No supplier price feeds are used. Suggestions come from the job notes and your trade context.</p>
             </div>
+            <div className="mt-4">
+              <ReadinessList items={formReadiness} />
+            </div>
             {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
-            <Button type="submit" className="mt-5 w-full" size="lg">
+            <Button type="submit" className="mt-5 w-full" size="lg" disabled={!canGenerate}>
               <Lightning size={19} weight="duotone" />
-              Generate Quote
+              {generateLabel}
             </Button>
           </Surface>
 
@@ -256,9 +295,9 @@ export default function NewQuotePage() {
       client_phone: clientPhone || null,
       total: quote.total,
       status: "draft",
-      created_at: new Date().toISOString(),
+      created_at: quoteDate ? new Date(`${quoteDate}T12:00:00`).toISOString() : new Date().toISOString(),
       updated_at: null,
-      scheduled_start: null,
+      scheduled_start: scheduledStart ? new Date(scheduledStart).toISOString() : null,
       sent_via: [],
       line_items: quote.line_items,
       notes: quote.notes,
@@ -286,6 +325,15 @@ export default function NewQuotePage() {
               <p className="text-sm text-slate-400">Client</p>
               <p className="font-medium text-white">{clientName}</p>
               {clientAddress && <p className="text-sm text-slate-400">{clientAddress}</p>}
+              <div className="mt-3 space-y-1 text-sm text-slate-400">
+                <p>Quote date: {formatQuoteDate(quoteDate)}</p>
+                <p>
+                  Scheduled work:{" "}
+                  {scheduledStart
+                    ? `${formatScheduledDateTime(scheduledStart)}${scheduledEnd ? ` to ${formatScheduledDateTime(scheduledEnd)}` : ""}`
+                    : "Not scheduled"}
+                </p>
+              </div>
             </Surface>
 
             <Surface className="overflow-hidden">
@@ -604,6 +652,25 @@ function SummaryRow({ label, value, strong }: { label: string; value: string; st
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function formatQuoteDate(value: string) {
+  if (!value) return "Not set";
+  const parsed = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(parsed);
+}
+
+function formatScheduledDateTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
 }
 
 function sourceLabel(source?: string) {

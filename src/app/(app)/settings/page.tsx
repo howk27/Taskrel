@@ -4,11 +4,16 @@ import { redirect } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { DownloadSimple, FileText, Gear, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
+import { ReadinessChip } from "@/components/ui/readiness";
 import { Surface } from "@/components/ui/surface";
+import { BusinessInformationForm } from "@/components/settings/business-information-form";
 import { OverheadSettingsForm } from "@/components/settings/overhead-settings-form";
 import { QuoteDocumentSettingsForm } from "@/components/settings/quote-document-settings-form";
 import { logout } from "@/lib/actions/auth";
+import { getMissingEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+
+import { getSettingsBillingReadiness } from "./billing-summary";
 
 function googleNotice(status?: string) {
   switch (status) {
@@ -38,8 +43,8 @@ export default async function SettingsPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const contractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, quote_template_preset, overhead_percent, overhead_fixed_per_job";
-  const fallbackContractorSelect = "business_name, trade, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset";
+  const contractorSelect = "business_name, business_type, trade, primary_trade, trades, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, quote_template_preset, overhead_percent, overhead_fixed_per_job";
+  const fallbackContractorSelect = "business_name, business_type, trade, primary_trade, trades, email, subscription_status, stripe_connect_account_id, google_sheets_sync_enabled, google_sheets_sheet_id, google_sheets_last_synced_at, google_sheets_status, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_template_preset";
   const { data: contractor, error: contractorError } = await supabase
     .from("contractors")
     .select(contractorSelect)
@@ -54,6 +59,14 @@ export default async function SettingsPage({
       .single()
     : { data: null };
   const settingsContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, quote_policy_text: null, overhead_percent: 0, overhead_fixed_per_job: 0 } : null);
+  const billingReadiness = getSettingsBillingReadiness({
+    subscription_status: settingsContractor?.subscription_status ?? null,
+    stripe_connect_account_id: settingsContractor?.stripe_connect_account_id ?? null,
+    billingConfigured: getMissingEnv(["STRIPE_SECRET_KEY", "STRIPE_PRICE_ID", "NEXT_PUBLIC_APP_URL"]).length === 0,
+    connectConfigured: getMissingEnv(["STRIPE_SECRET_KEY", "NEXT_PUBLIC_APP_URL"]).length === 0,
+  });
+  const subscriptionReadiness = billingReadiness.find(item => item.key === "subscription");
+  const paymentProcessingReadiness = billingReadiness.find(item => item.key === "payment_processing");
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
@@ -67,11 +80,25 @@ export default async function SettingsPage({
         <div className="space-y-6">
           <section>
             <SectionTitle icon={<Gear size={17} weight="duotone" />} label="Account" tone="text-[var(--tr-blue)]" />
-            <Surface className="divide-y divide-slate-700/50 overflow-hidden">
-              <SettingRow label="Business" value={settingsContractor?.business_name ?? "Taskrel business"} />
+            <Surface className="overflow-hidden">
               <SettingRow label="Email" value={settingsContractor?.email ?? user.email ?? ""} />
-              <SettingRow label="Trade" value={settingsContractor?.trade ?? "Not set"} capitalize />
             </Surface>
+            {settingsContractor && (
+              <div className="mt-4">
+                <BusinessInformationForm
+                  contractor={{
+                    business_name: settingsContractor.business_name,
+                    business_type: settingsContractor.business_type,
+                    trade: settingsContractor.trade,
+                    primary_trade: settingsContractor.primary_trade,
+                    trades: settingsContractor.trades ?? [],
+                    business_phone: settingsContractor.business_phone,
+                    business_website: settingsContractor.business_website,
+                    license_text: settingsContractor.license_text,
+                  }}
+                />
+              </div>
+            )}
             {settingsContractor && (
               <div className="mt-4">
                 <OverheadSettingsForm
@@ -110,14 +137,22 @@ export default async function SettingsPage({
                   <p className="text-sm text-white">Taskrel subscription</p>
                   <p className="text-xs text-slate-400">$19/month</p>
                 </div>
-                {settingsContractor?.subscription_status ? (
-                  <Badge variant={statusVariant(settingsContractor.subscription_status)}>
-                    {settingsContractor.subscription_status}
-                  </Badge>
+                {settingsContractor?.subscription_status && subscriptionReadiness ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant={statusVariant(settingsContractor.subscription_status)}>
+                      {settingsContractor.subscription_status}
+                    </Badge>
+                    <ReadinessChip state={subscriptionReadiness.state} />
+                  </div>
                 ) : (
-                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
-                    Subscribe
-                  </Link>
+                  subscriptionReadiness && (
+                    <div className="flex items-center gap-2">
+                      <Link href="/settings/billing" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-[var(--tr-blue)] hover:bg-white/5">
+                        Subscribe
+                      </Link>
+                      <ReadinessChip state={subscriptionReadiness.state} />
+                    </div>
+                  )
                 )}
               </div>
               <div className="flex items-center justify-between gap-4 px-4 py-3">
@@ -125,12 +160,20 @@ export default async function SettingsPage({
                   <p className="text-sm text-white">Payment processing</p>
                   <p className="text-xs text-slate-400">Stripe Connect - accept client payments</p>
                 </div>
-                {settingsContractor?.stripe_connect_account_id ? (
-                  <Badge variant="success">Connected</Badge>
+                {settingsContractor?.stripe_connect_account_id && paymentProcessingReadiness ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success">Connected</Badge>
+                    <ReadinessChip state={paymentProcessingReadiness.state} />
+                  </div>
                 ) : (
-                  <Link href="/settings/billing" className="text-sm font-medium text-[var(--tr-blue)]">
-                    Set up
-                  </Link>
+                  paymentProcessingReadiness && (
+                    <div className="flex items-center gap-2">
+                      <Link href="/settings/billing" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-[var(--tr-blue)] hover:bg-white/5">
+                        Set up
+                      </Link>
+                      <ReadinessChip state={paymentProcessingReadiness.state} />
+                    </div>
+                  )
                 )}
               </div>
             </Surface>

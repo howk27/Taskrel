@@ -6,6 +6,7 @@ import { CalendarBlank, FileText, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function InvoicesPage() {
@@ -32,6 +33,7 @@ export default async function InvoicesPage() {
   }, 0);
   const paid = invoiceRows.reduce((sum, invoice) => sum + Number(invoice.amount_paid ?? 0), 0);
   const overdueCount = invoiceRows.filter(invoice => invoice.status === "overdue").length;
+  const empty = emptyStateFor("invoices");
   const statusData = ["draft", "sent", "paid", "overdue"].map(status => ({
     label: status[0].toUpperCase() + status.slice(1),
     value: invoiceRows.filter(invoice => invoice.status === status).length,
@@ -106,10 +108,10 @@ export default async function InvoicesPage() {
       ) : (
         <Surface className="p-10 text-center">
           <Receipt size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-          <p className="font-semibold text-white">No invoices yet</p>
-          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approve a quote to convert it into an invoice.</p>
-          <Link href="/quotes" className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
-            View quotes
+          <p className="font-semibold text-white">{empty.title}</p>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
+          <Link href={empty.href ?? "/quotes"} className="mt-5 inline-flex h-10 items-center rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
+            {empty.actionLabel}
           </Link>
         </Surface>
       )}

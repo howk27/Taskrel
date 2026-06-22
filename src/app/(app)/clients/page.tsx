@@ -4,6 +4,7 @@ import { EnvelopeSimple, MapPin, Plus, UserList } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatDate } from "@/lib/format";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ClientsPage() {
@@ -26,6 +27,7 @@ export default async function ClientsPage() {
   const clientRows = clients ?? [];
   const completeContacts = clientRows.filter(client => client.email || client.phone).length;
   const withAddresses = clientRows.filter(client => client.address).length;
+  const empty = emptyStateFor("clients");
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
@@ -84,11 +86,11 @@ export default async function ClientsPage() {
       ) : (
         <Surface className="p-10 text-center">
           <UserList size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-          <p className="font-semibold text-white">No clients yet</p>
-          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Clients are added automatically when you send a quote.</p>
+          <p className="font-semibold text-white">{empty.title}</p>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
           <Link href="/quotes/new" className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--tr-blue)] px-4 text-sm font-bold text-[#09204f]">
             <Plus size={17} weight="bold" />
-            Create a quote
+            {empty.actionLabel}
           </Link>
         </Surface>
       )}
