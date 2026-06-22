@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getCurrentWorkspace } from "@/lib/auth/workspace";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 
 export default async function InvoicesPage() {
   const { supabase, contractor } = await getCurrentWorkspace();
@@ -26,6 +27,7 @@ export default async function InvoicesPage() {
   }, 0);
   const paid = invoiceRows.reduce((sum, invoice) => sum + Number(invoice.amount_paid ?? 0), 0);
   const overdueCount = invoiceRows.filter(invoice => invoice.status === "overdue").length;
+  const empty = emptyStateFor("invoices");
   const statusData = ["draft", "sent", "paid", "overdue"].map(status => ({
     label: status[0].toUpperCase() + status.slice(1),
     value: invoiceRows.filter(invoice => invoice.status === status).length,
@@ -100,10 +102,10 @@ export default async function InvoicesPage() {
       ) : (
         <Surface className="p-10 text-center">
           <Receipt size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-          <p className="font-semibold text-[var(--tr-text)]">No invoices yet</p>
-          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approve a quote to convert it into an invoice.</p>
-          <Link href="/quotes" className="tr-primary-action mt-5 inline-flex h-10 items-center rounded-lg px-4 text-sm font-bold">
-            View quotes
+          <p className="font-semibold text-[var(--tr-text)]">{empty.title}</p>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
+          <Link href={empty.href ?? "/quotes"} className="tr-primary-action mt-5 inline-flex h-11 items-center rounded-lg px-4 text-sm font-bold">
+            {empty.actionLabel}
           </Link>
         </Surface>
       )}

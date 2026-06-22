@@ -8,6 +8,7 @@ import { formatDate, formatTime } from "@/lib/format";
 import { ChartCard, ValueBarChart } from "@/components/charts/taskrel-charts";
 import { buildTaskrelInsights } from "@/lib/insights";
 import { getCurrentWorkspace } from "@/lib/auth/workspace";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 
 export default async function JobsPage() {
   const { supabase, contractor } = await getCurrentWorkspace();
@@ -43,6 +44,7 @@ export default async function JobsPage() {
   });
   const activeJobs = jobs.filter(job => ["scheduled", "in_progress"].includes(job.status));
   const nextJob = activeJobs.filter(job => new Date(job.scheduled_start) >= new Date())[0];
+  const empty = emptyStateFor("jobs");
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
@@ -84,8 +86,16 @@ export default async function JobsPage() {
           ) : (
             <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
               <Wrench size={34} className="mx-auto text-[var(--tr-text-faint)]" />
-              <p className="mt-3 text-sm font-semibold text-[var(--tr-text)]">No active jobs yet</p>
-              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approved quotes with scheduled dates will become jobs.</p>
+              <p className="mt-3 text-sm font-semibold text-[var(--tr-text)]">{empty.title}</p>
+              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
+              {empty.href && empty.actionLabel ? (
+                <Link
+                  href={empty.href}
+                  className="tr-primary-action mt-5 inline-flex h-11 items-center rounded-lg px-4 text-sm font-bold"
+                >
+                  {empty.actionLabel}
+                </Link>
+              ) : null}
             </div>
           )}
         </Surface>

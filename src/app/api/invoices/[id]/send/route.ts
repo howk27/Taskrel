@@ -30,9 +30,11 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   const details: { channel: string; code: string; message: string }[] = [];
 
   let paymentLink = invoice.stripe_payment_link;
+  let paymentLinkState: "ready" | "created" | "missing_connect" | "stripe_config" | "error" = paymentLink ? "ready" : "missing_connect";
   if (!paymentLink && contractor?.stripe_connect_account_id) {
     const stripe = getStripe();
     if (!stripe) {
+      paymentLinkState = "stripe_config";
       errors.push("stripe_config");
       details.push({ channel: "stripe", code: "stripe_config", message: "Stripe is not configured." });
       console.warn("Stripe payment link skipped: STRIPE_SECRET_KEY is not configured.");
@@ -51,8 +53,10 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
           { stripeAccount: contractor.stripe_connect_account_id }
         );
         paymentLink = link.url;
+        paymentLinkState = "created";
         await supabase.from("invoices").update({ stripe_payment_link: paymentLink }).eq("id", id);
       } catch (err) {
+        paymentLinkState = "error";
         console.error("Stripe payment link error:", err);
         errors.push("stripe");
         details.push({ channel: "stripe", code: "stripe", message: "Stripe could not create a payment link." });
@@ -152,5 +156,5 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
   }
 
   const status = sent.length === 0 ? 503 : 200;
-  return NextResponse.json({ sent, errors, details }, { status });
+  return NextResponse.json({ sent, errors, details, paymentLink, paymentLinkState }, { status });
 }

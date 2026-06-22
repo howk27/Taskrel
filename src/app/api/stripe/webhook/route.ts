@@ -48,17 +48,33 @@ export async function POST(request: NextRequest) {
     // ── Connect: invoice paid by client ───────────────────────────────────
     case "payment_intent.succeeded": {
       const pi = event.data.object as Stripe.PaymentIntent;
-      if (pi.metadata?.invoice_id) {
-        await supabase
-          .from("invoices")
-          .update({
-            status: "paid",
-            amount_paid: pi.amount_received / 100,
-            paid_at: new Date().toISOString(),
-            stripe_payment_intent_id: pi.id,
-          })
-          .eq("id", pi.metadata.invoice_id);
+      const invoiceId = pi.metadata?.invoice_id;
+      if (!invoiceId) {
+        console.warn("Stripe payment succeeded without invoice_id metadata", { paymentIntentId: pi.id });
+        break;
       }
+
+      const { data: invoice } = await supabase
+        .from("invoices")
+        .select("id, total")
+        .eq("id", invoiceId)
+        .maybeSingle();
+
+      if (!invoice) {
+        console.warn("Stripe payment succeeded for unknown invoice", { paymentIntentId: pi.id, invoiceId });
+        break;
+      }
+
+      const amountPaid = pi.amount_received / 100;
+      await supabase
+        .from("invoices")
+        .update({
+          status: amountPaid >= Number(invoice.total ?? 0) ? "paid" : "sent",
+          amount_paid: amountPaid,
+          paid_at: new Date().toISOString(),
+          stripe_payment_intent_id: pi.id,
+        })
+        .eq("id", invoice.id);
       break;
     }
   }

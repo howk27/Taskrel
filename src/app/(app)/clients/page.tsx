@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatDate } from "@/lib/format";
 import { getCurrentWorkspace } from "@/lib/auth/workspace";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 
 export default async function ClientsPage() {
   const { supabase, contractor } = await getCurrentWorkspace();
@@ -20,6 +21,7 @@ export default async function ClientsPage() {
   const clientRows = clients ?? [];
   const completeContacts = clientRows.filter(client => client.email || client.phone).length;
   const withAddresses = clientRows.filter(client => client.address).length;
+  const empty = emptyStateFor("clients");
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
@@ -78,11 +80,11 @@ export default async function ClientsPage() {
       ) : (
         <Surface className="p-10 text-center">
           <UserList size={34} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-          <p className="font-semibold text-[var(--tr-text)]">No clients yet</p>
-          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Clients are added automatically when you send a quote.</p>
-          <Link href="/quotes/new" className="tr-primary-action mt-5 inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold">
+          <p className="font-semibold text-[var(--tr-text)]">{empty.title}</p>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
+          <Link href="/quotes/new" className="tr-primary-action mt-5 inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold">
             <Plus size={17} weight="bold" />
-            Create a quote
+            {empty.actionLabel}
           </Link>
         </Surface>
       )}

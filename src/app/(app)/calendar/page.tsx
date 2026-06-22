@@ -8,6 +8,7 @@ import { CalendarBlank, CaretLeft, CaretRight, MapPin } from "@/components/ui/ic
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
 import { formatTime } from "@/lib/format";
+import { emptyStateFor } from "@/lib/readiness/setup-readiness";
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -46,11 +47,7 @@ export default function CalendarPage() {
     });
 
   const selectedJobs = selectedDay ? (jobsByDay[selectedDay] ?? []) : [];
-  const selectedDate = selectedDay ? new Date(year, month, selectedDay) : null;
-  const isSelectedToday = !!selectedDate
-    && selectedDate.getDate() === today.getDate()
-    && selectedDate.getMonth() === today.getMonth()
-    && selectedDate.getFullYear() === today.getFullYear();
+  const empty = emptyStateFor("calendar_day");
 
   function prevMonth() {
     if (month === 0) {
@@ -174,9 +171,8 @@ export default function CalendarPage() {
           ) : (
             <Surface className="p-8 text-center">
               <CalendarBlank size={30} weight="duotone" className="mx-auto mb-3 text-slate-500" />
-              <p className="text-sm font-medium text-[var(--tr-text)]">
-                {isSelectedToday ? "No scheduled jobs for today." : "No jobs scheduled for this day."}
-              </p>
+              <p className="text-sm font-medium text-[var(--tr-text)]">{empty.title}</p>
+              <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{empty.body}</p>
             </Surface>
           )}
         </section>

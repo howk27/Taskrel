@@ -2,7 +2,9 @@
 
 import { useActionState, useRef, useState } from "react";
 import { UploadSimple } from "@/components/ui/icons";
+import { ReadinessSectionHeader } from "@/components/ui/readiness";
 import { updateQuoteSettings, type SettingsActionState } from "@/lib/actions/settings";
+import { getQuoteDocumentReadiness } from "@/lib/readiness/setup-readiness";
 import type { Contractor, QuoteTemplatePreset } from "@/types";
 
 type Props = {
@@ -32,6 +34,12 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
   const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const safeLogoPreviewUrl = logoUrl.replace(/["\\\n\r]/g, "");
+  const readiness = getQuoteDocumentReadiness({
+    ...contractor,
+    logo_url: logoUrl,
+    uploading,
+    uploadError,
+  });
 
   async function uploadLogo(file: File) {
     setUploadError("");
@@ -56,6 +64,12 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
 
   return (
     <form action={formAction} className="space-y-4 rounded-lg bg-[var(--tr-surface)] p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+      <ReadinessSectionHeader
+        title="Quote documents"
+        subtitle="These defaults appear on client-facing quote documents."
+        item={readiness}
+      />
+
       <div>
         <label className="text-sm font-medium text-[var(--tr-text-muted)]" htmlFor="quote_template_preset">Default quote template</label>
         <select
@@ -122,13 +136,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        <Field
-          name="logo_url"
-          label="Logo URL"
-          value={logoUrl}
-          onChange={setLogoUrl}
-          placeholder="https://..."
-        />
+        <input type="hidden" name="logo_url" value={logoUrl} />
         <Field name="business_phone" label="Business phone" defaultValue={contractor.business_phone ?? ""} placeholder="(305) 555-0100" />
         <Field name="business_website" label="Website" defaultValue={contractor.business_website ?? ""} placeholder="taskrel.com" />
         <Field name="license_text" label="License / insured text" defaultValue={contractor.license_text ?? ""} placeholder="Licensed and insured in Florida" />

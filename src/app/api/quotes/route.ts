@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
   if (!quoteContractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
 
   const body = await request.json();
+  const { created_at, ...quoteBody } = body;
+  const createdAt = created_at ? { created_at } : {};
 
   const requestedTrade = body.trade ?? quoteContractor.primary_trade ?? quoteContractor.trade;
   const availableTrades = Array.isArray(quoteContractor.trades) ? quoteContractor.trades : [];
@@ -36,13 +38,13 @@ export async function POST(request: NextRequest) {
     ? requestedTrade
     : quoteContractor.primary_trade ?? quoteContractor.trade;
   const calculated = calculateQuotePricing({
-    line_items: Array.isArray(body.line_items) ? body.line_items : [],
-    tax_rate: body.tax_rate,
+    line_items: Array.isArray(quoteBody.line_items) ? quoteBody.line_items : [],
+    tax_rate: quoteBody.tax_rate,
   });
   const pricingSource = determineQuotePricingSource(calculated.line_items);
   const propertyValuationSnapshot = normalizePropertyValuationSnapshot(
-    body.property_valuation_snapshot,
-    body.client_address
+    quoteBody.property_valuation_snapshot,
+    quoteBody.client_address
   );
   const pricingRecommendationSnapshot = buildPricingRecommendationSnapshot({
     subtotal: calculated.subtotal,
@@ -59,16 +61,17 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("quotes")
-    .insert({
-      ...body,
+      .insert({
+      ...quoteBody,
+      ...createdAt,
       ...calculated,
       contractor_id: quoteContractor.id,
       trade,
       pricing_source: pricingSource,
-      pricing_confidence: body.pricing_confidence ?? null,
+      pricing_confidence: quoteBody.pricing_confidence ?? null,
       property_valuation_snapshot: propertyValuationSnapshot,
       pricing_recommendation_snapshot: pricingRecommendationSnapshot,
-      template_preset: body.template_preset ?? quoteContractor.quote_template_preset ?? "classic",
+      template_preset: quoteBody.template_preset ?? quoteContractor.quote_template_preset ?? "classic",
     })
     .select()
     .single();
