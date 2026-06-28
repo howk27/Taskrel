@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { ReadinessSectionHeader } from "@/components/ui/readiness";
+import { Switch } from "@/components/ui/switch";
 import { updateOverheadSettings, type SettingsActionState } from "@/lib/actions/settings";
 import { getOverheadReadiness } from "@/lib/readiness/setup-readiness";
 
@@ -36,15 +37,11 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
         item={readiness}
       />
 
-      <label className="flex min-h-11 items-center gap-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={event => setEnabled(event.target.checked)}
-          className="h-4 w-4 rounded border-slate-600 bg-[var(--tr-bg)] text-[var(--tr-primary)] focus:ring-2 focus:ring-[var(--tr-primary)]"
-        />
-        <span className="text-sm font-medium text-[var(--tr-text)]">Add overhead to pricing</span>
-      </label>
+      <Switch
+        checked={enabled}
+        onCheckedChange={setEnabled}
+        label="Add overhead to pricing"
+      />
 
       {!enabled ? (
         <>
@@ -91,8 +88,8 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
         </p>
       </div>
 
-      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
-      {state?.success && <p className="text-sm text-emerald-400">{state.success}</p>}
+      {state?.error && <p className="text-sm text-[var(--tr-red)]">{state.error}</p>}
+      {state?.success && <p className="text-sm text-[var(--tr-green)]">{state.success}</p>}
 
       <button
         type="submit"

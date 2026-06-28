@@ -128,7 +128,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
             if (file) void uploadLogo(file);
           }}
         />
-        {uploadError && <p className="mt-2 text-sm text-red-400">{uploadError}</p>}
+        {uploadError && <p className="mt-2 text-sm text-[var(--tr-red)]">{uploadError}</p>}
       </section>
 
       <section className="grid grid-cols-1 gap-3 border-t border-[var(--tr-border-soft)] pt-4">
@@ -161,8 +161,8 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
         />
       </section>
 
-      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
-      {state?.success && <p className="text-sm text-emerald-400">{state.success}</p>}
+      {state?.error && <p className="text-sm text-[var(--tr-red)]">{state.error}</p>}
+      {state?.success && <p className="text-sm text-[var(--tr-green)]">{state.success}</p>}
 
       <button
         type="submit"

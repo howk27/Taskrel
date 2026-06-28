@@ -122,8 +122,8 @@ export function BusinessInformationForm({ contractor }: Props) {
           ))}
       </div>
 
-      {state?.error && <p className="mt-3 text-sm text-red-400">{state.error}</p>}
-      {state?.success && <p className="mt-3 text-sm text-emerald-400">{state.success}</p>}
+      {state?.error && <p className="mt-3 text-sm text-[var(--tr-red)]">{state.error}</p>}
+      {state?.success && <p className="mt-3 text-sm text-[var(--tr-green)]">{state.success}</p>}
       <button
         type="submit"
         disabled={pending}
