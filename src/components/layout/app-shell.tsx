@@ -9,7 +9,6 @@ import {
   FileText,
   Gear,
   HouseLine,
-  Lightning,
   List,
   MagnifyingGlass,
   Moon,
@@ -30,27 +29,28 @@ type ShellContractor = {
   primary_trade: Trade | null;
 };
 
-const nav = [
+// Primary workflow destinations — the everyday quote-to-cash path.
+const primaryNav = [
   { href: "/dashboard", label: "Dashboard", Icon: HouseLine },
   { href: "/jobs", label: "Jobs", Icon: Wrench },
   { href: "/quotes", label: "Quotes", Icon: FileText },
   { href: "/invoices", label: "Invoices", Icon: Receipt },
+];
+
+// Secondary destinations — reference/config, kept reachable but demoted out of
+// the main workflow rail (desktop) and into the "More" sheet (mobile/tablet).
+const secondaryNav = [
   { href: "/clients", label: "Clients", Icon: UserList },
-  { href: "/ai-assistant", label: "Notices", Icon: Lightning },
   { href: "/settings", label: "Settings", Icon: Gear },
 ];
 
-// Bottom bar shows the four highest-frequency destinations; everything else
-// is reachable from the "More" sheet so no destination is lost below xl.
-const mobilePrimaryNav = nav.filter(item =>
-  ["/dashboard", "/jobs", "/quotes", "/invoices"].includes(item.href)
-);
+// Bottom bar shows the four highest-frequency destinations; secondary
+// destinations live in the "More" sheet so nothing is lost below xl.
+const mobilePrimaryNav = primaryNav;
 
 const mobileMoreNav = [
   { href: "/calendar", label: "Calendar", Icon: CalendarBlank },
-  { href: "/clients", label: "Clients", Icon: UserList },
-  { href: "/ai-assistant", label: "Notices", Icon: Lightning },
-  { href: "/settings", label: "Settings", Icon: Gear },
+  ...secondaryNav,
 ];
 
 export function AppShell({
@@ -116,25 +116,18 @@ export function AppShell({
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-0.5 px-2 py-3">
-          {nav.map(({ href, label, Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`group relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-[var(--tr-surface-2)] text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]"
-                    : "text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface)] hover:text-[var(--tr-text)]"
-                }`}
-              >
-                {active && <span className="absolute left-0 h-5 w-0.5 rounded-r bg-[var(--tr-primary)]" />}
-                <Icon size={18} weight={active ? "duotone" : "regular"} className={active ? "text-[var(--tr-primary)]" : ""} />
-                {label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-2 py-3">
+          <div className="space-y-0.5">
+            {primaryNav.map(({ href, label, Icon }) => (
+              <SidebarLink key={href} href={href} label={label} Icon={Icon} active={isActive(href)} />
+            ))}
+          </div>
+          <div className="my-3 border-t border-[var(--tr-border-soft)]" />
+          <div className="space-y-0.5">
+            {secondaryNav.map(({ href, label, Icon }) => (
+              <SidebarLink key={href} href={href} label={label} Icon={Icon} active={isActive(href)} />
+            ))}
+          </div>
         </nav>
 
         <div className="border-t border-[var(--tr-border-soft)] p-2.5">
@@ -272,6 +265,28 @@ export function AppShell({
         </div>
       </nav>
     </div>
+  );
+}
+
+function SidebarLink({
+  href,
+  label,
+  Icon,
+  active,
+}: (typeof primaryNav)[number] & { active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`group relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium transition-colors ${
+        active
+          ? "bg-[var(--tr-surface-2)] text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]"
+          : "text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface)] hover:text-[var(--tr-text)]"
+      }`}
+    >
+      {active && <span className="absolute left-0 h-5 w-0.5 rounded-r bg-[var(--tr-primary)]" />}
+      <Icon size={18} weight={active ? "duotone" : "regular"} className={active ? "text-[var(--tr-primary)]" : ""} />
+      {label}
+    </Link>
   );
 }
 
