@@ -177,7 +177,11 @@ function eyebrow(label: string, color: string) {
  * contact, quote date) always render in a stable order so every document has
  * the same shape; the schedule only appears when the work is scheduled.
  */
-function renderDocumentSummary(quote: QuoteData, t: DocTokens, opts: { boxed?: boolean } = {}) {
+function renderDocumentSummary(
+  quote: QuoteData,
+  t: DocTokens,
+  opts: { boxed?: boolean; skipClientCells?: boolean } = {},
+) {
   const scheduled = scheduledLine(quote);
   const contact = clientContactLine(quote);
 
@@ -190,12 +194,17 @@ function renderDocumentSummary(quote: QuoteData, t: DocTokens, opts: { boxed?: b
 
   const containerStyle = opts.boxed
     ? `background:${t.panel};border:1px solid ${t.border};border-radius:8px;padding:16px;`
-    : `padding:16px 0;border-top:1px solid ${t.border};border-bottom:1px solid ${t.border};`;
+    : `padding:14px 0;border-top:1px solid ${t.border};border-bottom:1px solid ${t.border};`;
+
+  // The premium direction shows the client + job location in a centered hero,
+  // so the summary omits those cells to avoid repeating them.
+  const clientCells = opts.skipClientCells
+    ? ""
+    : `${cell("Prepared for", escapeHtml(quote.client_name))}${cell("Job location", escapeHtml(quote.client_address))}`;
 
   return `
-    <div class="quote-document-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 22px;${containerStyle}margin-bottom:24px;">
-      ${cell("Prepared for", escapeHtml(quote.client_name))}
-      ${cell("Job location", escapeHtml(quote.client_address))}
+    <div class="quote-document-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 22px;${containerStyle}margin-bottom:18px;">
+      ${clientCells}
       ${cell("Client contact", contact)}
       ${cell("Quote date", date(quote.created_at))}
       ${scheduled ? cell("Scheduled", scheduled) : ""}
@@ -259,7 +268,7 @@ function renderLineItems(quote: QuoteData, t: DocTokens, scopeHeading = "Scope o
   const rows = quote.line_items
     .map(
       item => `
-        <div class="quote-line-row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(78px,auto) minmax(104px,auto);gap:16px;align-items:start;padding:14px 0;border-bottom:1px solid ${t.border};">
+        <div class="quote-line-row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(78px,auto) minmax(104px,auto);gap:16px;align-items:start;padding:11px 0;border-bottom:1px solid ${t.border};">
           <div style="min-width:0;">
             ${renderLineItemCopy(item.description, t)}
           </div>
@@ -275,7 +284,7 @@ function renderLineItems(quote: QuoteData, t: DocTokens, scopeHeading = "Scope o
     .join("");
 
   return `
-    <div class="quote-line-items" style="margin:24px 0;">
+    <div class="quote-line-items" style="margin:18px 0;">
       ${header}
       ${rows}
     </div>
@@ -295,7 +304,7 @@ function renderTotal(quote: QuoteData, t: DocTokens) {
   `;
 
   return `
-    <div style="margin:24px 0 0;display:flex;justify-content:flex-end;">
+    <div style="margin:18px 0 0;display:flex;justify-content:flex-end;">
       <div style="width:100%;max-width:300px;">
         ${row("Subtotal", money(quote.subtotal))}
         ${quote.tax_amount > 0 ? row(`Tax (${(quote.tax_rate * 100).toFixed(1)}%)`, money(quote.tax_amount)) : ""}
@@ -317,7 +326,7 @@ function renderNotesAndTerms(quote: QuoteData, business: BusinessSnapshot, t: Do
   if (!note && !terms) return "";
 
   return `
-    <div style="margin-top:28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:24px;">
+    <div style="margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px;">
       ${note ? `
         <div class="quote-document-notes">
           ${eyebrow("Client note", t.accent)}
@@ -347,9 +356,26 @@ function renderPolicy(business: BusinessSnapshot, t: DocTokens) {
 function renderFooter(business: BusinessSnapshot, t: DocTokens) {
   const bits = [escapeHtml(business.business_name), contactLine(business), escapeHtml(business.license_text)].filter(Boolean);
   return `
-    <div style="margin-top:28px;padding-top:14px;border-top:1px solid ${t.border};color:${t.faint};font-size:11.5px;line-height:1.6;">
+    <div style="margin-top:18px;padding-top:12px;border-top:1px solid ${t.border};color:${t.faint};font-size:11.5px;line-height:1.6;">
       <p style="margin:0;">${bits.join("  ·  ")}</p>
       <p style="margin:4px 0 0;">To approve this ${t.docLabel.toLowerCase()}, use the approval link in your email or reply to confirm. Questions are welcome before you approve.</p>
+    </div>
+  `;
+}
+
+/**
+ * Two-column close: notes / terms / policy on the left, the total on the
+ * right. Reclaims the whitespace a right-aligned total leaves beside it so a
+ * typical quote stays on one page. Collapses to a single column on mobile.
+ */
+function renderClose(quote: QuoteData, business: BusinessSnapshot, t: DocTokens) {
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:24px;align-items:start;">
+      <div>
+        ${renderNotesAndTerms(quote, business, t)}
+        ${renderPolicy(business, t)}
+      </div>
+      <div>${renderTotal(quote, t)}</div>
     </div>
   `;
 }
@@ -357,7 +383,7 @@ function renderFooter(business: BusinessSnapshot, t: DocTokens) {
 /** The page shell — a single white sheet with a hairline frame. */
 function shell(t: DocTokens, inner: string, maxWidth = 760) {
   return `
-    <div style="font-family:${FONT_STACK};box-sizing:border-box;width:100%;max-width:${maxWidth}px;margin:0 auto;background:${t.bg};color:${t.ink};padding:clamp(22px,5vw,40px);border-radius:10px;border:1px solid ${t.border};overflow-wrap:anywhere;-webkit-font-smoothing:antialiased;">
+    <div style="font-family:${FONT_STACK};box-sizing:border-box;width:100%;max-width:${maxWidth}px;margin:0 auto;background:${t.bg};color:${t.ink};padding:clamp(18px,4vw,30px);border-radius:10px;border:1px solid ${t.border};overflow-wrap:anywhere;-webkit-font-smoothing:antialiased;">
       ${inner}
     </div>
   `;
@@ -388,9 +414,7 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
 
     ${renderDocumentSummary(quote, t)}
     ${renderLineItems(quote, t, "Scope of work")}
-    ${renderTotal(quote, t)}
-    ${renderNotesAndTerms(quote, business, t)}
-    ${renderPolicy(business, t)}
+    ${renderClose(quote, business, t)}
     ${renderFooter(business, t)}
   `;
 
@@ -447,24 +471,22 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
   const t = themes.modern;
 
   const inner = `
-    <div style="text-align:center;padding-bottom:26px;border-bottom:1px solid ${t.border};">
+    <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid ${t.border};">
       <div style="display:flex;justify-content:center;">${renderLogo(business, t)}</div>
-      <h1 style="margin:16px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
+      <h1 style="margin:14px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
       <p style="margin:6px 0 0;color:${t.muted};font-size:13px;">${contactLine(business)}</p>
-      <p style="margin:18px 0 0;font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:${t.accent};">${t.docLabel}</p>
+      <p style="margin:14px 0 0;font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:${t.accent};">${t.docLabel}</p>
     </div>
 
-    <div style="text-align:center;margin:30px 0 6px;">
+    <div style="text-align:center;margin:20px 0 4px;">
       ${eyebrow("Prepared for", t.muted)}
       <p style="margin:6px 0 0;color:${t.ink};font-size:18px;font-weight:600;">${escapeHtml(quote.client_name)}</p>
       ${quote.client_address ? `<p style="margin:4px 0 0;color:${t.muted};font-size:13px;">${escapeHtml(quote.client_address)}</p>` : ""}
     </div>
 
-    ${renderDocumentSummary(quote, t)}
+    ${renderDocumentSummary(quote, t, { skipClientCells: true })}
     ${renderLineItems(quote, t, "Included in this proposal")}
-    ${renderTotal(quote, t)}
-    ${renderNotesAndTerms(quote, business, t)}
-    ${renderPolicy(business, t)}
+    ${renderClose(quote, business, t)}
     ${renderFooter(business, t)}
   `;
 

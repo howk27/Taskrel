@@ -97,7 +97,7 @@ export default async function PublicQuotePage({
             </p>
           )}
 
-          <div className="mt-5">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             {approved ? (
               <p className="rounded-lg bg-[var(--tr-success-bg)] p-3 text-sm font-semibold text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-badge-success-ring)]">
                 This quote has been approved{quote.approved_at ? ` on ${new Date(quote.approved_at).toLocaleDateString()}` : ""}.
@@ -112,6 +112,14 @@ export default async function PublicQuotePage({
                 </button>
               </form>
             )}
+            <a
+              href={`/api/public/quotes/${token}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-12 w-full items-center justify-center rounded-lg border border-[var(--tr-border-soft)] px-5 text-sm font-semibold text-[var(--tr-text)] hover:bg-[var(--tr-bg-soft)] sm:w-auto"
+            >
+              Download PDF
+            </a>
           </div>
         </section>
 

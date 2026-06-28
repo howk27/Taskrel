@@ -642,7 +642,17 @@ export default function QuoteDetailPage() {
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-[var(--tr-text-muted)]">Client preview</h2>
-              <div className="flex rounded-lg bg-[var(--tr-bg-soft)] p-1 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`/api/quotes/${id}/pdf?preset=${previewPreset}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--tr-border-soft)] px-2.5 py-1.5 text-sm font-semibold text-[var(--tr-text)] hover:bg-[var(--tr-bg-soft)]"
+                >
+                  <FileText className="h-4 w-4" aria-hidden />
+                  Download PDF
+                </a>
+                <div className="flex rounded-lg bg-[var(--tr-bg-soft)] p-1 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
                 {presets.map(preset => (
                   <button
                     key={preset.value}
@@ -654,6 +664,7 @@ export default function QuoteDetailPage() {
                     {preset.label}
                   </button>
                 ))}
+                </div>
               </div>
             </div>
             <div className="overflow-hidden rounded-lg bg-transparent">
