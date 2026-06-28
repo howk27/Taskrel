@@ -114,7 +114,9 @@ describe("renderQuoteDocumentHtml", () => {
       expect(html).toContain("quote-line-unit-price");
       expect(html).toContain("quote-line-amount");
       expect(html).toContain("Qty");
-      expect(html).toContain("Unit price");
+      // Redesign shows the rate inline as "$X / unit" rather than a stacked
+      // "Unit price" label, keeping qty / rate / amount in separate positions.
+      expect(html).toContain("/ unit");
     }
   );
 

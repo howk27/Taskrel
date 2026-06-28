@@ -71,6 +71,13 @@ export interface BusinessSnapshot {
   quote_default_terms: string | null;
   quote_default_note: string | null;
   quote_policy_text: string | null;
+  /**
+   * Quote-document renderer version frozen at send time. Lets already-sent
+   * quotes keep rendering exactly as the client first saw them when the live
+   * design later changes. Absent on unsent quotes (they render the current
+   * design). See QUOTE_RENDERER_VERSION in lib/quote-document.ts.
+   */
+  renderer_version?: string | null;
 }
 
 // ─── Contractor ───────────────────────────────────────────────────────────────
