@@ -1,0 +1,22 @@
+# Normalize line endings to LF on commit to stop CRLF churn from editing on
+# Windows/WSL (/mnt/c). Text files are stored LF in the repo; binaries are
+# marked so Git never touches their bytes.
+* text=auto eol=lf
+
+# Explicit binary types (never normalize / never diff as text)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.avif binary
+*.svgz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+*.pdf binary
+*.mp4 binary
+*.webm binary
