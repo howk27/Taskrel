@@ -16,7 +16,7 @@ export function Badge({
   variant?: BadgeVariant;
 }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${variants[variant]}`}>
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-sm font-semibold capitalize ${variants[variant]}`}>
       {children}
     </span>
   );

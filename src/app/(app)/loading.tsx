@@ -8,13 +8,13 @@ export default function AppLoading() {
 
       <div className="grid gap-3 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="h-24 animate-pulse rounded-xl bg-[var(--tr-surface)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]" />
+          <div key={index} className="h-24 animate-pulse rounded-lg bg-[var(--tr-surface)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]" />
         ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        <div className="h-80 animate-pulse rounded-xl bg-[var(--tr-surface)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]" />
-        <div className="h-80 animate-pulse rounded-xl bg-[var(--tr-surface)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]" />
+        <div className="h-80 animate-pulse rounded-lg bg-[var(--tr-surface)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]" />
+        <div className="h-80 animate-pulse rounded-lg bg-[var(--tr-surface)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]" />
       </div>
     </div>
   );

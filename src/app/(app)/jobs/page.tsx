@@ -10,6 +10,9 @@ import { ChartCard, ValueBarChart } from "@/components/charts/taskrel-charts";
 import { buildTaskrelInsights } from "@/lib/insights";
 import { getJobWorkflowState } from "@/lib/workflows/job-workflow";
 
+const JOBS_QUEUE_LIMIT = 160;
+const SUPPORTING_RECORD_LIMIT = 500;
+
 export default async function JobsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -28,19 +31,26 @@ export default async function JobsPage() {
       .from("jobs")
       .select("id, title, description, status, scheduled_start, scheduled_end, address, quote_id, created_at, updated_at")
       .eq("contractor_id", contractor.id)
-      .order("scheduled_start", { ascending: true }),
+      .order("scheduled_start", { ascending: true })
+      .limit(JOBS_QUEUE_LIMIT),
     supabase
       .from("quotes")
       .select("id, client_name, total, status, created_at, scheduled_start")
-      .eq("contractor_id", contractor.id),
+      .eq("contractor_id", contractor.id)
+      .order("created_at", { ascending: false })
+      .limit(SUPPORTING_RECORD_LIMIT),
     supabase
       .from("invoices")
       .select("id, client_name, total, amount_paid, status, due_date, paid_at, created_at")
-      .eq("contractor_id", contractor.id),
+      .eq("contractor_id", contractor.id)
+      .order("created_at", { ascending: false })
+      .limit(SUPPORTING_RECORD_LIMIT),
     supabase
       .from("clients")
       .select("id, name, email, phone")
-      .eq("contractor_id", contractor.id),
+      .eq("contractor_id", contractor.id)
+      .order("name", { ascending: true })
+      .limit(SUPPORTING_RECORD_LIMIT),
   ]);
 
   const jobs = jobsResult.data ?? [];
@@ -61,22 +71,22 @@ export default async function JobsPage() {
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
         title="Jobs"
-        subtitle="Today first, upcoming second, with schedule proof and the next action attached."
+        subtitle="Today first, upcoming next."
       />
 
       <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <Surface className="p-5">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Active work</h2>
-            <Link href="/calendar" className="text-sm font-semibold text-[var(--tr-orange)]">Calendar view</Link>
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Active work</h2>
+            <Link href="/calendar" className="text-sm font-semibold text-[var(--tr-primary)]">Calendar view</Link>
           </div>
           {activeJobs.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2">
               {activeJobs.map(({ job, state }) => (
-                <article key={job.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                <article key={job.id} className="rounded-lg bg-[var(--tr-bg-soft)] p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-base font-bold text-white">{job.title}</p>
+                      <p className="truncate text-base font-semibold text-[var(--tr-text)]">{job.title}</p>
                       <p className="mt-1 flex items-center gap-2 text-sm text-[var(--tr-text-muted)]">
                         <CalendarBlank size={16} />
                         {state.nextActionDetail}
@@ -88,7 +98,7 @@ export default async function JobsPage() {
                         </p>
                       )}
                       {job.quote_id && (
-                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-orange)]">
+                        <Link href={`/quotes/${job.quote_id}`} className="mt-3 inline-flex text-sm font-semibold text-[var(--tr-primary)]">
                           Open quote
                         </Link>
                       )}
@@ -99,9 +109,9 @@ export default async function JobsPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-[var(--tr-border)] p-8 text-center">
+            <div className="rounded-lg border border-dashed border-[var(--tr-border)] p-8 text-center">
               <Wrench size={34} className="mx-auto text-[var(--tr-text-faint)]" />
-              <p className="mt-3 text-sm font-semibold text-white">No active jobs yet</p>
+              <p className="mt-3 text-sm font-semibold text-[var(--tr-text)]">No active jobs yet</p>
               <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Approved quotes with scheduled dates will become jobs.</p>
             </div>
           )}
@@ -111,22 +121,22 @@ export default async function JobsPage() {
           {nextJob ? (
             <div>
               <p className="text-sm font-semibold text-[var(--tr-green)]">{nextJob.state.bucket === "today" ? "Today" : "Next job"}</p>
-              <h2 className="mt-2 text-2xl font-black text-white">{nextJob.job.title}</h2>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--tr-text)]">{nextJob.job.title}</h2>
               <p className="mt-2 text-sm text-[var(--tr-text-muted)]">
                 {formatDate(nextJob.job.scheduled_start)} at {formatTime(nextJob.job.scheduled_start)}
               </p>
               <div className="mt-5 space-y-3">
                 {nextJob.state.proof.map(item => (
-                  <div key={item.key} className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-white">
+                  <div key={item.key} className="flex items-start gap-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 text-sm text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
                     <CheckCircle size={18} className="text-[var(--tr-green)]" />
                     <div>
                       <p className="font-semibold">{item.label}</p>
-                      <p className="mt-0.5 text-xs text-[var(--tr-text-muted)]">{item.detail}</p>
+                      <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{item.detail}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="mt-5 rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-3 text-sm font-semibold text-white">
+              <p className="mt-5 rounded-lg bg-[var(--tr-primary-fill)] p-3 text-sm font-semibold text-[var(--tr-primary)] shadow-[inset_0_0_0_1px_var(--tr-primary-edge)]">
                 {nextJob.state.nextAction}
               </p>
             </div>
@@ -136,9 +146,11 @@ export default async function JobsPage() {
         </Surface>
       </section>
 
-      <ChartCard title="Schedule load" subtitle="Scheduled and in-progress jobs over the next seven days">
-        <ValueBarChart data={insights.charts.scheduleDensity} currency={false} />
-      </ChartCard>
+      {jobs.length > 0 && (
+        <ChartCard title="Schedule load" subtitle="Scheduled and in-progress jobs over the next seven days">
+          <ValueBarChart data={insights.charts.scheduleDensity} currency={false} />
+        </ChartCard>
+      )}
     </div>
   );
 }

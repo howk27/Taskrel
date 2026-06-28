@@ -1,27 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --tr-bg: oklch(0.145 0.006 245);
-  --tr-bg-soft: oklch(0.18 0.008 245);
-  --tr-shell: oklch(0.16 0.007 245);
-  --tr-surface: oklch(0.215 0.01 245);
-  --tr-surface-2: oklch(0.265 0.012 245);
-  --tr-surface-3: oklch(0.32 0.014 245);
+  --tr-bg: oklch(0.125 0.018 255);
+  --tr-bg-soft: oklch(0.155 0.02 255);
+  --tr-shell: oklch(0.14 0.018 255);
+  --tr-surface: oklch(0.19 0.022 255);
+  --tr-surface-2: oklch(0.245 0.026 255);
+  --tr-surface-3: oklch(0.31 0.03 255);
   --tr-border: color-mix(in srgb, var(--tr-text) 14%, transparent);
   --tr-border-soft: color-mix(in srgb, var(--tr-text) 8%, transparent);
-  --tr-text: oklch(0.965 0.006 245);
-  --tr-text-muted: oklch(0.755 0.018 245);
-  --tr-text-faint: oklch(0.58 0.018 245);
-  --tr-primary: oklch(0.72 0.09 263);
-  --tr-primary-hover: oklch(0.78 0.095 263);
+  --tr-text: oklch(0.955 0.006 255);
+  --tr-text-muted: oklch(0.745 0.018 255);
+  --tr-text-faint: oklch(0.58 0.02 255);
+  --tr-primary: oklch(0.72 0.085 255);
+  --tr-primary-hover: oklch(0.79 0.09 255);
   --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 48%, var(--tr-border));
   --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 10%, var(--tr-surface));
   --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 16%, var(--tr-surface-2));
+  /* Action (warm) — the primary "do this" color, filled. Clay/terracotta.
+     Paired with the (reduced) blue --tr-primary for two-tone layering. */
+  --tr-action: oklch(0.53 0.142 40);
+  --tr-action-hover: oklch(0.57 0.143 40);
+  --tr-action-ink: oklch(0.99 0.008 60);
   --tr-blue: var(--tr-primary);
   --tr-blue-strong: var(--tr-primary-hover);
   --tr-green: oklch(0.73 0.13 150);
-  --tr-amber: oklch(0.76 0.135 82);
-  --tr-orange: var(--tr-primary);
+  --tr-amber: oklch(0.78 0.125 102);
+  --tr-orange: oklch(0.74 0.16 55);
+  --tr-info: oklch(0.7 0.07 238);
   --tr-violet: oklch(0.72 0.11 300);
   --tr-red: oklch(0.68 0.17 28);
   --tr-success-bg: color-mix(in srgb, var(--tr-green) 16%, transparent);
@@ -42,72 +48,112 @@
   --tr-badge-info-bg: color-mix(in srgb, var(--tr-primary) 16%, transparent);
   --tr-badge-info-text: var(--tr-primary);
   --tr-badge-info-ring: color-mix(in srgb, var(--tr-primary) 30%, transparent);
+
+  /* Elevation — dark default. Layered depth via drop shadow + a faint top
+     highlight so raised surfaces read as lit from above (Linear/Stripe feel). */
+  --tr-shadow-1: 0 1px 2px oklch(0 0 0 / 0.32);
+  --tr-shadow-2: 0 2px 6px oklch(0 0 0 / 0.34), 0 1px 2px oklch(0 0 0 / 0.3);
+  --tr-shadow-3: 0 10px 28px oklch(0 0 0 / 0.46), 0 2px 6px oklch(0 0 0 / 0.3);
+  --tr-highlight: inset 0 1px 0 oklch(1 0 0 / 0.05);
+
+  /* Motion — durations + easing. State-conveying, not decorative (150–250ms). */
+  --tr-dur-fast: 120ms;
+  --tr-dur-base: 180ms;
+  --tr-dur-slow: 260ms;
+  --tr-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --tr-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Type scale — fixed rem, ~1.2 ratio. Semantic steps, not fluid clamps. */
+  --tr-text-2xl: 1.5rem;    /* 24px — page title (h1) */
+  --tr-text-xl: 1.25rem;    /* 20px — section heading (h2) */
+  --tr-text-lg: 1.0625rem;  /* 17px — card heading (h3) */
+  --tr-text-base: 0.9375rem;/* 15px — body */
+  --tr-text-sm: 0.8125rem;  /* 13px — meta / labels */
+  --tr-leading-tight: 1.25;
+  --tr-leading-normal: 1.55;
+
   --background: var(--tr-bg);
   --foreground: var(--tr-text);
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --tr-bg: oklch(0.97 0.004 245);
-    --tr-bg-soft: oklch(0.935 0.006 245);
-    --tr-shell: oklch(0.995 0.002 245);
-    --tr-surface: oklch(0.995 0.002 245);
-    --tr-surface-2: oklch(0.955 0.006 245);
-    --tr-surface-3: oklch(0.91 0.009 245);
+    --tr-bg: oklch(0.985 0.002 255);
+    --tr-bg-soft: oklch(0.972 0.004 255);
+    --tr-shell: oklch(0.996 0.002 255);
+    --tr-surface: oklch(0.996 0.002 255);
+    --tr-surface-2: oklch(0.982 0.003 255);
+    --tr-surface-3: oklch(0.945 0.008 255);
     --tr-border: color-mix(in srgb, var(--tr-text) 16%, transparent);
     --tr-border-soft: color-mix(in srgb, var(--tr-text) 10%, transparent);
-    --tr-text: oklch(0.19 0.018 245);
-    --tr-text-muted: oklch(0.43 0.022 245);
-    --tr-text-faint: oklch(0.56 0.02 245);
-    --tr-primary: oklch(0.44 0.12 263);
-    --tr-primary-hover: oklch(0.37 0.125 263);
+    --tr-text: oklch(0.18 0.02 255);
+    --tr-text-muted: oklch(0.41 0.028 255);
+    --tr-text-faint: oklch(0.55 0.026 255);
+    --tr-primary: oklch(0.45 0.095 255);
+    --tr-primary-hover: oklch(0.38 0.1 255);
     --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 42%, var(--tr-border));
     --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 7%, var(--tr-surface));
     --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 11%, var(--tr-surface-2));
+    /* Action (warm) — deeper brick on light surfaces, white ink for authority. */
+    --tr-action: oklch(0.48 0.142 40);
+    --tr-action-hover: oklch(0.43 0.145 40);
+    --tr-action-ink: oklch(0.99 0.008 60);
     --tr-green: oklch(0.47 0.11 150);
-    --tr-amber: oklch(0.55 0.13 78);
+    --tr-amber: oklch(0.52 0.12 102);
+    --tr-orange: oklch(0.62 0.17 50);
+    --tr-info: oklch(0.43 0.075 238);
     --tr-violet: oklch(0.48 0.11 300);
     --tr-red: oklch(0.49 0.17 28);
     --tr-success-bg: color-mix(in srgb, var(--tr-green) 12%, transparent);
     --tr-warning-bg: color-mix(in srgb, var(--tr-amber) 13%, transparent);
     --tr-error-bg: color-mix(in srgb, var(--tr-red) 12%, transparent);
-    --tr-badge-default-bg: oklch(0.92 0.008 245);
-    --tr-badge-default-text: oklch(0.28 0.018 245);
-    --tr-badge-default-ring: oklch(0.78 0.014 245);
+    --tr-badge-default-bg: oklch(0.92 0.008 255);
+    --tr-badge-default-text: oklch(0.28 0.018 255);
+    --tr-badge-default-ring: oklch(0.78 0.014 255);
     --tr-badge-success-bg: oklch(0.91 0.035 150);
     --tr-badge-success-text: oklch(0.34 0.105 150);
     --tr-badge-success-ring: oklch(0.75 0.08 150);
-    --tr-badge-warning-bg: oklch(0.92 0.05 78);
-    --tr-badge-warning-text: oklch(0.36 0.105 78);
-    --tr-badge-warning-ring: oklch(0.75 0.1 78);
+    --tr-badge-warning-bg: oklch(0.92 0.045 102);
+    --tr-badge-warning-text: oklch(0.34 0.1 102);
+    --tr-badge-warning-ring: oklch(0.74 0.095 102);
     --tr-badge-error-bg: oklch(0.93 0.04 28);
     --tr-badge-error-text: oklch(0.36 0.15 28);
     --tr-badge-error-ring: oklch(0.77 0.12 28);
     --tr-badge-info-bg: oklch(0.91 0.035 263);
     --tr-badge-info-text: oklch(0.32 0.12 263);
     --tr-badge-info-ring: oklch(0.73 0.09 263);
+    --tr-shadow-1: 0 1px 2px oklch(0.45 0.03 255 / 0.07);
+    --tr-shadow-2: 0 2px 8px oklch(0.45 0.03 255 / 0.09), 0 1px 2px oklch(0.45 0.03 255 / 0.06);
+    --tr-shadow-3: 0 12px 32px oklch(0.45 0.03 255 / 0.14), 0 2px 6px oklch(0.45 0.03 255 / 0.07);
+    --tr-highlight: inset 0 1px 0 oklch(1 0 0 / 0.6);
   }
 }
 
 [data-theme="dark"] {
-  --tr-bg: oklch(0.145 0.006 245);
-  --tr-bg-soft: oklch(0.18 0.008 245);
-  --tr-shell: oklch(0.16 0.007 245);
-  --tr-surface: oklch(0.215 0.01 245);
-  --tr-surface-2: oklch(0.265 0.012 245);
-  --tr-surface-3: oklch(0.32 0.014 245);
+  --tr-bg: oklch(0.125 0.018 255);
+  --tr-bg-soft: oklch(0.155 0.02 255);
+  --tr-shell: oklch(0.14 0.018 255);
+  --tr-surface: oklch(0.19 0.022 255);
+  --tr-surface-2: oklch(0.245 0.026 255);
+  --tr-surface-3: oklch(0.31 0.03 255);
   --tr-border: color-mix(in srgb, var(--tr-text) 14%, transparent);
   --tr-border-soft: color-mix(in srgb, var(--tr-text) 8%, transparent);
-  --tr-text: oklch(0.965 0.006 245);
-  --tr-text-muted: oklch(0.755 0.018 245);
-  --tr-text-faint: oklch(0.58 0.018 245);
-  --tr-primary: oklch(0.72 0.09 263);
-  --tr-primary-hover: oklch(0.78 0.095 263);
+  --tr-text: oklch(0.955 0.006 255);
+  --tr-text-muted: oklch(0.745 0.018 255);
+  --tr-text-faint: oklch(0.58 0.02 255);
+  --tr-primary: oklch(0.72 0.085 255);
+  --tr-primary-hover: oklch(0.79 0.09 255);
   --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 48%, var(--tr-border));
   --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 10%, var(--tr-surface));
   --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 16%, var(--tr-surface-2));
+  /* Action (warm) — the primary "do this" color, filled. Clay/terracotta.
+     Paired with the (reduced) blue --tr-primary for two-tone layering. */
+  --tr-action: oklch(0.53 0.142 40);
+  --tr-action-hover: oklch(0.57 0.143 40);
+  --tr-action-ink: oklch(0.99 0.008 60);
   --tr-green: oklch(0.73 0.13 150);
-  --tr-amber: oklch(0.76 0.135 82);
+  --tr-amber: oklch(0.78 0.125 102);
+  --tr-info: oklch(0.7 0.07 238);
   --tr-violet: oklch(0.72 0.11 300);
   --tr-red: oklch(0.68 0.17 28);
   --tr-success-bg: color-mix(in srgb, var(--tr-green) 16%, transparent);
@@ -128,47 +174,61 @@
   --tr-badge-info-bg: color-mix(in srgb, var(--tr-primary) 16%, transparent);
   --tr-badge-info-text: var(--tr-primary);
   --tr-badge-info-ring: color-mix(in srgb, var(--tr-primary) 30%, transparent);
+  --tr-shadow-1: 0 1px 2px oklch(0 0 0 / 0.32);
+  --tr-shadow-2: 0 2px 6px oklch(0 0 0 / 0.34), 0 1px 2px oklch(0 0 0 / 0.3);
+  --tr-shadow-3: 0 10px 28px oklch(0 0 0 / 0.46), 0 2px 6px oklch(0 0 0 / 0.3);
+  --tr-highlight: inset 0 1px 0 oklch(1 0 0 / 0.05);
 }
 
 [data-theme="light"] {
-  --tr-bg: oklch(0.97 0.004 245);
-  --tr-bg-soft: oklch(0.935 0.006 245);
-  --tr-shell: oklch(0.995 0.002 245);
-  --tr-surface: oklch(0.995 0.002 245);
-  --tr-surface-2: oklch(0.955 0.006 245);
-  --tr-surface-3: oklch(0.91 0.009 245);
+  --tr-bg: oklch(0.985 0.002 255);
+  --tr-bg-soft: oklch(0.972 0.004 255);
+  --tr-shell: oklch(0.996 0.002 255);
+  --tr-surface: oklch(0.996 0.002 255);
+  --tr-surface-2: oklch(0.982 0.003 255);
+  --tr-surface-3: oklch(0.945 0.008 255);
   --tr-border: color-mix(in srgb, var(--tr-text) 16%, transparent);
   --tr-border-soft: color-mix(in srgb, var(--tr-text) 10%, transparent);
-  --tr-text: oklch(0.19 0.018 245);
-  --tr-text-muted: oklch(0.43 0.022 245);
-  --tr-text-faint: oklch(0.56 0.02 245);
-  --tr-primary: oklch(0.44 0.12 263);
-  --tr-primary-hover: oklch(0.37 0.125 263);
+  --tr-text: oklch(0.18 0.02 255);
+  --tr-text-muted: oklch(0.41 0.028 255);
+  --tr-text-faint: oklch(0.55 0.026 255);
+  --tr-primary: oklch(0.45 0.095 255);
+  --tr-primary-hover: oklch(0.38 0.1 255);
   --tr-primary-edge: color-mix(in srgb, var(--tr-primary) 42%, var(--tr-border));
   --tr-primary-fill: color-mix(in srgb, var(--tr-primary) 7%, var(--tr-surface));
   --tr-primary-fill-hover: color-mix(in srgb, var(--tr-primary) 11%, var(--tr-surface-2));
+  /* Action (warm) — deeper brick on light surfaces, white ink for authority. */
+  --tr-action: oklch(0.48 0.142 40);
+  --tr-action-hover: oklch(0.43 0.145 40);
+  --tr-action-ink: oklch(0.99 0.008 60);
   --tr-green: oklch(0.47 0.11 150);
-  --tr-amber: oklch(0.55 0.13 78);
+  --tr-amber: oklch(0.52 0.12 102);
+  --tr-orange: oklch(0.62 0.17 50);
+  --tr-info: oklch(0.43 0.075 238);
   --tr-violet: oklch(0.48 0.11 300);
   --tr-red: oklch(0.49 0.17 28);
   --tr-success-bg: color-mix(in srgb, var(--tr-green) 12%, transparent);
   --tr-warning-bg: color-mix(in srgb, var(--tr-amber) 13%, transparent);
   --tr-error-bg: color-mix(in srgb, var(--tr-red) 12%, transparent);
-  --tr-badge-default-bg: oklch(0.92 0.008 245);
-  --tr-badge-default-text: oklch(0.28 0.018 245);
-  --tr-badge-default-ring: oklch(0.78 0.014 245);
+  --tr-badge-default-bg: oklch(0.92 0.008 255);
+  --tr-badge-default-text: oklch(0.28 0.018 255);
+  --tr-badge-default-ring: oklch(0.78 0.014 255);
   --tr-badge-success-bg: oklch(0.91 0.035 150);
   --tr-badge-success-text: oklch(0.34 0.105 150);
   --tr-badge-success-ring: oklch(0.75 0.08 150);
-  --tr-badge-warning-bg: oklch(0.92 0.05 78);
-  --tr-badge-warning-text: oklch(0.36 0.105 78);
-  --tr-badge-warning-ring: oklch(0.75 0.1 78);
+  --tr-badge-warning-bg: oklch(0.92 0.045 102);
+  --tr-badge-warning-text: oklch(0.34 0.1 102);
+  --tr-badge-warning-ring: oklch(0.74 0.095 102);
   --tr-badge-error-bg: oklch(0.93 0.04 28);
   --tr-badge-error-text: oklch(0.36 0.15 28);
   --tr-badge-error-ring: oklch(0.77 0.12 28);
   --tr-badge-info-bg: oklch(0.91 0.035 263);
   --tr-badge-info-text: oklch(0.32 0.12 263);
   --tr-badge-info-ring: oklch(0.73 0.09 263);
+  --tr-shadow-1: 0 1px 2px oklch(0.45 0.03 255 / 0.07);
+  --tr-shadow-2: 0 2px 8px oklch(0.45 0.03 255 / 0.09), 0 1px 2px oklch(0.45 0.03 255 / 0.06);
+  --tr-shadow-3: 0 12px 32px oklch(0.45 0.03 255 / 0.14), 0 2px 6px oklch(0.45 0.03 255 / 0.07);
+  --tr-highlight: inset 0 1px 0 oklch(1 0 0 / 0.6);
 }
 
 @theme inline {
@@ -192,7 +252,7 @@ body {
   min-height: 100%;
   background: var(--tr-bg);
   color: var(--tr-text);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: Aptos, "SF Pro Text", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -240,31 +300,109 @@ a,
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-.tr-card {
+/* Elevation system — three steps of depth.
+   flat:    content panels, the workbench default (hairline + faint lift)
+   raised:  cards that should stand off the page (lists, command lanes)
+   overlay: popovers, dropdowns, modals (clearly above the surface) */
+.tr-card,
+.tr-elevation-flat {
   background: var(--tr-surface);
-  box-shadow: inset 0 0 0 1px var(--tr-border-soft);
+  box-shadow: inset 0 0 0 1px var(--tr-border-soft), var(--tr-highlight), var(--tr-shadow-1);
+}
+
+.tr-elevation-raised {
+  background: var(--tr-surface);
+  box-shadow: inset 0 0 0 1px var(--tr-border-soft), var(--tr-highlight), var(--tr-shadow-2);
+}
+
+.tr-elevation-overlay {
+  background: var(--tr-surface-2);
+  box-shadow: inset 0 0 0 1px var(--tr-border), var(--tr-highlight), var(--tr-shadow-3);
+}
+
+/* Type scale — semantic steps on a fixed rem ramp. */
+.tr-h1 {
+  font-size: var(--tr-text-2xl);
+  line-height: var(--tr-leading-tight);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.tr-h2 {
+  font-size: var(--tr-text-xl);
+  line-height: var(--tr-leading-tight);
+  font-weight: 600;
+  letter-spacing: -0.008em;
+}
+
+.tr-h3 {
+  font-size: var(--tr-text-lg);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.tr-body {
+  font-size: var(--tr-text-base);
+  line-height: var(--tr-leading-normal);
+}
+
+.tr-meta {
+  font-size: var(--tr-text-sm);
+  line-height: 1.4;
+}
+
+/* Reveal — a single calm rise for landing sections. Safe by construction:
+   it runs on load and fills to the visible end state, and the global
+   prefers-reduced-motion block collapses it to an instant appearance. */
+@keyframes tr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tr-rise {
+  animation: tr-rise var(--tr-dur-slow) var(--tr-ease-out-expo) both;
 }
 
 .tr-primary-action {
-  background: var(--tr-primary-fill);
-  border: 1px solid var(--tr-primary-edge);
-  color: var(--tr-primary);
-  transition-property: background, color, transform;
+  background: var(--tr-action);
+  border: 1px solid color-mix(in srgb, var(--tr-action) 64%, black);
+  color: var(--tr-action-ink);
+  transition-property: background, color, border-color, box-shadow;
+  transition-duration: var(--tr-dur-base);
+  transition-timing-function: var(--tr-ease-out);
+}
+
+.tr-primary-action:hover {
+  background: var(--tr-action-hover);
+  color: var(--tr-action-ink);
+}
+
+.tr-primary-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tr-action) 78%, transparent);
+  outline-offset: 2px;
+}
+
+.tr-accent-action {
+  background: var(--tr-orange);
+  border: 1px solid color-mix(in srgb, var(--tr-orange) 72%, var(--tr-border));
+  color: oklch(0.13 0.02 255);
+  transition-property: background, color, border-color;
   transition-duration: 160ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
-.tr-primary-action:hover {
-  background: var(--tr-primary-fill-hover);
-  color: var(--tr-primary-hover);
+.tr-accent-action:hover {
+  background: color-mix(in srgb, var(--tr-orange) 86%, white);
 }
 
-.tr-primary-action:active {
-  transform: scale(0.96);
-}
-
-.tr-primary-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--tr-primary) 78%, transparent);
+.tr-accent-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tr-orange) 72%, transparent);
   outline-offset: 2px;
 }
 
@@ -283,6 +421,17 @@ a,
   border-color: transparent;
   outline: 2px solid color-mix(in srgb, var(--tr-primary) 78%, transparent);
   outline-offset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 [data-theme="light"] .text-white {

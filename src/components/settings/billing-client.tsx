@@ -68,60 +68,59 @@ export function BillingClient({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
-      <h1 className="text-lg font-semibold text-white">Billing & Payments</h1>
+      <h1 className="text-lg font-semibold text-[var(--tr-text)]">Billing & payments</h1>
 
       {subscribed && (
-        <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
+        <div className="rounded-lg bg-[var(--tr-success-bg)] p-4 text-sm text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-badge-success-ring)]">
           Subscription activated. Welcome to Taskrel.
         </div>
       )}
 
       {connectSuccess && (
-        <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
+        <div className="rounded-lg bg-[var(--tr-success-bg)] p-4 text-sm text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-badge-success-ring)]">
           Stripe Connect setup complete. You can now accept client payments.
         </div>
       )}
 
       {message && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+        <div className="rounded-lg bg-[var(--tr-warning-bg)] p-4 text-sm text-[var(--tr-amber)] shadow-[inset_0_0_0_1px_var(--tr-badge-warning-ring)]">
           {message}
         </div>
       )}
 
-      <section className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
+      <section className="rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-bold text-[var(--tr-amber)]">Payment readiness</p>
-            <h2 className="mt-2 text-2xl font-extrabold text-white">
+            <p className="text-sm font-semibold text-[var(--tr-primary)]">Payment readiness</p>
+            <h2 className="mt-2 text-xl font-semibold text-[var(--tr-text)]">
               {readiness.readyForPaidLaunch ? "Ready for paid launch" : "Finish the money path"}
             </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-400">
-              {readiness.completedCount} of {readiness.totalCount} checks ready. Taskrel needs subscription checkout, account status, Connect, and webhooks before public billing feels trustworthy.
+            <p className="mt-1 text-sm leading-6 text-[var(--tr-text-muted)]">
+              {readiness.completedCount} of {readiness.totalCount} checks ready.
             </p>
           </div>
           <div className="min-w-28">
-            <p className="text-right text-2xl font-black text-white">{readiness.percentComplete}%</p>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-950">
-              <div className="h-full rounded-full bg-[var(--tr-orange)]" style={{ width: `${readiness.percentComplete}%` }} />
+            <p className="text-right text-2xl font-semibold text-[var(--tr-text)]">{readiness.percentComplete}%</p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-sm bg-[var(--tr-bg-soft)]">
+              <div className="h-full rounded-sm bg-[var(--tr-primary)]" style={{ width: `${readiness.percentComplete}%` }} />
             </div>
           </div>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           {readiness.items.map(item => (
-            <div key={item.key} className={`rounded-lg border p-3 ${item.complete ? "border-[var(--tr-green)]/25 bg-[var(--tr-green)]/10" : "border-white/10 bg-white/[0.03]"}`}>
-              <p className="text-sm font-bold text-white">{item.label}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-500">{item.impact}</p>
+            <div key={item.key} className={`rounded-lg p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)] ${item.complete ? "bg-[var(--tr-success-bg)]" : "bg-[var(--tr-bg-soft)]"}`}>
+              <p className="text-base font-semibold text-[var(--tr-text)]">{item.label}</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--tr-text-muted)]">{item.detail}</p>
             </div>
           ))}
         </div>
       </section>
 
       <div className="grid gap-5 md:grid-cols-2">
-        <div className="space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
+        <div className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
           <div>
-            <h2 className="font-semibold text-white">Taskrel - $19/month</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <h2 className="font-semibold text-[var(--tr-text)]">Taskrel - $19/month</h2>
+            <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
               Unlimited quotes, invoices, jobs, and records. Cancel anytime.
             </p>
           </div>
@@ -130,10 +129,10 @@ export function BillingClient({
           </Button>
         </div>
 
-        <div className="space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
+        <div className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
           <div>
-            <h2 className="font-semibold text-white">Accept Client Payments</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <h2 className="font-semibold text-[var(--tr-text)]">Accept client payments</h2>
+            <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
               Connect your Stripe account to collect payments directly from invoices. Money goes straight to you.
             </p>
           </div>
@@ -143,10 +142,10 @@ export function BillingClient({
         </div>
       </div>
 
-      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5">
+      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
         <div>
-          <h2 className="font-semibold text-white">Premium access code</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <h2 className="font-semibold text-[var(--tr-text)]">Premium access code</h2>
+          <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
             Use a Taskrel access code for complimentary or validation access.
           </p>
         </div>

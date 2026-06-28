@@ -84,9 +84,9 @@ export default function InvoiceDetailPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
         <Surface className="p-8 text-center">
-          <p className="font-semibold text-white">Invoice not found</p>
+          <p className="font-semibold text-[var(--tr-text)]">Invoice not found</p>
           <p className="mt-1 text-sm text-[var(--tr-text-muted)]">This invoice may have been removed or you may not have access.</p>
-          <Link href="/invoices" className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-[var(--tr-orange)] px-4 text-sm font-bold text-[#241205]">
+          <Link href="/invoices" className="tr-primary-action mt-5 inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold">
             Back to invoices
           </Link>
         </Surface>
@@ -103,20 +103,20 @@ export default function InvoiceDetailPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[var(--tr-border)] text-[var(--tr-text-muted)] hover:bg-white/5 hover:text-white"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[var(--tr-border)] text-[var(--tr-text-muted)] transition-colors hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]"
             aria-label="Go back"
           >
             <ArrowLeft size={21} weight="bold" />
           </button>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-2xl font-bold text-white md:text-3xl">{invoice.client_name}</h1>
+              <h1 className="truncate text-2xl font-semibold text-[var(--tr-text)] md:text-3xl">{invoice.client_name}</h1>
               <Badge variant={statusVariant(workflow.effectiveStatus)}>{workflow.effectiveStatus}</Badge>
             </div>
-            <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{invoice.invoice_number} / {workflow.nextActionDetail}</p>
+            <p className="mt-1 text-base text-[var(--tr-text-muted)]">{invoice.invoice_number} / {workflow.nextActionDetail}</p>
           </div>
         </div>
-        <Link href="/invoices" className="hidden h-10 items-center rounded-lg border border-[var(--tr-border)] px-3 text-sm font-semibold text-white hover:bg-white/5 sm:inline-flex">
+        <Link href="/invoices" className="hidden h-10 items-center rounded-lg border border-[var(--tr-border)] px-3 text-sm font-semibold text-[var(--tr-text)] transition-colors hover:bg-[var(--tr-surface-2)] sm:inline-flex">
           All invoices
         </Link>
       </div>
@@ -126,35 +126,35 @@ export default function InvoiceDetailPage() {
           <Surface className="p-5">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-[var(--tr-text-muted)]">Balance due</p>
-                <p className="mt-2 text-4xl font-black tracking-tight text-white tabular-nums">{formatCurrency(workflow.balanceDue)}</p>
-                <p className="mt-2 text-sm text-[var(--tr-text-muted)]">Invoice total {formatCurrency(invoice.total)} / paid {formatCurrency(invoice.amount_paid)}</p>
+                <p className="text-base font-semibold text-[var(--tr-text)]">Balance due</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-[var(--tr-text)] tabular-nums">{formatCurrency(workflow.balanceDue)}</p>
+                <p className="mt-2 text-base text-[var(--tr-text-muted)]">Invoice total {formatCurrency(invoice.total)} / paid {formatCurrency(invoice.amount_paid)}</p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-slate-950/30 px-4 py-3 sm:min-w-52">
-                <p className="text-xs font-semibold text-[var(--tr-text-faint)]">Next action</p>
-                <p className="mt-1 text-lg font-bold text-white">{workflow.nextAction}</p>
+              <div className="rounded-lg bg-[var(--tr-primary-fill)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--tr-primary-edge)] sm:min-w-52">
+                <p className="text-sm font-semibold text-[var(--tr-text-muted)]">Next action</p>
+                <p className="mt-1 text-lg font-semibold text-[var(--tr-primary)]">{workflow.nextAction}</p>
               </div>
             </div>
           </Surface>
 
           <Surface className="overflow-hidden">
-            <div className="border-b border-white/10 px-4 py-3">
-              <h2 className="text-base font-bold text-white">Line items</h2>
+            <div className="border-b border-[var(--tr-border-soft)] px-4 py-3">
+              <h2 className="text-base font-semibold text-[var(--tr-text)]">Line items</h2>
             </div>
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-[var(--tr-border-soft)]">
               {invoice.line_items.map((item, index) => (
                 <div key={`${item.description}-${index}`} className="flex items-start justify-between gap-4 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">{item.description}</p>
-                    <p className="mt-1 text-xs text-[var(--tr-text-faint)]">
+                    <p className="text-sm font-semibold text-[var(--tr-text)]">{item.description}</p>
+                    <p className="mt-1 text-sm text-[var(--tr-text-muted)]">
                       {item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm font-bold text-white">{formatCurrency(item.total)}</p>
+                  <p className="shrink-0 text-sm font-semibold text-[var(--tr-text)]">{formatCurrency(item.total)}</p>
                 </div>
               ))}
             </div>
-            <div className="space-y-1 border-t border-white/10 px-4 py-4">
+            <div className="space-y-1 border-t border-[var(--tr-border-soft)] px-4 py-4">
               <TotalRow label="Subtotal" value={invoice.subtotal} />
               {invoice.tax_amount > 0 && <TotalRow label="Tax" value={invoice.tax_amount} />}
               <TotalRow label="Total" value={invoice.total} strong />
@@ -170,7 +170,7 @@ export default function InvoiceDetailPage() {
                 <Receipt size={23} weight="duotone" />
               </span>
               <div>
-                <h2 className="text-lg font-bold text-white">Payment command</h2>
+              <h2 className="text-lg font-semibold text-[var(--tr-text)]">Payment command</h2>
                 <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{workflow.paymentLabel}</p>
               </div>
             </div>
@@ -183,15 +183,15 @@ export default function InvoiceDetailPage() {
                 <ProofRow label={deliverySummary.latestSuccessLabel} detail="Delivery proof is saved in Taskrel." />
               )}
               {(invoice.delivery_events ?? []).slice(0, 4).map(event => (
-                <div key={event.id} className={`rounded-lg border p-3 ${event.status === "success" ? "border-emerald-300/20 bg-emerald-300/10" : "border-amber-300/20 bg-amber-300/10"}`}>
+                <div key={event.id} className={`rounded-lg p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)] ${event.status === "success" ? "bg-[var(--tr-success-bg)]" : "bg-[var(--tr-warning-bg)]"}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-emerald-100" : "text-amber-100"}`}>
-                      {event.channel.toUpperCase()} / {event.status}
+                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}`}>
+                      {event.channel} / {event.status}
                     </p>
-                    <p className="shrink-0 text-xs text-[var(--tr-text-faint)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
+                    <p className="shrink-0 text-sm text-[var(--tr-text-muted)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
                   </div>
                   <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
-                  {event.recipient && <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{event.recipient}</p>}
+                  {event.recipient && <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.recipient}</p>}
                 </div>
               ))}
               {workflow.proof.length === 0 && (
@@ -207,14 +207,14 @@ export default function InvoiceDetailPage() {
                   href={invoice.stripe_payment_link}
                   target="_blank"
                   rel="noreferrer"
-                  className="block rounded-lg border border-[var(--tr-border)] bg-slate-950/30 p-3 text-sm font-semibold text-[var(--tr-orange)] break-all hover:bg-white/[0.04]"
+                  className="block rounded-lg bg-[var(--tr-bg-soft)] p-3 text-sm font-semibold text-[var(--tr-primary)] break-all shadow-[inset_0_0_0_1px_var(--tr-border-soft)] hover:bg-[var(--tr-surface-2)]"
                 >
                   {invoice.stripe_payment_link}
                 </a>
                 <button
                   type="button"
                   onClick={handleCopyPaymentLink}
-                  className="h-10 w-full rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-2)] px-3 text-sm font-semibold text-white hover:bg-[var(--tr-surface-3)]"
+                  className="h-10 w-full rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-2)] px-3 text-sm font-semibold text-[var(--tr-text)] hover:bg-[var(--tr-surface-3)]"
                 >
                   Copy payment link
                 </button>
@@ -239,7 +239,7 @@ export default function InvoiceDetailPage() {
 
           {workflow.blockers.length > 0 && (
             <Surface className="p-5">
-              <h2 className="text-base font-bold text-white">Before sending</h2>
+              <h2 className="text-base font-semibold text-[var(--tr-text)]">Before sending</h2>
               <div className="mt-4 space-y-3">
                 {workflow.blockers.map(blocker => (
                   <div key={blocker.key} className="rounded-lg border border-amber-300/20 bg-amber-300/10 p-3">
@@ -258,11 +258,11 @@ export default function InvoiceDetailPage() {
 
 function ProofRow({ label, detail }: { label: string; detail: string }) {
   return (
-    <div className="flex gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+    <div className="flex gap-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
       <CheckCircle size={18} weight="duotone" className="mt-0.5 shrink-0 text-[var(--tr-green)]" />
       <div>
-        <p className="text-sm font-semibold text-white">{label}</p>
-        <p className="mt-0.5 text-xs text-[var(--tr-text-muted)]">{detail}</p>
+        <p className="text-sm font-semibold text-[var(--tr-text)]">{label}</p>
+        <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{detail}</p>
       </div>
     </div>
   );
@@ -280,7 +280,7 @@ function TotalRow({
   success?: boolean;
 }) {
   return (
-    <div className={`flex justify-between gap-4 ${strong ? "text-lg font-black text-white" : success ? "text-sm font-semibold text-[var(--tr-green)]" : "text-sm text-[var(--tr-text-muted)]"}`}>
+    <div className={`flex justify-between gap-4 ${strong ? "text-lg font-semibold text-[var(--tr-text)]" : success ? "text-sm font-semibold text-[var(--tr-green)]" : "text-sm text-[var(--tr-text-muted)]"}`}>
       <span>{label}</span>
       <span>{formatCurrency(value)}</span>
     </div>

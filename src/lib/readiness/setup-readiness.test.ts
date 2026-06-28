@@ -12,26 +12,22 @@ import {
 } from "./setup-readiness";
 
 describe("setup readiness", () => {
-  it("marks required business information complete only when identity and trade fields exist", () => {
+  it("marks required business information complete when identity and services exist", () => {
     expect(
       getBusinessReadiness({
         business_name: "APR Painting",
-        business_type: "home_improvement",
         trades: ["painting"],
-        primary_trade: "painting",
       }).state
     ).toBe("complete");
 
     expect(
       getBusinessReadiness({
         business_name: "APR Painting",
-        business_type: null,
-        trades: ["painting"],
-        primary_trade: "painting",
+        trades: [],
       })
     ).toMatchObject({
       state: "needs_attention",
-      detail: "Add business type.",
+      detail: "Choose at least one service.",
     });
   });
 

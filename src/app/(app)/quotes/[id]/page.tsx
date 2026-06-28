@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CalendarBlank, CheckCircle, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
+import { ArrowLeft, CheckCircle, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
@@ -267,21 +266,21 @@ export default function QuoteDetailPage() {
     : "";
   const workflowState = getQuoteWorkflowState(quote);
   const deliverySummary = deliveryEventSummary(quote.delivery_events ?? []);
+  const attentionItems = workflowState.readiness.filter(item => !item.complete);
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-6 md:px-8 xl:py-8">
       <div className="flex items-start gap-3">
         <button
           onClick={() => router.back()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] text-slate-400 hover:text-white"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] text-[var(--tr-text-muted)] transition-colors hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]"
         >
           <ArrowLeft size={20} weight="bold" />
           <span className="sr-only">Back</span>
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-[var(--tr-orange)]">{workflowState.bucketLabel}</p>
-          <h1 className="truncate text-2xl font-bold text-white md:text-3xl">{quote.client_name}</h1>
-          <p className="text-sm text-[var(--tr-text-muted)]">{workflowState.nextActionDetail}</p>
+          <h1 className="truncate text-2xl font-semibold text-[var(--tr-text)] md:text-3xl">{quote.client_name}</h1>
+          <p className="mt-1 text-base text-[var(--tr-text-muted)]">{workflowState.nextActionDetail}</p>
         </div>
         <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
       </div>
@@ -289,67 +288,70 @@ export default function QuoteDetailPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <aside className="order-2 space-y-4 lg:order-2">
           <Surface className="p-5">
-            <p className="text-sm font-bold text-[var(--tr-text-muted)]">Quote total</p>
-            <p className="mt-2 text-4xl font-black tracking-tight text-white">{formatCurrency(quote.total)}</p>
+            <p className="text-base font-semibold text-[var(--tr-text)]">Quote total</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-[var(--tr-text)]">{formatCurrency(quote.total)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[var(--tr-orange)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-orange)]">
+              <span className="rounded-md bg-[var(--tr-primary-fill)] px-2.5 py-1 text-sm font-semibold text-[var(--tr-primary)] ring-1 ring-[var(--tr-primary-edge)]">
                 {workflowState.nextAction}
               </span>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${deliveryClass(workflowState.deliveryTone)}`}>
+              <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${deliveryClass(workflowState.deliveryTone)}`}>
                 {workflowState.deliveryLabel}
               </span>
               {dirty && (
-                <span className="rounded-full bg-[var(--tr-amber)]/12 px-2.5 py-1 text-xs font-bold text-[var(--tr-amber)]">
+              <span className="rounded-md bg-[var(--tr-amber)]/12 px-2 py-1 text-sm font-semibold text-[var(--tr-amber)]">
                   Unsaved edits
                 </span>
               )}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <SummaryMeta icon={<FileText size={15} weight="duotone" />} label="Status" value={quote.status} />
-              <SummaryMeta icon={<CalendarBlank size={15} weight="duotone" />} label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
-              <SummaryMeta icon={<EnvelopeSimple size={15} weight="duotone" />} label="Delivery" value={quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready"} />
-              <SummaryMeta icon={<SealCheck size={15} weight="duotone" />} label="Follow-up" value={workflowState.followUpLabel ?? "Not needed"} />
-              <SummaryMeta icon={<DeviceMobile size={15} weight="duotone" />} label="Contact" value={quote.client_phone ? "Phone saved" : quote.client_email ? "Email saved" : "Missing"} />
+            <div className="mt-5 divide-y divide-[var(--tr-border-soft)] border-t border-[var(--tr-border-soft)]">
+              <DetailLine label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
+              <DetailLine label="Delivery" value={quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready"} />
+              <DetailLine label="Follow-up" value={workflowState.followUpLabel ?? "Not needed"} />
+              <DetailLine label="Contact" value={quote.client_phone ? "Phone saved" : quote.client_email ? "Email saved" : "Missing"} />
             </div>
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-bold text-white">Review readiness</h2>
-            <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
-              {workflowState.completedReadiness} of {workflowState.totalReadiness} checks ready before this quote is sent or converted.
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">
+              {attentionItems.length > 0 ? "Needs attention" : "Ready"}
+            </h2>
+            <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
+              {attentionItems.length > 0
+                ? `${attentionItems.length} ${attentionItems.length === 1 ? "item needs" : "items need"} attention before the next step.`
+                : "This quote has the basics needed for the next step."}
             </p>
             <div className="mt-4 space-y-2">
-              {workflowState.readiness.map(item => (
+              {(attentionItems.length > 0 ? attentionItems : workflowState.readiness.slice(0, 1)).map(item => (
                 <ReadinessRow key={item.key} item={item} />
               ))}
             </div>
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-bold text-white">Send proof</h2>
-            <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Send proof</h2>
+            <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
               {deliverySummary.latestSuccessLabel ?? "No successful send recorded yet."}
             </p>
             <div className="mt-4 space-y-2">
               {(quote.delivery_events ?? []).slice(0, 4).map(event => (
-                <div key={event.id} className={`rounded-lg border p-3 ${event.status === "success" ? "border-emerald-300/20 bg-emerald-300/10" : "border-amber-300/20 bg-amber-300/10"}`}>
+                <div key={event.id} className={`rounded-lg p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)] ${event.status === "success" ? "bg-[var(--tr-success-bg)]" : "bg-[var(--tr-warning-bg)]"}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-emerald-100" : "text-amber-100"}`}>
-                      {event.channel.toUpperCase()} / {event.status}
+                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}`}>
+                      {event.channel} / {event.status}
                     </p>
-                    <p className="shrink-0 text-xs text-[var(--tr-text-faint)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
+                    <p className="shrink-0 text-sm text-[var(--tr-text-muted)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
                   </div>
                   <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
-                  {event.recipient && <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{event.recipient}</p>}
+                  {event.recipient && <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.recipient}</p>}
                 </div>
               ))}
             </div>
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-bold text-white">Actions</h2>
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Actions</h2>
             {dirty && (
-              <p className="mt-2 rounded-lg bg-[var(--tr-amber)]/10 p-3 text-sm leading-5 text-amber-100">
+              <p className="mt-2 rounded-lg bg-[var(--tr-warning-bg)] p-3 text-sm leading-5 text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-badge-warning-ring)]">
                 Save pricing changes before sending or converting so the client document matches your latest totals.
               </p>
             )}
@@ -397,13 +399,13 @@ export default function QuoteDetailPage() {
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-bold text-white">Client</h2>
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Client</h2>
             <div className="mt-3 space-y-2 text-sm text-[var(--tr-text-muted)]">
               {quote.client_email && <p>{quote.client_email}</p>}
               {quote.client_phone && <p>{quote.client_phone}</p>}
               {quote.client_address && (
                 <p className="flex items-start gap-2">
-                  <MapPin size={16} weight="duotone" className="mt-0.5 shrink-0 text-slate-500" />
+                  <MapPin size={16} weight="duotone" className="mt-0.5 shrink-0 text-[var(--tr-text-faint)]" />
                   <span>{quote.client_address}</span>
                 </p>
               )}
@@ -427,39 +429,39 @@ export default function QuoteDetailPage() {
 
         <main className="order-1 space-y-5 lg:order-1">
           <Surface className="overflow-hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-700/70 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Line items</p>
-              <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-orange)]">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--tr-border-soft)] px-4 py-3">
+              <p className="text-sm font-semibold text-[var(--tr-text-muted)]">Line items</p>
+              <button type="button" onClick={addLineItem} className="text-sm font-semibold text-[var(--tr-primary)]">
                 Add item
               </button>
             </div>
-            <div className="divide-y divide-slate-700/50">
+            <div className="divide-y divide-[var(--tr-border-soft)]">
               {quote.line_items.map((item, index) => (
                 <div key={index} className="px-4 py-4">
                   <div className="lg:hidden">
                     <button
                       type="button"
                       onClick={() => setExpandedLineItemIndex(expandedLineItemIndex === index ? null : index)}
-                      className="flex w-full items-start justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/25 p-3 text-left"
+                      className="flex w-full items-start justify-between gap-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 text-left shadow-[inset_0_0_0_1px_var(--tr-border-soft)]"
                     >
                       <span className="min-w-0">
-                        <span className="block line-clamp-2 text-sm font-semibold leading-5 text-white">{item.description}</span>
-                        <span className="mt-1 block text-xs text-[var(--tr-text-muted)]">
+                        <span className="block line-clamp-2 text-sm font-semibold leading-5 text-[var(--tr-text)]">{item.description}</span>
+                        <span className="mt-1 block text-sm text-[var(--tr-text-muted)]">
                           {item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}
                         </span>
-                        <span className="mt-1 block text-[11px] font-semibold text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</span>
+                        <span className="mt-1 block text-sm font-semibold text-[var(--tr-text-muted)]">{sourceLabel(item.pricing_source)}</span>
                       </span>
                       <span className="shrink-0 text-right">
-                        <span className="block text-sm font-black text-white">{formatCurrency(item.total)}</span>
-                        <span className="mt-2 inline-flex rounded-full bg-[var(--tr-orange)]/12 px-2 py-1 text-[11px] font-bold text-[var(--tr-orange)]">
+                        <span className="block text-sm font-semibold text-[var(--tr-text)]">{formatCurrency(item.total)}</span>
+                        <span className="mt-2 inline-flex rounded-md bg-[var(--tr-primary-fill)] px-2 py-1 text-sm font-semibold text-[var(--tr-primary)] ring-1 ring-[var(--tr-primary-edge)]">
                           {expandedLineItemIndex === index ? "Done" : "Edit"}
                         </span>
                       </span>
                     </button>
                     {expandedLineItemIndex === index && (
-                      <div className="mt-3 space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] p-3">
+                      <div className="mt-3 space-y-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
                         <label className="block">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</span>
+                          <span className="text-sm font-medium text-[var(--tr-text-muted)]">Description</span>
                           <textarea
                             value={item.description}
                             onChange={event => updateLineItem(index, { description: event.target.value })}
@@ -469,7 +471,7 @@ export default function QuoteDetailPage() {
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                           <label className="block">
-                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                            <span className="text-sm font-medium text-[var(--tr-text-muted)]">Qty</span>
                             <input
                               type="number"
                               min="0"
@@ -480,7 +482,7 @@ export default function QuoteDetailPage() {
                             />
                           </label>
                           <label className="block">
-                            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                            <span className="text-sm font-medium text-[var(--tr-text-muted)]">Unit</span>
                             <input
                               value={item.unit ?? "unit"}
                               onChange={event => updateLineItem(index, { unit: event.target.value })}
@@ -489,7 +491,7 @@ export default function QuoteDetailPage() {
                           </label>
                         </div>
                         <label className="block">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                          <span className="text-sm font-medium text-[var(--tr-text-muted)]">Unit price</span>
                           <input
                             type="number"
                             min="0"
@@ -499,9 +501,9 @@ export default function QuoteDetailPage() {
                             className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
                           />
                         </label>
-                        <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-                          <p className="text-sm font-semibold text-white">Line total {formatCurrency(item.total)}</p>
-                          <button type="button" onClick={() => removeLineItem(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                        <div className="flex items-center justify-between gap-3 border-t border-[var(--tr-border-soft)] pt-3">
+                          <p className="text-sm font-semibold text-[var(--tr-text)]">Line total {formatCurrency(item.total)}</p>
+                          <button type="button" onClick={() => removeLineItem(index)} className="text-sm font-semibold text-red-300 hover:text-red-200">
                             Remove
                           </button>
                         </div>
@@ -511,16 +513,16 @@ export default function QuoteDetailPage() {
 
                   <div className="hidden gap-3 lg:grid lg:grid-cols-[1fr_92px_90px_120px_90px]">
                     <div className="min-w-0">
-                      <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Description</label>
+                      <label className="text-sm font-medium text-[var(--tr-text-muted)]">Description</label>
                       <input
                         value={item.description}
                         onChange={event => updateLineItem(index, { description: event.target.value })}
                         className="tr-input mt-1 h-10 w-full rounded-lg px-3 text-sm"
                       />
-                      <p className="mt-1 text-xs text-[var(--tr-text-faint)]">{sourceLabel(item.pricing_source)}</p>
+                      <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{sourceLabel(item.pricing_source)}</p>
                     </div>
                     <label className="block">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Qty</span>
+                      <span className="text-sm font-medium text-[var(--tr-text-muted)]">Qty</span>
                       <input
                         type="number"
                         min="0"
@@ -531,7 +533,7 @@ export default function QuoteDetailPage() {
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit</span>
+                      <span className="text-sm font-medium text-[var(--tr-text-muted)]">Unit</span>
                       <input
                         value={item.unit ?? "unit"}
                         onChange={event => updateLineItem(index, { unit: event.target.value })}
@@ -539,7 +541,7 @@ export default function QuoteDetailPage() {
                       />
                     </label>
                     <label className="block">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Unit price</span>
+                      <span className="text-sm font-medium text-[var(--tr-text-muted)]">Unit price</span>
                       <input
                         type="number"
                         min="0"
@@ -551,10 +553,10 @@ export default function QuoteDetailPage() {
                     </label>
                     <div className="flex items-end justify-between gap-3 lg:block lg:text-right">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Total</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{formatCurrency(item.total)}</p>
+                        <p className="text-sm font-medium text-[var(--tr-text-muted)]">Total</p>
+                        <p className="mt-2 text-sm font-semibold text-[var(--tr-text)]">{formatCurrency(item.total)}</p>
                       </div>
-                      <button type="button" onClick={() => removeLineItem(index)} className="text-xs font-semibold text-red-300 hover:text-red-200">
+                      <button type="button" onClick={() => removeLineItem(index)} className="text-sm font-semibold text-red-300 hover:text-red-200">
                         Remove
                       </button>
                     </div>
@@ -562,16 +564,16 @@ export default function QuoteDetailPage() {
                 </div>
               ))}
             </div>
-            <div className="space-y-1 border-t border-slate-700/70 px-4 py-3">
-              <div className="flex justify-between text-sm text-slate-400">
+            <div className="space-y-1 border-t border-[var(--tr-border-soft)] px-4 py-3">
+              <div className="flex justify-between text-sm text-[var(--tr-text-muted)]">
                 <span>Subtotal</span><span>{formatCurrency(quote.subtotal)}</span>
               </div>
               {quote.tax_amount > 0 && (
-                <div className="flex justify-between text-sm text-slate-400">
+                <div className="flex justify-between text-sm text-[var(--tr-text-muted)]">
                   <span>Tax</span><span>{formatCurrency(quote.tax_amount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-bold text-[var(--tr-amber)]">
+              <div className="flex justify-between text-base font-semibold text-[var(--tr-primary)]">
                 <span>Total</span><span>{formatCurrency(quote.total)}</span>
               </div>
             </div>
@@ -579,21 +581,21 @@ export default function QuoteDetailPage() {
 
           {quote.notes && (
             <Surface className="p-4">
-              <p className="mb-1 text-sm font-semibold text-white">Client note</p>
+              <p className="mb-1 text-sm font-semibold text-[var(--tr-text)]">Client note</p>
               <p className="text-sm leading-6 text-[var(--tr-text-muted)]">{quote.notes}</p>
             </Surface>
           )}
 
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Client preview</h2>
-              <div className="flex rounded-lg bg-slate-800 p-1">
+              <h2 className="text-sm font-semibold text-[var(--tr-text-muted)]">Client preview</h2>
+              <div className="flex rounded-lg bg-[var(--tr-bg-soft)] p-1 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
                 {presets.map(preset => (
                   <button
                     key={preset.value}
                     onClick={() => setPreviewPreset(preset.value)}
-                    className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${
-                      previewPreset === preset.value ? "bg-[var(--tr-orange)] text-[#241205]" : "text-slate-400 hover:text-white"
+                    className={`rounded-md px-2.5 py-1.5 text-sm font-semibold ${
+                      previewPreset === preset.value ? "bg-[var(--tr-primary-fill)] text-[var(--tr-primary)] shadow-[inset_0_0_0_1px_var(--tr-primary-edge)]" : "text-[var(--tr-text-muted)] hover:text-[var(--tr-text)]"
                     }`}
                   >
                     {preset.label}
@@ -613,44 +615,33 @@ export default function QuoteDetailPage() {
   );
 }
 
-function SummaryMeta({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function DetailLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold capitalize text-white">{value}</p>
+    <div className="flex items-center justify-between gap-4 py-3 text-sm">
+      <span className="text-[var(--tr-text-muted)]">{label}</span>
+      <span className="truncate text-right font-semibold capitalize text-[var(--tr-text)]">{value}</span>
     </div>
   );
 }
 
 function ReadinessRow({ item }: { item: QuoteReadinessItem }) {
   return (
-    <div className="flex gap-2 rounded-lg bg-white/[0.04] p-2.5">
+    <div className="flex gap-2 rounded-lg bg-[var(--tr-bg-soft)] p-2.5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
       <span className={item.complete ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}>
         {item.complete ? <CheckCircle size={16} weight="duotone" /> : <SealCheck size={16} weight="duotone" />}
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-bold text-white">{item.label}</span>
-        <span className="block text-xs leading-5 text-[var(--tr-text-muted)]">{item.detail}</span>
+        <span className="block text-sm font-semibold text-[var(--tr-text)]">{item.label}</span>
+        <span className="block text-sm leading-6 text-[var(--tr-text-muted)]">{item.detail}</span>
       </span>
     </div>
   );
 }
 
 function deliveryClass(tone: "ready" | "sent" | "missing") {
-  if (tone === "sent") return "bg-[var(--tr-green)]/12 text-[var(--tr-green)]";
-  if (tone === "ready") return "bg-[var(--tr-info)]/12 text-[var(--tr-info)]";
-  return "bg-[var(--tr-amber)]/12 text-[var(--tr-amber)]";
+  if (tone === "sent") return "bg-[var(--tr-badge-success-bg)] text-[var(--tr-badge-success-text)] ring-1 ring-[var(--tr-badge-success-ring)]";
+  if (tone === "ready") return "bg-[var(--tr-badge-info-bg)] text-[var(--tr-badge-info-text)] ring-1 ring-[var(--tr-badge-info-ring)]";
+  return "bg-[var(--tr-badge-warning-bg)] text-[var(--tr-badge-warning-text)] ring-1 ring-[var(--tr-badge-warning-ring)]";
 }
 
 function PricingIntelligencePanel({
@@ -680,7 +671,7 @@ function PricingIntelligencePanel({
 }) {
   return (
     <Surface className="p-5">
-      <h2 className="text-lg font-bold text-white">Pricing check</h2>
+      <h2 className="text-lg font-semibold text-[var(--tr-text)]">Pricing check</h2>
       <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">
         Internal only. These values help you price the work, but they do not appear on the client quote.
       </p>
@@ -698,15 +689,15 @@ function PricingIntelligencePanel({
       </div>
 
       {recommendation?.property_value_adjustment_reason && (
-        <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs leading-5 text-[var(--tr-text-muted)]">
+        <p className="mt-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 text-sm leading-6 text-[var(--tr-text-muted)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
           {recommendation.property_value_adjustment_reason}
         </p>
       )}
 
-      <div className="mt-5 space-y-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] p-4">
+      <div className="mt-5 space-y-3 rounded-lg bg-[var(--tr-bg-soft)] p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
         <div>
-          <p className="text-sm font-semibold text-white">Property value</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">
+          <p className="text-sm font-semibold text-[var(--tr-text)]">Property value</p>
+          <p className="mt-1 text-sm leading-6 text-[var(--tr-text-muted)]">
             Enter a value manually or verify the address with RentCast when configured.
           </p>
         </div>
@@ -728,24 +719,24 @@ function PricingIntelligencePanel({
           </Button>
         </div>
         {valuation && (
-          <div className="space-y-1 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-400">
-            <p><span className="font-semibold text-slate-300">Source:</span> {valuation.source}</p>
-            {valuation.normalized_address && <p><span className="font-semibold text-slate-300">Address:</span> {valuation.normalized_address}</p>}
+          <div className="space-y-1 rounded-lg bg-[var(--tr-surface)] p-3 text-sm text-[var(--tr-text-muted)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+            <p><span className="font-semibold text-[var(--tr-text)]">Source:</span> {valuation.source}</p>
+            {valuation.normalized_address && <p><span className="font-semibold text-[var(--tr-text)]">Address:</span> {valuation.normalized_address}</p>}
             {(valuation.value_low || valuation.value_high) && (
               <p>
-                <span className="font-semibold text-slate-300">Range:</span>{" "}
+                <span className="font-semibold text-[var(--tr-text)]">Range:</span>{" "}
                 {valuation.value_low ? formatCurrency(valuation.value_low) : "Unknown"} - {valuation.value_high ? formatCurrency(valuation.value_high) : "Unknown"}
               </p>
             )}
-            {valuation.fetched_at && <p><span className="font-semibold text-slate-300">Fetched:</span> {formatDate(valuation.fetched_at)}</p>}
-            <button type="button" onClick={onClear} className="pt-1 text-xs font-semibold text-red-300 hover:text-red-200">
+            {valuation.fetched_at && <p><span className="font-semibold text-[var(--tr-text)]">Fetched:</span> {formatDate(valuation.fetched_at)}</p>}
+            <button type="button" onClick={onClear} className="pt-1 text-sm font-semibold text-red-300 hover:text-red-200">
               Clear property value
             </button>
           </div>
         )}
         {propertyError && <p className="text-sm text-red-300">{propertyError}</p>}
         {propertyMessage && !propertyError && <p className="text-sm text-emerald-300">{propertyMessage}</p>}
-        {!hasAddress && <p className="text-xs text-slate-500">Add a client address to use RentCast verification.</p>}
+        {!hasAddress && <p className="text-sm text-[var(--tr-text-muted)]">Add a client address to use RentCast verification.</p>}
       </div>
     </Surface>
   );
@@ -755,7 +746,7 @@ function PricingRow({
   label,
   value,
   strong,
-  tone = "text-white",
+  tone = "text-[var(--tr-text)]",
 }: {
   label: string;
   value: string;
@@ -764,8 +755,8 @@ function PricingRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-slate-400">{label}</span>
-      <span className={`${strong ? "font-bold" : "font-semibold"} ${tone}`}>{value}</span>
+      <span className="text-[var(--tr-text-muted)]">{label}</span>
+      <span className={`${strong ? "font-semibold" : "font-medium"} ${tone}`}>{value}</span>
     </div>
   );
 }

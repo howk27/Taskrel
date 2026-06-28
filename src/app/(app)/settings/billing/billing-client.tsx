@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ReadinessList } from "@/components/ui/readiness";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CheckCircle, SealCheck } from "@/components/ui/icons";
+import type { ReadinessItem } from "@/lib/readiness/setup-readiness";
 
 import { getBillingPageReadiness } from "./billing-readiness";
 
@@ -42,6 +43,9 @@ export function BillingClient({
     webhookConfigured,
     subscribed,
   });
+  const incompleteItems = readinessItems.filter(item => item.state !== "complete");
+  const completedCount = readinessItems.length - incompleteItems.length;
+  const percentComplete = Math.round((completedCount / readinessItems.length) * 100);
 
   async function handleSubscribe() {
     setMessage("");
@@ -90,48 +94,76 @@ export function BillingClient({
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 px-4 py-6">
-      <h1 className="text-lg font-semibold text-white">Billing & Payments</h1>
+    <div className="mx-auto max-w-3xl space-y-5 px-4 py-6">
+      <h1 className="text-lg font-semibold text-[var(--tr-text)]">Billing & payments</h1>
 
       {subscribed && (
-        <div className="rounded-xl border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-200">
+        <div className="rounded-lg bg-[var(--tr-primary-fill)] p-4 text-sm text-[var(--tr-primary)] shadow-[inset_0_0_0_1px_var(--tr-primary-edge)]">
           Subscription checkout is complete. Waiting for Stripe confirmation.
         </div>
       )}
 
       {connectSuccess && (
-        <div className="rounded-xl border border-green-700 bg-green-900/30 p-4 text-sm text-green-400">
+        <div className="rounded-lg bg-[var(--tr-success-bg)] p-4 text-sm text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-badge-success-ring)]">
           Stripe Connect setup complete. You can now accept client payments.
         </div>
       )}
 
       {message && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+        <div className="rounded-lg bg-[var(--tr-warning-bg)] p-4 text-sm text-[var(--tr-amber)] shadow-[inset_0_0_0_1px_var(--tr-badge-warning-ring)]">
           {message}
         </div>
       )}
 
-      <ReadinessList items={readinessItems} />
-
-      <div className="space-y-3 rounded-xl bg-[#1E293B] p-5">
-        <div>
-          <h2 className="font-semibold text-white">Taskrel - $19/month</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Unlimited quotes, invoices, and jobs. Cancel anytime.
-          </p>
+      <section className="rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">
+              {incompleteItems.length > 0 ? "Finish payment setup" : "Payment setup ready"}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-[var(--tr-text-muted)]">
+              {completedCount} of {readinessItems.length} checks ready.
+            </p>
+          </div>
+          <div className="min-w-32">
+            <p className="text-right text-2xl font-semibold text-[var(--tr-text)]">{percentComplete}%</p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-sm bg-[var(--tr-bg-soft)]">
+              <div className="h-full rounded-sm bg-[var(--tr-primary)]" style={{ width: `${percentComplete}%` }} />
+            </div>
+          </div>
         </div>
-        <Button className="w-full" onClick={handleSubscribe} loading={loadingSubscribe}>
-          Subscribe Now
-        </Button>
+
+        <div className="mt-5 space-y-2">
+          {(incompleteItems.length > 0 ? incompleteItems : readinessItems.slice(0, 1)).map(item => (
+            <BillingReadinessRow key={item.key} item={item} />
+          ))}
+        </div>
+      </section>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+          <div>
+            <h2 className="font-semibold text-[var(--tr-text)]">Taskrel - $19/month</h2>
+            <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Unlimited quotes, invoices, jobs, and records.</p>
+          </div>
+          <Button className="w-full" onClick={handleSubscribe} loading={loadingSubscribe}>
+            Subscribe
+          </Button>
+        </div>
+
+        <div className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+          <div>
+            <h2 className="font-semibold text-[var(--tr-text)]">Client payments</h2>
+            <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Connect Stripe to collect invoice payments.</p>
+          </div>
+          <Button variant="secondary" className="w-full" onClick={handleConnect} loading={loadingConnect}>
+            Set up Stripe Connect
+          </Button>
+        </div>
       </div>
 
-      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-xl bg-[#1E293B] p-5">
-        <div>
-          <h2 className="font-semibold text-white">Closed-test premium access</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Use a Taskrel access code to unlock premium while Stripe billing is being tested.
-          </p>
-        </div>
+      <form onSubmit={handleRedeemCode} className="space-y-3 rounded-lg bg-[var(--tr-surface)] p-5 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+        <h2 className="font-semibold text-[var(--tr-text)]">Premium access code</h2>
         <Input
           label="Access code"
           value={accessCode}
@@ -140,21 +172,25 @@ export function BillingClient({
           autoComplete="off"
         />
         <Button className="w-full" type="submit" variant="secondary" loading={loadingCode} disabled={!accessCode.trim()}>
-          Unlock Premium
+          Unlock premium
         </Button>
       </form>
+    </div>
+  );
+}
 
-      <div className="space-y-3 rounded-xl bg-[#1E293B] p-5">
-        <div>
-          <h2 className="font-semibold text-white">Accept Client Payments</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Connect your Stripe account to collect payments directly from your invoices. Money goes straight to you - Taskrel never touches it.
-          </p>
-        </div>
-        <Button variant="secondary" className="w-full" onClick={handleConnect} loading={loadingConnect}>
-          Set Up Stripe Connect
-        </Button>
-      </div>
+function BillingReadinessRow({ item }: { item: ReadinessItem }) {
+  const complete = item.state === "complete";
+
+  return (
+    <div className="flex gap-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+      <span className={complete ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}>
+        {complete ? <CheckCircle size={18} weight="duotone" /> : <SealCheck size={18} weight="duotone" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-[var(--tr-text)]">{item.label}</span>
+        <span className="block text-sm leading-6 text-[var(--tr-text-muted)]">{item.detail}</span>
+      </span>
     </div>
   );
 }

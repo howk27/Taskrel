@@ -104,16 +104,10 @@ export function getBusinessReadiness(input: BusinessReadinessInput): ReadinessIt
   if (!present(input.business_name)) {
     return { key: "business", label: "Business information", state: "needs_attention", detail: "Add business name.", actionLabel: "Edit business" };
   }
-  if (!present(input.business_type)) {
-    return { key: "business", label: "Business information", state: "needs_attention", detail: "Add business type.", actionLabel: "Edit business" };
-  }
   if (!input.trades?.length) {
-    return { key: "business", label: "Business information", state: "needs_attention", detail: "Choose at least one trade.", actionLabel: "Edit trades" };
+    return { key: "business", label: "Business information", state: "needs_attention", detail: "Choose at least one service.", actionLabel: "Edit services" };
   }
-  if (!present(input.primary_trade)) {
-    return { key: "business", label: "Business information", state: "needs_attention", detail: "Choose a primary trade.", actionLabel: "Edit trades" };
-  }
-  return { key: "business", label: "Business information", state: "complete", detail: "Business identity and trade profile are ready." };
+  return { key: "business", label: "Business information", state: "complete", detail: "Business identity and services are ready." };
 }
 
 export function getOverheadReadiness(input: OverheadReadinessInput): ReadinessItem {

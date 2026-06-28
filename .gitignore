@@ -60,3 +60,22 @@ next-env.d.ts
 # local review and visual QA artifacts
 /.impeccable/
 /tmp/
+/agentic-os/
+/.agentic/
+/docs/superpowers/
+
+# Agentic OS — internal AI artifacts.
+/.agentic-scripts/
+/CLAUDE.md
+/AGENTS.md
+/.claude/agents/
+/.claude/skills/
+/.claude/settings.json
+/.codex/
+
+# Agentic OS - internal Claude Code AI artifacts. Remove a line to commit that file.
+/.claude/agents/dispatcher-pm.md
+/.claude/agents/architect.md
+/.claude/agents/security-reviewer.md
+/.claude/agents/critic.md
+/.claude/skills/playwright-quality-gate.md

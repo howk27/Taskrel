@@ -83,7 +83,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                   <FileText size={18} weight="duotone" className="shrink-0 text-[var(--tr-primary)]" />
                   <p className="truncate text-sm font-bold text-[var(--tr-text)]">{quote.client_name}</p>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--tr-text-muted)]">
+                <div className="mt-2 flex flex-wrap gap-2 text-sm text-[var(--tr-text-muted)]">
                   <span>{deliveryMethod(quote.sent_via)}</span>
                   <span aria-hidden="true">/</span>
                   <span>{quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"}</span>
@@ -92,7 +92,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-base font-black text-[var(--tr-text)]">{formatCurrency(quote.total)}</p>
+                <p className="text-base font-semibold text-[var(--tr-text)]">{formatCurrency(quote.total)}</p>
                 <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
               </div>
             </button>
@@ -112,7 +112,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                       <div key={`${item.description}-${index}`} className="flex items-start justify-between gap-3 px-3 py-2.5">
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--tr-text)]">{item.description}</p>
-                          <p className="text-xs text-[var(--tr-text-faint)]">
+                          <p className="text-sm text-[var(--tr-text-muted)]">
                             {item.quantity} {item.unit ?? "unit"} x {formatCurrency(item.unit_price)}
                           </p>
                         </div>
@@ -121,7 +121,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                     ))}
                   </div>
                   {hiddenItemCount > 0 && (
-                    <p className="border-t border-[var(--tr-border-soft)] px-3 py-2 text-xs text-[var(--tr-text-muted)]">
+                    <p className="border-t border-[var(--tr-border-soft)] px-3 py-2 text-sm text-[var(--tr-text-muted)]">
                       {hiddenItemCount} more {hiddenItemCount === 1 ? "item" : "items"} in full quote
                     </p>
                   )}
@@ -134,7 +134,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
                       <span>Tax</span>
                       <span>{formatCurrency(quote.tax_amount)}</span>
                     </div>
-                    <div className="flex justify-between text-base font-black text-[var(--tr-amber)]">
+                    <div className="flex justify-between text-base font-semibold text-[var(--tr-primary)]">
                       <span>Total</span>
                       <span>{formatCurrency(quote.total)}</span>
                     </div>
@@ -143,7 +143,7 @@ export function DashboardWorkQueue({ quotes }: { quotes: DashboardQuote[] }) {
 
                 {quote.notes && (
                   <div className="mt-3 border-t border-[var(--tr-border-soft)] pt-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--tr-text-faint)]">Client note</p>
+                    <p className="text-sm font-semibold text-[var(--tr-text)]">Client note</p>
                     <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{quote.notes}</p>
                   </div>
                 )}
@@ -184,8 +184,8 @@ function QueueMeta({
     <div className="flex min-w-0 gap-2 rounded-lg bg-[var(--tr-bg-soft)] p-2">
       <span className="mt-0.5 shrink-0 text-[var(--tr-text-faint)]">{icon}</span>
       <span className="min-w-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--tr-text-faint)]">{label}</span>
-        <span className={`block truncate text-xs ${strong ? "font-semibold text-[var(--tr-primary)]" : "text-[var(--tr-text-muted)]"}`}>{value}</span>
+        <span className="block text-sm font-medium text-[var(--tr-text-muted)]">{label}</span>
+        <span className={`block truncate text-sm ${strong ? "font-semibold text-[var(--tr-primary)]" : "text-[var(--tr-text-muted)]"}`}>{value}</span>
       </span>
     </div>
   );

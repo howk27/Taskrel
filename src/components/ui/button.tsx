@@ -12,7 +12,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none active:scale-[0.96]";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-[background,color,box-shadow] disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<Variant, string> = {
   primary:
@@ -22,13 +22,13 @@ const variants: Record<Variant, string> = {
   ghost:
     "bg-transparent text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]",
   destructive:
-    "bg-red-600 text-white hover:bg-red-700",
+    "bg-[var(--tr-red)] text-white hover:brightness-110",
 };
 
 const sizes: Record<Size, string> = {
   sm: "h-9 px-3 text-sm",
-  md: "h-12 px-5 text-base",
-  lg: "h-14 px-6 text-lg",
+  md: "h-11 px-4 text-sm",
+  lg: "h-12 px-5 text-base",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

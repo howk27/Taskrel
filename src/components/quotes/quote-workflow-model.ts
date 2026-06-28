@@ -103,9 +103,9 @@ export function getQuoteWorkflowState(quote: QuoteWorkflowInput, options: QuoteW
   };
 }
 
-export function getQuoteWorkflowSummary(quotes: QuoteWorkflowInput[]): QuoteWorkflowSummary[] {
+export function getQuoteWorkflowSummary(quotes: QuoteWorkflowInput[], options: QuoteWorkflowOptions = {}): QuoteWorkflowSummary[] {
   return bucketOrder.map(key => {
-    const bucketQuotes = quotes.filter(quote => getQuoteWorkflowState(quote).bucket === key);
+    const bucketQuotes = quotes.filter(quote => getQuoteWorkflowState(quote, options).bucket === key);
     return {
       key,
       ...bucketCopy[key],

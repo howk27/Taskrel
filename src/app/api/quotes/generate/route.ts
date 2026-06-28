@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildQuoteSystemPrompt, buildQuoteUserPrompt } from "@/lib/prompts/quote-prompts";
-import type { Trade } from "@/types";
+import { TRADE_LABELS, type Trade } from "@/types";
 import { createOpenAIClient, taskrelDefaultModel } from "@/lib/openai";
 import { applyCatalogPricing, calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { buildPricingRecommendationSnapshot, normalizePropertyValuationSnapshot } from "@/lib/pricing-intelligence";
@@ -69,6 +69,25 @@ const quoteResponseFormat = {
   },
 } as const;
 
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: contractor } = await supabase
+    .from("contractors")
+    .select("trade, primary_trade, trades")
+    .eq("user_id", user.id)
+    .single();
+
+  const trades = (Array.isArray(contractor?.trades) && contractor.trades.length > 0
+    ? contractor.trades
+    : [contractor?.primary_trade ?? contractor?.trade].filter(Boolean)
+  ).filter(isTrade);
+
+  return NextResponse.json({ trades });
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -91,7 +110,7 @@ export async function POST(request: NextRequest) {
   const quoteContractor = contractor ?? (fallbackContractor ? { ...fallbackContractor, overhead_percent: 0, overhead_fixed_per_job: 0 } : null);
 
   if (!quoteContractor?.trade && !quoteContractor?.primary_trade) {
-    return NextResponse.json({ error: "Trade not set" }, { status: 400 });
+    return NextResponse.json({ error: "Service not set" }, { status: 400 });
   }
 
   const body = await request.json();
@@ -243,4 +262,8 @@ function describeOpenAIError(err: unknown): { message: string; code: string; sta
     code: "openai_generation_failed",
     message: "AI generation failed. Check Vercel function logs for the OpenAI error details.",
   };
+}
+
+function isTrade(value: unknown): value is Trade {
+  return typeof value === "string" && value in TRADE_LABELS;
 }

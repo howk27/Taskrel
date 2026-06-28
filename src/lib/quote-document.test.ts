@@ -70,7 +70,7 @@ describe("renderQuoteDocumentHtml", () => {
   it("uses a subdued logo placeholder instead of a dominant dashed box", () => {
     const html = renderQuoteDocumentHtml({ quote, business, preset: "classic" });
 
-    expect(html).toContain("Logo optional");
+    expect(html).toContain("Logo");
     expect(html).not.toContain("width:94px;height:54px");
   });
 
@@ -89,6 +89,46 @@ describe("renderQuoteDocumentHtml", () => {
       expect(html).toContain("quote-line-items");
       expect(html).toContain("quote-line-row");
       expect(html).not.toContain("<table");
+    }
+  );
+
+  it.each<QuoteTemplatePreset>(["classic", "modern", "compact"])(
+    "renders quote metadata in a stable summary section for %s",
+    preset => {
+      const html = renderQuoteDocumentHtml({ quote, business, preset });
+
+      expect(html).toContain("quote-document-summary");
+      expect(html).toContain("Prepared for");
+      expect(html).toContain("Quote date");
+      expect(html).toContain("Acme Properties");
+      expect(html).toContain("Jun 15, 2026");
+    }
+  );
+
+  it.each<QuoteTemplatePreset>(["classic", "modern", "compact"])(
+    "keeps quantity, unit price, and amount in separate line item positions for %s",
+    preset => {
+      const html = renderQuoteDocumentHtml({ quote, business, preset });
+
+      expect(html).toContain("quote-line-quantity");
+      expect(html).toContain("quote-line-unit-price");
+      expect(html).toContain("quote-line-amount");
+      expect(html).toContain("Qty");
+      expect(html).toContain("Unit price");
+    }
+  );
+
+  it.each<QuoteTemplatePreset>(["classic", "modern", "compact"])(
+    "groups notes, terms, and policies into named document sections for %s",
+    preset => {
+      const html = renderQuoteDocumentHtml({ quote, business, preset });
+
+      expect(html).toContain("quote-document-notes");
+      expect(html).toContain("quote-document-terms");
+      expect(html).toContain("quote-document-policies");
+      expect(html).toContain("Client note");
+      expect(html).toContain("Terms");
+      expect(html).toContain("Policies &amp; warranty");
     }
   );
 

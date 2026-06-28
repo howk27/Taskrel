@@ -120,12 +120,12 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
           from: process.env.SENDGRID_FROM_EMAIL!,
           subject: `Invoice ${invoice.invoice_number} from ${contractor?.business_name ?? "Your Contractor"}`,
           html: `
-            <div style="font-family:Segoe UI,Arial,sans-serif;max-width:600px;margin:0 auto;background:#211e18;color:#fff8ee;padding:32px;border:1px solid rgba(218,188,145,.22);border-radius:12px">
-              <h1 style="font-size:24px;font-weight:800;margin:0 0 4px">task<span style="color:#F97316">rel</span></h1>
-              <p style="color:#d4c6b5;margin:0 0 32px">Invoice from ${contractor?.business_name ?? "Your Contractor"}</p>
+            <div style="font-family:Aptos,Arial,sans-serif;max-width:600px;margin:0 auto;background:#08111F;color:#F8FAFC;padding:32px;border:1px solid rgba(148,163,184,.24);border-radius:8px">
+              <h1 style="font-size:24px;font-weight:800;margin:0 0 4px">task<span style="color:#FB923C">rel</span></h1>
+              <p style="color:#CBD5E1;margin:0 0 32px">Invoice from ${contractor?.business_name ?? "Your Contractor"}</p>
               <h2 style="margin:0 0 8px">Hi ${invoice.client_name},</h2>
-              <p style="color:#d4c6b5">${invoice.invoice_number} for $${invoice.total.toFixed(2)} is ready.</p>
-              ${paymentLink ? `<a href="${paymentLink}" style="display:inline-block;margin-top:24px;background:#F97316;color:#241205;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none">Pay Now - $${invoice.total.toFixed(2)}</a>` : ""}
+              <p style="color:#CBD5E1">${invoice.invoice_number} for $${invoice.total.toFixed(2)} is ready.</p>
+              ${paymentLink ? `<a href="${paymentLink}" style="display:inline-block;margin-top:24px;background:#FB923C;color:#08111F;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none">Pay Now - $${invoice.total.toFixed(2)}</a>` : ""}
             </div>
           `,
         });

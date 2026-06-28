@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Badge, statusVariant } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DownloadSimple, FileText, Gear, Receipt } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReadinessChip } from "@/components/ui/readiness";
@@ -68,7 +69,6 @@ export default async function SettingsPage({
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8 xl:py-8">
       <PageHeader
-        eyebrow="Workspace"
         title="Settings"
         subtitle="Account, quote documents, billing, and exports."
       />
@@ -128,11 +128,11 @@ export default async function SettingsPage({
         <div className="space-y-6">
           <section>
             <SectionTitle icon={<Receipt size={17} weight="duotone" />} label="Billing" tone="text-[var(--tr-green)]" />
-            <Surface className="divide-y divide-slate-700/50 overflow-hidden">
+            <Surface className="divide-y divide-[var(--tr-border-soft)] overflow-hidden">
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
                   <p className="text-sm text-[var(--tr-text)]">Taskrel subscription</p>
-                  <p className="text-xs text-[var(--tr-text-muted)]">$19/month</p>
+                  <p className="text-sm text-[var(--tr-text-muted)]">$19/month</p>
                 </div>
                 {settingsContractor?.subscription_status && subscriptionReadiness ? (
                   <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export default async function SettingsPage({
                 ) : (
                   subscriptionReadiness && (
                     <div className="flex items-center gap-2">
-                      <Link href="/settings/billing" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-[var(--tr-primary)] hover:bg-white/5">
+                      <Link href="/settings/billing" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-[var(--tr-primary)] hover:bg-[var(--tr-surface-2)]">
                         Subscribe
                       </Link>
                       <ReadinessChip state={subscriptionReadiness.state} />
@@ -155,7 +155,7 @@ export default async function SettingsPage({
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
                   <p className="text-sm text-[var(--tr-text)]">Payment processing</p>
-                  <p className="text-xs text-[var(--tr-text-muted)]">Stripe Connect - accept client payments</p>
+                  <p className="text-sm text-[var(--tr-text-muted)]">Stripe Connect - accept client payments</p>
                 </div>
                 {settingsContractor?.stripe_connect_account_id && paymentProcessingReadiness ? (
                   <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export default async function SettingsPage({
                 ) : (
                   paymentProcessingReadiness && (
                     <div className="flex items-center gap-2">
-                      <Link href="/settings/billing" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-[var(--tr-primary)] hover:bg-white/5">
+                      <Link href="/settings/billing" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-[var(--tr-primary)] hover:bg-[var(--tr-surface-2)]">
                         Set up
                       </Link>
                       <ReadinessChip state={paymentProcessingReadiness.state} />
@@ -187,7 +187,7 @@ export default async function SettingsPage({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-[var(--tr-text)]">Google Sheets sync</p>
-                    <p className="text-xs text-[var(--tr-text-muted)]">
+                    <p className="text-sm text-[var(--tr-text-muted)]">
                       {settingsContractor?.google_sheets_last_synced_at
                         ? `Last synced ${new Date(settingsContractor.google_sheets_last_synced_at).toLocaleString()}`
                         : "Optional live spreadsheet export"}
@@ -197,7 +197,7 @@ export default async function SettingsPage({
                     {settingsContractor?.google_sheets_status ?? "disconnected"}
                   </Badge>
                 </div>
-                {googleMessage && <p className="text-xs text-[var(--tr-text-muted)]">{googleMessage}</p>}
+                {googleMessage && <p className="text-sm text-[var(--tr-text-muted)]">{googleMessage}</p>}
                 {settingsContractor?.google_sheets_sync_enabled && settingsContractor.google_sheets_sheet_id ? (
                   <div className="grid grid-cols-2 gap-2">
                     <form action="/api/google-sheets/sync" method="post">
@@ -221,9 +221,9 @@ export default async function SettingsPage({
           </section>
 
           <form action={logout}>
-            <button type="submit" className="w-full rounded-xl border border-red-400/20 bg-red-500/10 py-3 text-center text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/15">
+            <Button type="submit" variant="secondary" className="w-full">
               Sign out
-            </button>
+            </Button>
           </form>
         </div>
       </div>
@@ -233,7 +233,7 @@ export default async function SettingsPage({
 
 function SectionTitle({ icon, label, tone }: { icon: ReactNode; label: string; tone: string }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--tr-text-muted)]">
+    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--tr-text-muted)]">
       <span className={tone}>{icon}</span>
       {label}
     </h2>
@@ -243,7 +243,7 @@ function SectionTitle({ icon, label, tone }: { icon: ReactNode; label: string; t
 function SettingRow({ label, value, capitalize }: { label: string; value: string; capitalize?: boolean }) {
   return (
     <div className="px-4 py-3">
-      <p className="text-xs text-[var(--tr-text-muted)]">{label}</p>
+      <p className="text-sm text-[var(--tr-text-muted)]">{label}</p>
       <p className={`text-sm text-[var(--tr-text)] ${capitalize ? "capitalize" : ""}`}>{value}</p>
     </div>
   );

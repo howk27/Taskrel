@@ -2,6 +2,7 @@
 
 export {
   ArrowLeft,
+  ArrowRight,
   CalendarBlank,
   CaretLeft,
   CaretRight,
@@ -18,6 +19,7 @@ export {
   MapPin,
   Moon,
   PaintBrush,
+  PaperPlaneTilt,
   Plus,
   Receipt,
   SealCheck,
@@ -25,6 +27,7 @@ export {
   Tree,
   UploadSimple,
   UserList,
+  WarningCircle,
   Wrench,
   Lightning,
 } from "@phosphor-icons/react";

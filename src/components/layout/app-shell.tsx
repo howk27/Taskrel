@@ -52,6 +52,7 @@ export function AppShell({
   const pathname = usePathname();
   const businessName = contractor?.business_name || "Taskrel";
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialThemeMode);
+  const focusedOnboarding = pathname === "/onboarding";
 
   useEffect(() => {
     const root = document.documentElement;
@@ -65,61 +66,77 @@ export function AppShell({
     window.localStorage.setItem("taskrel-theme", themeMode);
   }, [themeMode]);
 
+  if (focusedOnboarding) {
+    return (
+      <div className="min-h-screen bg-[var(--tr-bg)] text-[var(--tr-text)]">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--tr-bg)] text-[var(--tr-text)]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[272px] border-r border-[var(--tr-border)] bg-[var(--tr-shell)]/98 xl:flex xl:flex-col">
-        <div className="border-b border-[var(--tr-border)] px-6 py-6">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[236px] border-r border-[var(--tr-border)] bg-[var(--tr-shell)] xl:flex xl:flex-col">
+        <div className="border-b border-[var(--tr-border-soft)] px-4 py-4">
           <Link href="/dashboard" className="block">
             <TaskrelWordmark size="md" />
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-5">
+        <nav className="flex-1 space-y-0.5 px-2 py-3">
           {nav.map(({ href, label, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
                 key={href}
                 href={href}
-                className={`group relative flex h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
+                className={`group relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-[var(--tr-surface-2)] text-[var(--tr-text)]"
+                    ? "bg-[var(--tr-surface-2)] text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]"
                     : "text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface)] hover:text-[var(--tr-text)]"
                 }`}
               >
-                {active && <span className="absolute left-0 h-7 w-1 rounded-full bg-[var(--tr-primary)]" />}
-                <Icon size={22} weight={active ? "duotone" : "regular"} className={active ? "text-[var(--tr-primary)]" : ""} />
+                {active && <span className="absolute left-0 h-5 w-0.5 rounded-r bg-[var(--tr-primary)]" />}
+                <Icon size={18} weight={active ? "duotone" : "regular"} className={active ? "text-[var(--tr-primary)]" : ""} />
                 {label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-[var(--tr-border)] p-4">
+        <div className="border-t border-[var(--tr-border-soft)] p-2.5">
           <ThemeToggle mode={themeMode} onChange={setThemeMode} expanded />
-          <div className="mt-3 rounded-xl bg-[var(--tr-surface)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
-            <p className="truncate text-sm font-semibold text-[var(--tr-text)]">{businessName}</p>
-            <p className="truncate text-xs text-[var(--tr-text-faint)]">{contractor?.email ?? "Contractor workspace"}</p>
+          <div className="mt-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+            <p className="truncate text-sm font-medium text-[var(--tr-text)]">{businessName}</p>
+            <p className="truncate text-sm text-[var(--tr-text-muted)]">{contractor?.email ?? "Contractor workspace"}</p>
           </div>
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 hidden h-16 grid-cols-[1fr_minmax(320px,480px)_1fr] items-center border-b border-[var(--tr-border)] bg-[var(--tr-bg)]/92 px-6 backdrop-blur-xl xl:ml-[272px] xl:grid">
-        <label className="col-start-2 flex h-11 w-full items-center gap-3 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-bg-soft)] px-4">
+      <header className="sticky top-0 z-30 hidden h-14 grid-cols-[1fr_minmax(320px,480px)_1fr] items-center border-b border-[var(--tr-border-soft)] bg-[var(--tr-bg)]/96 px-5 backdrop-blur xl:ml-[236px] xl:grid">
+        <form
+          action="/quotes"
+          role="search"
+          className="col-start-2 flex h-11 w-full items-center gap-3 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-bg-soft)] px-4 transition-colors focus-within:border-[var(--tr-primary)]/60"
+        >
           <MagnifyingGlass size={20} className="text-[var(--tr-text-faint)]" />
           <input
-            placeholder="Search jobs, clients, or quotes..."
+            name="q"
+            type="search"
+            enterKeyHint="search"
+            aria-label="Search quotes by client, address, contact, or status"
+            placeholder="Search quotes by client, address, or status..."
             className="min-w-0 flex-1 bg-transparent text-sm text-[var(--tr-text)] placeholder:text-[var(--tr-text-faint)] focus:outline-none"
           />
-        </label>
+        </form>
         <div className="col-start-3 flex items-center justify-end gap-3">
           <ThemeToggle mode={themeMode} onChange={setThemeMode} />
-          <Link href="/calendar" className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--tr-border)] text-[var(--tr-text-muted)] hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]">
+          <Link href="/calendar" className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--tr-border)] text-[var(--tr-text-muted)] transition-colors hover:bg-[var(--tr-surface-2)] hover:text-[var(--tr-text)]">
             <CalendarBlank size={20} />
           </Link>
           <Link href="/quotes/new" className="tr-primary-action inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold">
             <Plus size={17} weight="bold" />
-            New quote
+            Create new
           </Link>
         </div>
       </header>
@@ -133,15 +150,15 @@ export function AppShell({
           <ThemeToggle mode={themeMode} onChange={setThemeMode} />
           <Link
             href="/quotes/new"
-            className="tr-primary-action inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-black"
+            className="tr-primary-action inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold"
           >
             <Plus size={17} weight="bold" />
-            Quote
+            Create
           </Link>
         </div>
       </header>
 
-      <main className="pb-24 xl:ml-[272px] xl:pb-0">
+      <main className="pb-24 xl:ml-[236px] xl:pb-0">
         {children}
       </main>
 
@@ -153,7 +170,7 @@ export function AppShell({
               <Link
                 key={href}
                 href={href}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold transition-colors ${
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-sm font-semibold transition-colors ${
                   active ? "text-[var(--tr-primary)]" : "text-[var(--tr-text-faint)]"
                 }`}
               >

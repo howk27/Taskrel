@@ -21,10 +21,10 @@ type Props = {
   >;
 };
 
-const presetOptions: { value: QuoteTemplatePreset; label: string; description: string }[] = [
-  { value: "classic", label: "Classic", description: "Dark work-order style with a strong total block." },
-  { value: "modern", label: "Modern", description: "Bright invoice-style document with clear sender/client panels." },
-  { value: "compact", label: "Compact", description: "Clean short-form estimate with grouped scope and fewer columns." },
+const presetOptions: { value: QuoteTemplatePreset; label: string }[] = [
+  { value: "classic", label: "Classic" },
+  { value: "modern", label: "Modern" },
+  { value: "compact", label: "Compact" },
 ];
 
 export function QuoteDocumentSettingsForm({ contractor }: Props) {
@@ -65,12 +65,13 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
   return (
     <form action={formAction} className="space-y-4 rounded-lg bg-[var(--tr-surface)] p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
       <ReadinessSectionHeader
-        title="Quote documents"
-        subtitle="These defaults appear on client-facing quote documents."
+        title="Document defaults"
+        subtitle="Client-facing quote defaults."
         item={readiness}
       />
 
-      <div>
+      <section className="space-y-3 border-t border-[var(--tr-border-soft)] pt-4">
+        <h3 className="text-base font-semibold text-[var(--tr-text)]">Template</h3>
         <label className="text-sm font-medium text-[var(--tr-text-muted)]" htmlFor="quote_template_preset">Default quote template</label>
         <select
           id="quote_template_preset"
@@ -82,18 +83,13 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-[var(--tr-text-faint)]">
-          {presetOptions.find(option => option.value === (contractor.quote_template_preset ?? "classic"))?.description}
-        </p>
-      </div>
+      </section>
 
-      <div className="border-t border-[var(--tr-border-soft)] pt-4">
+      <section className="border-t border-[var(--tr-border-soft)] pt-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-[var(--tr-text)]">Quote logo</p>
-            <p className="mt-1 text-xs leading-5 text-[var(--tr-text-muted)]">
-              Drop your logo here or choose an image. PNG, JPG, WebP, or GIF up to 2MB.
-            </p>
+            <h3 className="text-base font-semibold text-[var(--tr-text)]">Logo</h3>
+            <p className="mt-1 text-sm leading-6 text-[var(--tr-text-muted)]">Shown in the quote header.</p>
           </div>
           {logoUrl ? (
             <div
@@ -102,7 +98,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
               style={{ backgroundImage: `url("${safeLogoPreviewUrl}")` }}
             />
           ) : (
-            <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[var(--tr-primary-edge)] bg-[var(--tr-primary-fill)] text-[10px] font-black uppercase tracking-[0.18em] text-[var(--tr-primary)]">
+            <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[var(--tr-primary-edge)] bg-[var(--tr-primary-fill)] text-sm font-semibold text-[var(--tr-primary)]">
               Logo
             </div>
           )}
@@ -133,33 +129,37 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
           }}
         />
         {uploadError && <p className="mt-2 text-sm text-red-400">{uploadError}</p>}
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-3">
+      <section className="grid grid-cols-1 gap-3 border-t border-[var(--tr-border-soft)] pt-4">
+        <h3 className="text-base font-semibold text-[var(--tr-text)]">Business contact</h3>
         <input type="hidden" name="logo_url" value={logoUrl} />
         <Field name="business_phone" label="Business phone" defaultValue={contractor.business_phone ?? ""} placeholder="(305) 555-0100" />
         <Field name="business_website" label="Website" defaultValue={contractor.business_website ?? ""} placeholder="taskrel.com" />
         <Field name="license_text" label="License / insured text" defaultValue={contractor.license_text ?? ""} placeholder="Licensed and insured in Florida" />
-      </div>
+      </section>
 
-      <TextArea
-        name="quote_default_note"
-        label="Default client note"
-        defaultValue={contractor.quote_default_note ?? ""}
-        placeholder="Thank you for the opportunity to quote this work."
-      />
-      <TextArea
-        name="quote_default_terms"
-        label="Default terms"
-        defaultValue={contractor.quote_default_terms ?? ""}
-        placeholder="Quote valid for 30 days. A deposit may be required before scheduling."
-      />
-      <TextArea
-        name="quote_policy_text"
-        label="Policies & warranty template"
-        defaultValue={contractor.quote_policy_text ?? ""}
-        placeholder="Workmanship warranty: 1 year. Product warranties follow manufacturer terms. Scope changes require written approval."
-      />
+      <section className="space-y-3 border-t border-[var(--tr-border-soft)] pt-4">
+        <h3 className="text-base font-semibold text-[var(--tr-text)]">Client text</h3>
+        <TextArea
+          name="quote_default_note"
+          label="Default client note"
+          defaultValue={contractor.quote_default_note ?? ""}
+          placeholder="Thank you for the opportunity to quote this work."
+        />
+        <TextArea
+          name="quote_default_terms"
+          label="Default terms"
+          defaultValue={contractor.quote_default_terms ?? ""}
+          placeholder="Quote valid for 30 days. A deposit may be required before scheduling."
+        />
+        <TextArea
+          name="quote_policy_text"
+          label="Policies & warranty template"
+          defaultValue={contractor.quote_policy_text ?? ""}
+          placeholder="Workmanship warranty: 1 year. Product warranties follow manufacturer terms. Scope changes require written approval."
+        />
+      </section>
 
       {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
       {state?.success && <p className="text-sm text-emerald-400">{state.success}</p>}

@@ -13,13 +13,15 @@ export function formatDate(value: string | null | undefined) {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
 export function formatTime(value: string | null | undefined) {
   if (!value) return "";
-  return new Date(value).toLocaleTimeString([], {
+  return new Date(value).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   });
 }

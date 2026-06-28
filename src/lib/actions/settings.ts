@@ -28,17 +28,19 @@ export async function updateBusinessInformation(
   if (!user) return { error: "Please log in again." };
 
   const businessName = String(formData.get("business_name") ?? "").trim();
-  const businessType = String(formData.get("business_type") ?? "") as BusinessType;
-  const primaryTrade = String(formData.get("primary_trade") ?? "") as Trade;
   const selectedTrades = formData.getAll("trades").map(String).filter(Boolean) as Trade[];
+  const businessTypeInput = String(formData.get("business_type") ?? "") as BusinessType;
+  const businessType = businessTypes.includes(businessTypeInput)
+    ? businessTypeInput
+    : inferBusinessType(selectedTrades);
+  const primaryTrade = String(formData.get("primary_trade") ?? selectedTrades[0] ?? "") as Trade;
 
   if (!businessName) return { error: "Add business name." };
-  if (!businessTypes.includes(businessType)) return { error: "Choose a business type." };
   if (selectedTrades.length === 0 || selectedTrades.some((trade) => !trades.includes(trade))) {
-    return { error: "Choose at least one valid trade." };
+    return { error: "Choose at least one valid service." };
   }
   if (!primaryTrade || !selectedTrades.includes(primaryTrade)) {
-    return { error: "Choose a primary trade." };
+    return { error: "Choose at least one valid service." };
   }
 
   const { error } = await supabase
@@ -61,6 +63,13 @@ export async function updateBusinessInformation(
   revalidatePath("/onboarding");
   revalidatePath("/quotes");
   return { success: "Business information saved." };
+}
+
+function inferBusinessType(selectedTrades: Trade[]): BusinessType {
+  if (selectedTrades.some((trade) => trade === "hvac" || trade === "plumbing" || trade === "electrical")) return "mechanical_services";
+  if (selectedTrades.includes("landscaping")) return "outdoor_services";
+  if (selectedTrades.some((trade) => trade === "painting" || trade === "roofing" || trade === "flooring")) return "home_improvement";
+  return "general_contracting";
 }
 
 export async function updateQuoteSettings(

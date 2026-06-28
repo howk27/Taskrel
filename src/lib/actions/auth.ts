@@ -120,9 +120,9 @@ export async function completeOnboarding(
   if (!user) redirect("/login");
 
   const businessName = String(formData.get("business_name") ?? "").trim();
-  const businessType = String(formData.get("business_type") ?? "");
-  const primaryTrade = String(formData.get("primary_trade") ?? "");
+  const businessTypeInput = String(formData.get("business_type") ?? "") as BusinessType;
   const trades = formData.getAll("trades").map(String).filter(Boolean);
+  const primaryTrade = String(formData.get("primary_trade") ?? trades[0] ?? "");
   const businessPhone = String(formData.get("business_phone") ?? "").trim();
   const businessWebsite = String(formData.get("business_website") ?? "").trim();
   const licenseText = String(formData.get("license_text") ?? "").trim();
@@ -146,17 +146,17 @@ export async function completeOnboarding(
     : 0;
 
   if (!businessName) return { error: "Add business name." };
-  if (!businessTypes.includes(businessType as BusinessType)) {
-    return { error: "Choose a business type." };
-  }
   if (trades.length === 0 || trades.some((trade) => !tradesList.includes(trade as Trade))) {
-    return { error: "Choose at least one valid trade." };
+    return { error: "Choose at least one valid service." };
   }
+  const businessType = businessTypes.includes(businessTypeInput)
+    ? businessTypeInput
+    : inferBusinessType(trades as Trade[]);
   if (!primaryTrade || !trades.includes(primaryTrade)) {
-    return { error: "Choose a primary trade." };
+    return { error: "Choose at least one valid service." };
   }
   if (!tradesList.includes(primaryTrade as Trade)) {
-    return { error: "Choose a primary trade." };
+    return { error: "Choose at least one valid service." };
   }
   if (!quoteTemplatePresets.includes(quoteTemplatePreset as QuoteTemplatePreset)) {
     return { error: "Choose a valid quote template." };
@@ -176,7 +176,7 @@ export async function completeOnboarding(
     .from("contractors")
     .update({
       business_name: businessName,
-      business_type: businessType as BusinessType,
+      business_type: businessType,
       trade: primaryTrade as Trade,
       primary_trade: primaryTrade as Trade,
       trades,
@@ -210,4 +210,11 @@ export async function completeOnboarding(
   revalidatePath("/settings");
   revalidatePath("/quotes");
   redirect("/dashboard");
+}
+
+function inferBusinessType(trades: Trade[]): BusinessType {
+  if (trades.some((trade) => trade === "hvac" || trade === "plumbing" || trade === "electrical")) return "mechanical_services";
+  if (trades.includes("landscaping")) return "outdoor_services";
+  if (trades.some((trade) => trade === "painting" || trade === "roofing" || trade === "flooring")) return "home_improvement";
+  return "general_contracting";
 }

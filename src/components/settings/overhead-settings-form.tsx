@@ -32,7 +32,7 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
     <form action={formAction} className="space-y-4 rounded-lg bg-[var(--tr-surface)] p-4 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
       <ReadinessSectionHeader
         title="Internal overhead costs"
-        subtitle="These costs stay internal. Taskrel uses them in quote pricing intelligence, but they do not appear on client-facing quotes."
+        subtitle="Used only for internal pricing checks."
         item={readiness}
       />
 
@@ -85,9 +85,9 @@ export function OverheadSettingsForm({ overheadPercent, overheadFixedPerJob }: P
       </div>
 
       <div className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] px-3 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--tr-text-faint)]">Preview</p>
+        <p className="text-sm font-semibold text-[var(--tr-text)]">Preview</p>
         <p className="mt-2 text-sm leading-6 text-[var(--tr-text)]">
-          On a $2,500 quote, Taskrel considers ${previewValue.toFixed(2)} overhead.
+          $2,500 quote: ${previewValue.toFixed(2)} overhead.
         </p>
       </div>
 

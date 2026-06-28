@@ -5,46 +5,21 @@ import { useActionState } from "react";
 import { signup } from "@/lib/actions/auth";
 import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
-import { publicLaunch } from "@/lib/public-launch";
-
-const proofItems = [
-  "Quote drafts you can edit before sending",
-  "Client-ready quote links and follow-up",
-  "Invoices, payments, and records connected",
-];
 
 export default function SignupPage() {
   const [state, action, pending] = useActionState(signup, undefined);
 
   return (
     <main className="flex flex-1 items-center px-5 py-8 md:px-8">
-      <div className="mx-auto grid w-full max-w-5xl gap-8 md:grid-cols-[0.9fr_1fr] md:items-center">
-        <section className="space-y-6">
-          <Link href="/" aria-label="Taskrel home">
-            <TaskrelWordmark size="sm" />
-          </Link>
-          <div>
-            <p className="text-sm font-bold text-[var(--tr-amber)]">Field-ready setup</p>
-            <h1 className="mt-3 max-w-sm text-3xl font-extrabold leading-tight text-white md:text-4xl">
-              Start with the quote workflow contractors repeat every week.
-            </h1>
-            <p className="mt-4 max-w-md text-sm leading-6 text-[var(--tr-text-muted)]">{publicLaunch.pricingBody}</p>
-          </div>
-          <div className="grid gap-3">
-            {proofItems.map(item => (
-              <div key={item} className="flex items-center gap-3 rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] px-4 py-3 text-sm font-semibold text-white">
-                <CheckCircle size={18} weight="duotone" className="shrink-0 text-[var(--tr-green)]" />
-                {item}
-              </div>
-            ))}
-          </div>
-        </section>
+      <div className="mx-auto w-full max-w-md">
+        <Link href="/" aria-label="Taskrel home" className="mb-8 inline-flex">
+          <TaskrelWordmark size="sm" />
+        </Link>
 
         <section className="rounded-lg border border-[var(--tr-border-soft)] bg-[var(--tr-surface)] p-5 sm:p-6">
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-white">Create your account</h2>
+            <h2 className="text-xl font-semibold text-[var(--tr-text)]">Create your account</h2>
             <p className="mt-1 text-sm text-[var(--tr-text-muted)]">Start free, then keep one simple monthly plan.</p>
           </div>
 
@@ -80,7 +55,7 @@ export default function SignupPage() {
                 title="Letters and numbers only - no special characters"
                 required
               />
-              <p className="text-xs text-[var(--tr-text-faint)]">
+              <p className="text-sm text-[var(--tr-text-muted)]">
                 Letters and numbers only. No special characters.
               </p>
             </div>
@@ -98,7 +73,7 @@ export default function SignupPage() {
 
           <p className="mt-6 text-center text-sm text-[var(--tr-text-muted)]">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-[var(--tr-orange)] hover:underline">
+            <Link href="/login" className="font-medium text-[var(--tr-primary)] hover:underline">
               Log in
             </Link>
           </p>
