@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
+import { ArrowLeft, CheckCircle, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { ActionRail } from "@/components/workflow/action-primitives";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
 import { deliveryEventSummary } from "@/lib/delivery-events";
-import type { PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
+import type { DeliveryEvent, PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
 const presets: { value: QuoteTemplatePreset; label: string }[] = [
@@ -262,6 +262,14 @@ export default function QuoteDetailPage() {
     ...(quote.client_email ? ["email"] : []),
     ...(quote.client_phone ? ["sms"] : []),
   ];
+  const deliveryChannels = [
+    quote.client_email
+      ? { key: "email" as const, label: "Email", recipient: quote.client_email, Icon: EnvelopeSimple }
+      : null,
+    quote.client_phone
+      ? { key: "sms" as const, label: "SMS", recipient: quote.client_phone, Icon: DeviceMobile }
+      : null,
+  ].filter((channel): channel is NonNullable<typeof channel> => channel !== null);
   const documentHtml = quote.business_snapshot
     ? renderQuoteDocumentHtml({ quote, business: quote.business_snapshot, preset: previewPreset })
     : "";
@@ -355,10 +363,10 @@ export default function QuoteDetailPage() {
                 <p className="text-sm text-[var(--tr-text-muted)]">Add an email or phone to send this quote.</p>
               )}
               {sendError && (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{sendError}</p>
+                <p className="rounded-lg bg-[var(--tr-error-bg)] p-3 text-sm text-[var(--tr-red)] shadow-[inset_0_0_0_1px_var(--tr-badge-warning-ring)]">{sendError}</p>
               )}
               {sendMessage && !sendError && (
-                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">{sendMessage}</p>
+                <p className="rounded-lg bg-[var(--tr-success-bg)] p-3 text-sm text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">{sendMessage}</p>
               )}
             </div>
           </ActionRail>
@@ -380,24 +388,67 @@ export default function QuoteDetailPage() {
           </Surface>
 
           <Surface className="p-5">
-            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Send proof</h2>
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Delivery &amp; status</h2>
             <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
               {deliverySummary.latestSuccessLabel ?? "No successful send recorded yet."}
             </p>
-            <div className="mt-4 space-y-2">
-              {(quote.delivery_events ?? []).slice(0, 4).map(event => (
-                <div key={event.id} className={`rounded-lg p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)] ${event.status === "success" ? "bg-[var(--tr-success-bg)]" : "bg-[var(--tr-warning-bg)]"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}`}>
-                      {event.channel} / {event.status}
-                    </p>
-                    <p className="shrink-0 text-sm text-[var(--tr-text-muted)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
-                  </div>
-                  <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
-                  {event.recipient && <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.recipient}</p>}
-                </div>
-              ))}
-            </div>
+
+            {deliveryChannels.length === 0 ? (
+              <p className="mt-4 text-sm text-[var(--tr-text-muted)]">
+                Add a client email or phone number to send this quote.
+              </p>
+            ) : (
+              <div className="mt-4 space-y-2">
+                {deliveryChannels.map(channel => {
+                  const last = latestChannelSend(quote.delivery_events ?? [], channel.key);
+                  const sentOk = last?.status === "success";
+                  const failed = last?.status === "error";
+                  const statusTone = sentOk
+                    ? "text-[var(--tr-green)]"
+                    : failed
+                      ? "text-[var(--tr-amber)]"
+                      : "text-[var(--tr-text-faint)]";
+                  return (
+                    <div
+                      key={channel.key}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-[var(--tr-bg-soft)] p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)]"
+                    >
+                      <div className="flex min-w-0 items-start gap-2.5">
+                        <span className={`mt-0.5 shrink-0 ${statusTone}`}>
+                          <channel.Icon size={18} weight="duotone" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[var(--tr-text)]">{channel.label}</p>
+                          <p className="truncate text-sm text-[var(--tr-text-muted)]">{channel.recipient}</p>
+                          <p className={`mt-0.5 text-sm ${statusTone}`}>
+                            {sentOk
+                              ? `Sent ${formatDate(last!.created_at)} ${formatTime(last!.created_at)}`
+                              : failed
+                                ? `Failed — ${last!.message}`
+                                : "Not sent yet"}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant={sentOk ? "secondary" : "primary"}
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => handleSend([channel.key])}
+                        loading={sending}
+                        disabled={dirty || sending}
+                      >
+                        {sentOk ? "Resend" : failed ? "Retry" : "Send"}
+                      </Button>
+                    </div>
+                  );
+                })}
+                {dirty && (
+                  <p className="text-sm text-[var(--tr-text-muted)]">
+                    Save pricing changes before sending so the client document matches your latest totals.
+                  </p>
+                )}
+              </div>
+            )}
           </Surface>
 
           <Surface className="p-5">
@@ -638,6 +689,12 @@ function ReadinessRow({ item }: { item: QuoteReadinessItem }) {
       </span>
     </div>
   );
+}
+
+function latestChannelSend(events: DeliveryEvent[], channel: DeliveryEvent["channel"]) {
+  return [...events]
+    .filter(event => event.action === "send" && event.channel === channel)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 }
 
 function deliveryClass(tone: "ready" | "sent" | "missing") {
