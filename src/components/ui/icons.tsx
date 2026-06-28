@@ -15,6 +15,7 @@ export {
   Hammer,
   HouseLine,
   Invoice,
+  List,
   MagnifyingGlass,
   MapPin,
   Moon,
@@ -30,4 +31,5 @@ export {
   WarningCircle,
   Wrench,
   Lightning,
+  X,
 } from "@phosphor-icons/react";
