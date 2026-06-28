@@ -6,6 +6,7 @@ import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
+import { ActionRail } from "@/components/workflow/action-primitives";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
@@ -287,75 +288,39 @@ export default function QuoteDetailPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <aside className="order-2 space-y-4 lg:order-2">
-          <Surface className="p-5">
-            <p className="text-base font-semibold text-[var(--tr-text)]">Quote total</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-[var(--tr-text)]">{formatCurrency(quote.total)}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-[var(--tr-primary-fill)] px-2.5 py-1 text-sm font-semibold text-[var(--tr-primary)] ring-1 ring-[var(--tr-primary-edge)]">
-                {workflowState.nextAction}
-              </span>
-              <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${deliveryClass(workflowState.deliveryTone)}`}>
-                {workflowState.deliveryLabel}
-              </span>
-              {dirty && (
-              <span className="rounded-md bg-[var(--tr-amber)]/12 px-2 py-1 text-sm font-semibold text-[var(--tr-amber)]">
-                  Unsaved edits
+          <ActionRail
+            title="Quote total"
+            value={formatCurrency(quote.total)}
+            badges={
+              <>
+                <span className="rounded-md bg-[var(--tr-primary-fill)] px-2.5 py-1 text-sm font-semibold text-[var(--tr-primary)] ring-1 ring-[var(--tr-primary-edge)]">
+                  {workflowState.nextAction}
                 </span>
-              )}
-            </div>
-            <div className="mt-5 divide-y divide-[var(--tr-border-soft)] border-t border-[var(--tr-border-soft)]">
+                <span className={`rounded-md px-2.5 py-1 text-sm font-semibold ${deliveryClass(workflowState.deliveryTone)}`}>
+                  {workflowState.deliveryLabel}
+                </span>
+                {dirty && (
+                  <span className="rounded-md bg-[var(--tr-amber)]/12 px-2 py-1 text-sm font-semibold text-[var(--tr-amber)]">
+                    Unsaved edits
+                  </span>
+                )}
+              </>
+            }
+          >
+            <div className="divide-y divide-[var(--tr-border-soft)] border-t border-[var(--tr-border-soft)]">
               <DetailLine label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
               <DetailLine label="Delivery" value={quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready"} />
               <DetailLine label="Follow-up" value={workflowState.followUpLabel ?? "Not needed"} />
               <DetailLine label="Contact" value={quote.client_phone ? "Phone saved" : quote.client_email ? "Email saved" : "Missing"} />
             </div>
-          </Surface>
 
-          <Surface className="p-5">
-            <h2 className="text-lg font-semibold text-[var(--tr-text)]">
-              {attentionItems.length > 0 ? "Needs attention" : "Ready"}
-            </h2>
-            <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
-              {attentionItems.length > 0
-                ? `${attentionItems.length} ${attentionItems.length === 1 ? "item needs" : "items need"} attention before the next step.`
-                : "This quote has the basics needed for the next step."}
-            </p>
-            <div className="mt-4 space-y-2">
-              {(attentionItems.length > 0 ? attentionItems : workflowState.readiness.slice(0, 1)).map(item => (
-                <ReadinessRow key={item.key} item={item} />
-              ))}
-            </div>
-          </Surface>
-
-          <Surface className="p-5">
-            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Send proof</h2>
-            <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
-              {deliverySummary.latestSuccessLabel ?? "No successful send recorded yet."}
-            </p>
-            <div className="mt-4 space-y-2">
-              {(quote.delivery_events ?? []).slice(0, 4).map(event => (
-                <div key={event.id} className={`rounded-lg p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)] ${event.status === "success" ? "bg-[var(--tr-success-bg)]" : "bg-[var(--tr-warning-bg)]"}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}`}>
-                      {event.channel} / {event.status}
-                    </p>
-                    <p className="shrink-0 text-sm text-[var(--tr-text-muted)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
-                  </div>
-                  <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
-                  {event.recipient && <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.recipient}</p>}
-                </div>
-              ))}
-            </div>
-          </Surface>
-
-          <Surface className="p-5">
-            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Actions</h2>
             {dirty && (
-              <p className="mt-2 rounded-lg bg-[var(--tr-warning-bg)] p-3 text-sm leading-5 text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-badge-warning-ring)]">
+              <p className="rounded-lg bg-[var(--tr-warning-bg)] p-3 text-sm leading-5 text-[var(--tr-text)] shadow-[inset_0_0_0_1px_var(--tr-badge-warning-ring)]">
                 Save pricing changes before sending or converting so the client document matches your latest totals.
               </p>
             )}
-            <div className="mt-4 space-y-3">
+
+            <div className="space-y-3">
               {dirty && (
                 <Button variant="secondary" className="w-full" onClick={handleSaveQuote} loading={savingQuote}>
                   <FileText size={18} weight="duotone" />
@@ -395,6 +360,43 @@ export default function QuoteDetailPage() {
               {sendMessage && !sendError && (
                 <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">{sendMessage}</p>
               )}
+            </div>
+          </ActionRail>
+
+          <Surface className="p-5">
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">
+              {attentionItems.length > 0 ? "Needs attention" : "Ready"}
+            </h2>
+            <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
+              {attentionItems.length > 0
+                ? `${attentionItems.length} ${attentionItems.length === 1 ? "item needs" : "items need"} attention before the next step.`
+                : "This quote has the basics needed for the next step."}
+            </p>
+            <div className="mt-4 space-y-2">
+              {(attentionItems.length > 0 ? attentionItems : workflowState.readiness.slice(0, 1)).map(item => (
+                <ReadinessRow key={item.key} item={item} />
+              ))}
+            </div>
+          </Surface>
+
+          <Surface className="p-5">
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Send proof</h2>
+            <p className="mt-1 text-base leading-7 text-[var(--tr-text-muted)]">
+              {deliverySummary.latestSuccessLabel ?? "No successful send recorded yet."}
+            </p>
+            <div className="mt-4 space-y-2">
+              {(quote.delivery_events ?? []).slice(0, 4).map(event => (
+                <div key={event.id} className={`rounded-lg p-3 shadow-[inset_0_0_0_1px_var(--tr-border-soft)] ${event.status === "success" ? "bg-[var(--tr-success-bg)]" : "bg-[var(--tr-warning-bg)]"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={`text-sm font-semibold ${event.status === "success" ? "text-[var(--tr-green)]" : "text-[var(--tr-amber)]"}`}>
+                      {event.channel} / {event.status}
+                    </p>
+                    <p className="shrink-0 text-sm text-[var(--tr-text-muted)]">{formatDate(event.created_at)} {formatTime(event.created_at)}</p>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.message}</p>
+                  {event.recipient && <p className="mt-1 text-sm text-[var(--tr-text-muted)]">{event.recipient}</p>}
+                </div>
+              ))}
             </div>
           </Surface>
 

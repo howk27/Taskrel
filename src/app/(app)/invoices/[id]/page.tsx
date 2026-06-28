@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, Receipt } from "@/components/ui/icons";
+import { ArrowLeft, CheckCircle } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
+import { ActionRail } from "@/components/workflow/action-primitives";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { getInvoiceWorkflowState } from "@/lib/workflows/invoice-workflow";
 import { deliveryEventSummary } from "@/lib/delivery-events";
@@ -123,20 +124,6 @@ export default function InvoiceDetailPage() {
 
       <section className="grid gap-4 lg:grid-cols-[1fr_390px]">
         <div className="space-y-4">
-          <Surface className="p-5">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-base font-semibold text-[var(--tr-text)]">Balance due</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-[var(--tr-text)] tabular-nums">{formatCurrency(workflow.balanceDue)}</p>
-                <p className="mt-2 text-base text-[var(--tr-text-muted)]">Invoice total {formatCurrency(invoice.total)} / paid {formatCurrency(invoice.amount_paid)}</p>
-              </div>
-              <div className="rounded-lg bg-[var(--tr-primary-fill)] px-4 py-3 shadow-[inset_0_0_0_1px_var(--tr-primary-edge)] sm:min-w-52">
-                <p className="text-sm font-semibold text-[var(--tr-text-muted)]">Next action</p>
-                <p className="mt-1 text-lg font-semibold text-[var(--tr-primary)]">{workflow.nextAction}</p>
-              </div>
-            </div>
-          </Surface>
-
           <Surface className="overflow-hidden">
             <div className="border-b border-[var(--tr-border-soft)] px-4 py-3">
               <h2 className="text-base font-semibold text-[var(--tr-text)]">Line items</h2>
@@ -164,18 +151,72 @@ export default function InvoiceDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <Surface className="p-5">
-            <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--tr-green)]/15 text-[var(--tr-green)]">
-                <Receipt size={23} weight="duotone" />
-              </span>
-              <div>
-              <h2 className="text-lg font-semibold text-[var(--tr-text)]">Payment command</h2>
-                <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">{workflow.paymentLabel}</p>
+          <ActionRail
+            title="Balance due"
+            value={formatCurrency(workflow.balanceDue)}
+            detail={`${invoice.invoice_number} · total ${formatCurrency(invoice.total)} · paid ${formatCurrency(invoice.amount_paid)}`}
+            badges={
+              <>
+                <span className="rounded-md bg-[var(--tr-primary-fill)] px-2.5 py-1 text-sm font-semibold text-[var(--tr-primary)] ring-1 ring-[var(--tr-primary-edge)]">
+                  {workflow.nextAction}
+                </span>
+                <span className="rounded-md bg-[var(--tr-bg-soft)] px-2.5 py-1 text-sm font-semibold text-[var(--tr-text-muted)] shadow-[inset_0_0_0_1px_var(--tr-border-soft)]">
+                  {workflow.paymentLabel}
+                </span>
+              </>
+            }
+          >
+            {workflow.blockers.length > 0 && (
+              <div className="space-y-2">
+                {workflow.blockers.map(blocker => (
+                  <div key={blocker.key} className="rounded-lg border border-amber-300/20 bg-amber-300/10 p-3">
+                    <p className="text-sm font-semibold text-amber-100">{blocker.label}</p>
+                    <p className="mt-1 text-sm text-amber-100/80">{blocker.detail}</p>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
 
-            <div className="mt-5 space-y-3">
+            {invoice.stripe_payment_link && workflow.effectiveStatus !== "paid" && (
+              <div className="space-y-2">
+                <a
+                  href={invoice.stripe_payment_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-lg bg-[var(--tr-bg-soft)] p-3 text-sm font-semibold text-[var(--tr-primary)] break-all shadow-[inset_0_0_0_1px_var(--tr-border-soft)] hover:bg-[var(--tr-surface-2)]"
+                >
+                  {invoice.stripe_payment_link}
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCopyPaymentLink}
+                  className="h-10 w-full rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-2)] px-3 text-sm font-semibold text-[var(--tr-text)] hover:bg-[var(--tr-surface-3)]"
+                >
+                  Copy payment link
+                </button>
+                {copyMessage && <p className="text-sm text-emerald-200">{copyMessage}</p>}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {canSend && (
+                <Button className="w-full" onClick={handleSend} loading={sending} disabled={workflow.blockers.some(blocker => blocker.key === "contact" || blocker.key === "total")}>
+                  {workflow.effectiveStatus === "draft" ? "Send Invoice" : "Resend Invoice"}
+                </Button>
+              )}
+              {sendError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{sendError}</p>
+              )}
+              {sendMessage && !sendError && (
+                <p className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">{sendMessage}</p>
+              )}
+            </div>
+          </ActionRail>
+
+          <Surface className="p-5">
+            <h2 className="text-lg font-semibold text-[var(--tr-text)]">Proof &amp; delivery</h2>
+            <p className="mt-1 text-sm leading-5 text-[var(--tr-text-muted)]">Delivery and payment history.</p>
+            <div className="mt-4 space-y-3">
               {workflow.proof.map(item => (
                 <ProofRow key={item.key} label={item.label} detail={item.detail} />
               ))}
@@ -200,56 +241,7 @@ export default function InvoiceDetailPage() {
                 </p>
               )}
             </div>
-
-            {invoice.stripe_payment_link && workflow.effectiveStatus !== "paid" && (
-              <div className="mt-5 space-y-2">
-                <a
-                  href={invoice.stripe_payment_link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-lg bg-[var(--tr-bg-soft)] p-3 text-sm font-semibold text-[var(--tr-primary)] break-all shadow-[inset_0_0_0_1px_var(--tr-border-soft)] hover:bg-[var(--tr-surface-2)]"
-                >
-                  {invoice.stripe_payment_link}
-                </a>
-                <button
-                  type="button"
-                  onClick={handleCopyPaymentLink}
-                  className="h-10 w-full rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-2)] px-3 text-sm font-semibold text-[var(--tr-text)] hover:bg-[var(--tr-surface-3)]"
-                >
-                  Copy payment link
-                </button>
-                {copyMessage && <p className="text-sm text-emerald-200">{copyMessage}</p>}
-              </div>
-            )}
-
-            <div className="mt-5 space-y-3">
-              {canSend && (
-                <Button className="w-full" onClick={handleSend} loading={sending} disabled={workflow.blockers.some(blocker => blocker.key === "contact" || blocker.key === "total")}>
-                  {workflow.effectiveStatus === "draft" ? "Send Invoice" : "Resend Invoice"}
-                </Button>
-              )}
-              {sendError && (
-                <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{sendError}</p>
-              )}
-              {sendMessage && !sendError && (
-                <p className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm text-emerald-100">{sendMessage}</p>
-              )}
-            </div>
           </Surface>
-
-          {workflow.blockers.length > 0 && (
-            <Surface className="p-5">
-              <h2 className="text-base font-semibold text-[var(--tr-text)]">Before sending</h2>
-              <div className="mt-4 space-y-3">
-                {workflow.blockers.map(blocker => (
-                  <div key={blocker.key} className="rounded-lg border border-amber-300/20 bg-amber-300/10 p-3">
-                    <p className="text-sm font-semibold text-amber-100">{blocker.label}</p>
-                    <p className="mt-1 text-sm text-amber-100/80">{blocker.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </Surface>
-          )}
         </div>
       </section>
     </div>
