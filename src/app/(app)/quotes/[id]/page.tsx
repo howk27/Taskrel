@@ -15,9 +15,9 @@ import type { DeliveryEvent, PricingRecommendationSnapshot, PropertyValuationSna
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
 const presets: { value: QuoteTemplatePreset; label: string }[] = [
-  { value: "classic", label: "Classic" },
-  { value: "modern", label: "Modern" },
-  { value: "compact", label: "Compact" },
+  { value: "classic", label: "Executive Estimate" },
+  { value: "modern", label: "Premium Proposal" },
+  { value: "compact", label: "Work Order" },
 ];
 
 export default function QuoteDetailPage() {

@@ -22,9 +22,9 @@ type Props = {
 };
 
 const presetOptions: { value: QuoteTemplatePreset; label: string }[] = [
-  { value: "classic", label: "Classic" },
-  { value: "modern", label: "Modern" },
-  { value: "compact", label: "Compact" },
+  { value: "classic", label: "Executive Estimate" },
+  { value: "modern", label: "Premium Proposal" },
+  { value: "compact", label: "Work Order" },
 ];
 
 export function QuoteDocumentSettingsForm({ contractor }: Props) {
