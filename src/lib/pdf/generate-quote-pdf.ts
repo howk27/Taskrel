@@ -3,8 +3,9 @@ import chromium from "@sparticuz/chromium-min";
 import { isBlockedResourceUrl } from "./resource-guard";
 
 /**
- * Renders a quote-document HTML fragment (from renderQuoteDocumentHtml) to a
- * print-ready PDF buffer using headless Chromium.
+ * Renders a document HTML fragment (from renderQuoteDocumentHtml or
+ * renderInvoiceDocumentHtml) to a print-ready PDF buffer using headless
+ * Chromium.
  *
  * Security hardening (security review 2026-06-28):
  * - JavaScript disabled in the page (the document is static HTML+inline CSS).
@@ -66,7 +67,7 @@ function buildPrintHtml(documentHtml: string): string {
     `</style></head><body>${documentHtml}</body></html>`;
 }
 
-export async function renderQuotePdf(documentHtml: string): Promise<Buffer> {
+export async function renderDocumentPdf(documentHtml: string): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();

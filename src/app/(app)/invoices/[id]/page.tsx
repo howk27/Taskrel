@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Badge, statusVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle } from "@/components/ui/icons";
+import { ArrowLeft, CheckCircle, FileText } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { ActionRail } from "@/components/workflow/action-primitives";
 import { formatCurrency, formatDate, formatTime } from "@/lib/format";
@@ -125,8 +125,17 @@ export default function InvoiceDetailPage() {
       <section className="grid gap-4 lg:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <Surface className="overflow-hidden">
-            <div className="border-b border-[var(--tr-border-soft)] px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--tr-border-soft)] px-4 py-3">
               <h2 className="text-base font-semibold text-[var(--tr-text)]">Line items</h2>
+              <a
+                href={`/api/invoices/${id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--tr-border-soft)] px-2.5 py-1.5 text-sm font-semibold text-[var(--tr-text)] hover:bg-[var(--tr-bg-soft)]"
+              >
+                <FileText className="h-4 w-4" aria-hidden />
+                Download PDF
+              </a>
             </div>
             <div className="divide-y divide-[var(--tr-border-soft)]">
               {invoice.line_items.map((item, index) => (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
-import { renderQuotePdf } from "@/lib/pdf/generate-quote-pdf";
+import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
 import { checkPdfCooldown } from "@/lib/pdf/pdf-rate-limit";
 import type { BusinessSnapshot, QuoteTemplatePreset } from "@/types";
 
@@ -51,7 +51,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       business: quote.business_snapshot as BusinessSnapshot,
       preset: (quote.template_preset ?? "classic") as QuoteTemplatePreset,
     });
-    const pdf = await renderQuotePdf(html);
+    const pdf = await renderDocumentPdf(html);
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,
       headers: {
