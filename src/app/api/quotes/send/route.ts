@@ -5,8 +5,14 @@ import { buildPublicQuoteUrl, generatePublicQuoteToken, renderPublicQuoteEmailHt
 import { buildBusinessSnapshot, renderQuoteDocumentHtml, QUOTE_RENDERER_VERSION } from "@/lib/quote-document";
 import { describeSendGridError } from "@/lib/sendgrid-error";
 import { buildDeliveryEventRows, type DeliveryEventAttempt } from "@/lib/delivery-events";
+import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
+import { archiveDocumentPdf } from "@/lib/documents/archive-document";
 import type { QuoteTemplatePreset } from "@/types";
 import twilio from "twilio";
+
+// PDF archiving launches headless Chromium; needs the Node runtime + headroom.
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 function daysFromNow(days: number) {
   const date = new Date();
@@ -126,7 +132,7 @@ export async function POST(request: NextRequest) {
         });
       } catch (err) {
         const emailError = describeSendGridError(err);
-        console.error("SendGrid error:", emailError, err);
+        console.error("SendGrid error", { code: emailError.code, message: emailError.message });
         errors.push("email");
         details.push({ channel: "email", code: emailError.code, message: emailError.message });
         deliveryAttempts.push({
@@ -197,7 +203,7 @@ export async function POST(request: NextRequest) {
         message: "Quote SMS sent.",
       });
     } catch (err) {
-      console.error("Twilio error:", err);
+      console.error("Twilio error", { message: err instanceof Error ? err.message : "unknown" });
       errors.push("sms");
       details.push({ channel: "sms", code: "sms", message: "Twilio could not send the SMS." });
       deliveryAttempts.push({
@@ -288,6 +294,25 @@ export async function POST(request: NextRequest) {
           .update({ client_id: existingClient.id })
           .eq("id", quoteId);
       }
+    }
+
+    // Best-effort: archive a frozen PDF of the sent quote. Uses the same frozen
+    // snapshot + preset the client received. Archive failures must not fail send.
+    try {
+      const html = renderQuoteDocumentHtml({ quote, business: businessSnapshot, preset: templatePreset });
+      const pdf = await renderDocumentPdf(html);
+      const { error: archiveError } = await archiveDocumentPdf({
+        supabase,
+        contractorId: quote.contractor_id,
+        entityType: "quote",
+        entityId: quoteId,
+        pdf,
+        fileName: `quote-${quoteId}.pdf`,
+        rendererVersion: businessSnapshot.renderer_version ?? QUOTE_RENDERER_VERSION,
+      });
+      if (archiveError) console.error("Quote archive failed", { quoteId, error: archiveError });
+    } catch (err) {
+      console.error("Quote archive render failed", { quoteId, message: err instanceof Error ? err.message : "unknown" });
     }
   }
 

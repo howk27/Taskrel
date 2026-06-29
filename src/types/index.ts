@@ -238,6 +238,20 @@ export interface Invoice {
 
 // â”€â”€â”€ Delivery Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+// ─── Document archive ───────────────────────────────────────────────────────
+
+export interface Document {
+  id: string;
+  contractor_id: string;
+  entity_type: "quote" | "invoice";
+  entity_id: string;
+  storage_path: string;
+  file_name: string;
+  renderer_version: string | null;
+  byte_size: number | null;
+  created_at: string;
+}
+
 export type DeliveryEntityType = "quote" | "invoice";
 export type DeliveryAction = "send" | "payment_link" | "payment";
 export type DeliveryChannel = "email" | "sms" | "stripe";

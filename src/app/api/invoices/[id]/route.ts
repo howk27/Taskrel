@@ -36,11 +36,34 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { data: contractor } = await supabase
+    .from("contractors")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+  if (!contractor) return NextResponse.json({ error: "Contractor not found" }, { status: 404 });
+
+  // Drop server-managed / identity fields a client must never set directly.
+  // stripe_payment_link is set server-side at send time; allowing the client to
+  // write it enables a javascript:-scheme link to reach the rendered PDF/email.
+  const PROTECTED = new Set([
+    "id",
+    "contractor_id",
+    "stripe_payment_link",
+    "stripe_payment_intent_id",
+    "created_at",
+    "updated_at",
+  ]);
   const body = await request.json();
+  const safe = Object.fromEntries(
+    Object.entries(body ?? {}).filter(([key]) => !PROTECTED.has(key)),
+  );
+
   const { data, error } = await supabase
     .from("invoices")
-    .update(body)
+    .update(safe)
     .eq("id", id)
+    .eq("contractor_id", contractor.id)
     .select()
     .single();
 

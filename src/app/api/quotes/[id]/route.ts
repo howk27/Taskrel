@@ -145,9 +145,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     };
   }
 
+  // Drop identity / server-managed fields a client must never set directly.
+  const PROTECTED = new Set(["id", "contractor_id", "public_access_token", "created_at", "updated_at"]);
+  const safePayload = Object.fromEntries(
+    Object.entries(payload ?? {}).filter(([key]) => !PROTECTED.has(key)),
+  );
+
   const { data, error } = await supabase
     .from("quotes")
-    .update(payload)
+    .update(safePayload)
     .eq("id", id)
     .eq("contractor_id", quoteContractor.id)
     .select()

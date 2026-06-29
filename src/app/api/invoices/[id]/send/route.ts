@@ -5,7 +5,15 @@ import { buildInvoicePaymentLinkParams } from "@/lib/invoice-payment";
 import { getStripe } from "@/lib/stripe";
 import { describeSendGridError } from "@/lib/sendgrid-error";
 import { buildDeliveryEventRows, type DeliveryEventAttempt } from "@/lib/delivery-events";
+import { buildBusinessSnapshot } from "@/lib/quote-document";
+import { renderInvoiceDocumentHtml } from "@/lib/invoice-document";
+import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
+import { archiveDocumentPdf } from "@/lib/documents/archive-document";
 import twilio from "twilio";
+
+// PDF archiving launches headless Chromium; needs the Node runtime + headroom.
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,7 +31,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
 
   const { data: contractor } = await supabase
     .from("contractors")
-    .select("id, business_name, stripe_connect_account_id")
+    .select("id, business_name, email, logo_url, business_phone, business_website, license_text, quote_default_terms, quote_default_note, quote_policy_text, stripe_connect_account_id")
     .eq("user_id", user.id)
     .single();
 
@@ -77,7 +85,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         });
       } catch (err) {
         paymentLinkState = "error";
-        console.error("Stripe payment link error:", err);
+        console.error("Stripe payment link error", { message: err instanceof Error ? err.message : "unknown" });
         errors.push("stripe");
         details.push({ channel: "stripe", code: "stripe", message: "Stripe could not create a payment link." });
         deliveryAttempts.push({
@@ -140,7 +148,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         });
       } catch (err) {
         const emailError = describeSendGridError(err);
-        console.error("SendGrid error:", emailError, err);
+        console.error("SendGrid error", { code: emailError.code, message: emailError.message });
         errors.push("email");
         details.push({ channel: "email", code: emailError.code, message: emailError.message });
         deliveryAttempts.push({
@@ -210,7 +218,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
           message: "Invoice SMS sent.",
         });
       } catch (err) {
-        console.error("Twilio error:", err);
+        console.error("Twilio error", { message: err instanceof Error ? err.message : "unknown" });
         errors.push("sms");
         details.push({ channel: "sms", code: "sms", message: "Twilio could not send the SMS." });
         deliveryAttempts.push({
@@ -261,6 +269,27 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       .from("invoices")
       .update({ status: "sent", sent_via: sent })
       .eq("id", id);
+
+    // Best-effort: archive a frozen PDF of what the client received. A storage
+    // or render failure must never fail a send that already succeeded.
+    if (contractor) {
+      try {
+        const html = renderInvoiceDocumentHtml({ invoice, business: buildBusinessSnapshot(contractor) });
+        const pdf = await renderDocumentPdf(html);
+        const safeNumber = String(invoice.invoice_number ?? id).replace(/[^A-Za-z0-9_-]/g, "");
+        const { error: archiveError } = await archiveDocumentPdf({
+          supabase,
+          contractorId: invoice.contractor_id,
+          entityType: "invoice",
+          entityId: id,
+          pdf,
+          fileName: `invoice-${safeNumber}.pdf`,
+        });
+        if (archiveError) console.error("Invoice archive failed", { id, error: archiveError });
+      } catch (err) {
+        console.error("Invoice archive render failed", { id, message: err instanceof Error ? err.message : "unknown" });
+      }
+    }
   }
 
   const status = sent.length === 0 ? 503 : 200;
