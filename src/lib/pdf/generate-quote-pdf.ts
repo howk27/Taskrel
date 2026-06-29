@@ -1,6 +1,13 @@
+import { lookup as dnsLookup } from "node:dns/promises";
 import puppeteer, { type Browser, type HTTPRequest } from "puppeteer-core";
 import chromium from "@sparticuz/chromium-min";
-import { isBlockedResourceUrl } from "./resource-guard";
+import { isBlockedResourceUrlResolved } from "./resource-guard";
+
+/** Resolves a hostname to all of its A/AAAA addresses for SSRF IP checks. */
+async function resolveAddresses(hostname: string): Promise<string[]> {
+  const records = await dnsLookup(hostname, { all: true });
+  return records.map(record => record.address);
+}
 
 /**
  * Renders a document HTML fragment (from renderQuoteDocumentHtml or
@@ -76,10 +83,21 @@ export async function renderDocumentPdf(documentHtml: string): Promise<Buffer> {
     page.on("request", (request: HTTPRequest) => {
       if (request.isInterceptResolutionHandled()) return;
       const type = request.resourceType();
-      const allow =
-        type === "document" ||
-        (type === "image" && !isBlockedResourceUrl(request.url()));
-      void (allow ? request.continue() : request.abort()).catch(() => {});
+      if (type === "document") {
+        void request.continue().catch(() => {});
+        return;
+      }
+      if (type !== "image") {
+        void request.abort().catch(() => {});
+        return;
+      }
+      // Images: resolve the host and block any private/loopback/metadata IP
+      // (DNS-rebinding safe). Resolution failure fails closed (abort).
+      void (async () => {
+        const blocked = await isBlockedResourceUrlResolved(request.url(), resolveAddresses);
+        if (request.isInterceptResolutionHandled()) return;
+        await (blocked ? request.abort() : request.continue()).catch(() => {});
+      })();
     });
 
     // "load" waits for the (request-filtered) images; the hard timeout bounds
