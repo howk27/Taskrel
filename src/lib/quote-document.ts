@@ -1,5 +1,5 @@
 import type { BusinessSnapshot, Contractor, Quote, QuoteTemplatePreset } from "@/types";
-import { dateShort, escapeHtml, eyebrow, money, multiline } from "./document-format";
+import { dateShort, escapeHtml, eyebrow, formatPhone, money, multiline } from "./document-format";
 
 type BusinessSource = Pick<
   Contractor,
@@ -110,11 +110,10 @@ const themes: Record<QuoteTemplatePreset, DocTokens> = {
 };
 
 function contactLine(business: BusinessSnapshot) {
-  return [business.business_phone, business.business_website].filter(Boolean).map(escapeHtml).join("  ·  ");
-}
-
-function clientContactLine(quote: QuoteData) {
-  return [quote.client_email, quote.client_phone].filter(Boolean).map(escapeHtml).join("  ·  ");
+  return [formatPhone(business.business_phone), business.business_website]
+    .filter(Boolean)
+    .map(escapeHtml)
+    .join("  ·  ");
 }
 
 /**
@@ -143,14 +142,22 @@ function renderDocumentSummary(
   opts: { boxed?: boolean; skipClientCells?: boolean } = {},
 ) {
   const startDate = dateShort(quote.scheduled_start);
-  const contact = clientContactLine(quote);
 
-  const cell = (label: string, value: string) => `
-    <div>
+  const cell = (label: string, value: string, span = false) => `
+    <div${span ? ' style="grid-column:1/-1;"' : ""}>
       ${eyebrow(label, t.muted)}
       <p style="margin:4px 0 0;color:${t.ink};font-size:14px;font-weight:600;line-height:1.45;">${value || `<span style="color:${t.faint};font-weight:500;">—</span>`}</p>
     </div>
   `;
+
+  // Client contact spans the full row so a long email renders on one line; the
+  // phone follows on its own line in the shared "(123) 456 7890" format.
+  const email = quote.client_email ? escapeHtml(quote.client_email) : "";
+  const phone = quote.client_phone ? escapeHtml(formatPhone(quote.client_phone)) : "";
+  const contactValue = [
+    email ? `<span style="white-space:nowrap;">${email}</span>` : "",
+    phone ? `<span style="display:block;margin-top:2px;color:${t.muted};font-weight:500;font-variant-numeric:tabular-nums;">${phone}</span>` : "",
+  ].filter(Boolean).join("");
 
   const containerStyle = opts.boxed
     ? `background:${t.panel};border:1px solid ${t.border};border-radius:8px;padding:16px;`
@@ -165,7 +172,7 @@ function renderDocumentSummary(
   return `
     <div class="quote-document-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 22px;${containerStyle}margin-bottom:18px;">
       ${clientCells}
-      ${cell("Client contact", contact)}
+      ${cell("Client contact", contactValue, true)}
       ${cell("Quote Date", dateShort(quote.created_at))}
       ${startDate ? cell("Start Date", startDate) : ""}
     </div>
@@ -316,7 +323,7 @@ function renderPolicy(business: BusinessSnapshot, t: DocTokens) {
 function renderFooter(business: BusinessSnapshot, t: DocTokens) {
   const bits = [escapeHtml(business.business_name), contactLine(business), escapeHtml(business.license_text)].filter(Boolean);
   return `
-    <div style="margin-top:18px;padding-top:12px;border-top:1px solid ${t.border};color:${t.faint};font-size:11.5px;line-height:1.6;">
+    <div style="margin-top:18px;padding-top:12px;border-top:1px solid ${t.border};color:${t.faint};font-size:11.5px;line-height:1.6;text-align:center;">
       <p style="margin:0;">${bits.join("  ·  ")}</p>
       <p style="margin:4px 0 0;">To approve this ${t.docLabel.toLowerCase()}, use the approval link in your email or reply to confirm. Questions are welcome before you approve.</p>
     </div>
@@ -366,7 +373,6 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
       <div style="text-align:right;">
         <span style="display:inline-block;padding:5px 12px;border:1px solid ${t.accent};border-radius:6px;color:${t.accent};font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">${t.docLabel}</span>
         <p style="margin:14px 0 0;color:${t.ink};font-size:26px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;">${money(quote.total)}</p>
-        <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">Dated ${dateShort(quote.created_at)}</p>
       </div>
     </div>
 
@@ -398,7 +404,6 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
       </div>
       <div style="text-align:right;">
         ${eyebrow(t.docLabel, t.accent)}
-        <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">${dateShort(quote.created_at)}</p>
       </div>
     </div>
 

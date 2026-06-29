@@ -67,6 +67,19 @@ export function quotePdfFilename(
   return `${safeName}${datePart ? ` ${datePart}` : ""}.pdf`;
 }
 
+/**
+ * Format a US phone number consistently as "(123) 456 7890". Strips a leading
+ * country code "1" if present. Anything that isn't a 10-digit US number is
+ * returned trimmed and unchanged, so international or partial numbers survive.
+ */
+export function formatPhone(value: string | null | undefined) {
+  const raw = String(value ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (ten.length !== 10) return raw;
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)} ${ten.slice(6)}`;
+}
+
 /** Small uppercase eyebrow label used throughout the documents. */
 export function eyebrow(label: string, color: string) {
   return `<span style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${color};">${escapeHtml(label)}</span>`;
