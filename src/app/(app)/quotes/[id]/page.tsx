@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, DeviceMobile, EnvelopeSimple, FileText, MapPin, Receipt, SealCheck } from "@/components/ui/icons";
 import { Surface } from "@/components/ui/surface";
 import { ActionRail } from "@/components/workflow/action-primitives";
-import { formatCurrency, formatDate, formatTime } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateNumeric, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
 import { deliveryEventSummary } from "@/lib/delivery-events";
@@ -16,9 +16,9 @@ import type { DeliveryEvent, PricingRecommendationSnapshot, PropertyValuationSna
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
 const presets: { value: QuoteTemplatePreset; label: string }[] = [
-  { value: "classic", label: "Executive Estimate" },
-  { value: "modern", label: "Premium Proposal" },
-  { value: "compact", label: "Work Order" },
+  { value: "classic", label: "Standard" },
+  { value: "modern", label: "Refined" },
+  { value: "compact", label: "Compact" },
 ];
 
 export default function QuoteDetailPage() {
@@ -318,7 +318,7 @@ export default function QuoteDetailPage() {
             }
           >
             <div className="divide-y divide-[var(--tr-border-soft)] border-t border-[var(--tr-border-soft)]">
-              <DetailLine label="Scheduled" value={quote.scheduled_start ? formatDate(quote.scheduled_start) : "Not scheduled"} />
+              <DetailLine label="Start Date" value={quote.scheduled_start ? formatDateNumeric(quote.scheduled_start) : "Not scheduled"} />
               <DetailLine label="Delivery" value={quote.sent_via?.length ? quote.sent_via.join(" + ") : "Ready"} />
               <DetailLine label="Follow-up" value={workflowState.followUpLabel ?? "Not needed"} />
               <DetailLine label="Contact" value={quote.client_phone ? "Phone saved" : quote.client_email ? "Email saved" : "Missing"} />

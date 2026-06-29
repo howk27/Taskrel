@@ -32,6 +32,41 @@ export function date(value: string | null | undefined) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }
 
+/**
+ * Format an ISO date string as numeric "MM/DD/YYYY" (date only, never a time);
+ * empty string when absent. UTC-fixed so the same instant renders identically
+ * on the server, in tests, and in the PDF. Used for quote date fields.
+ */
+export function dateShort(value: string | null | undefined) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+/**
+ * Build a download filename from the client name + quote date, e.g.
+ * "Acme Properties 06-15-2026.pdf". ASCII-sanitized so it is safe inside a
+ * Content-Disposition `filename="..."` token (strips quotes/slashes/control
+ * chars; the MM/DD/YYYY date uses hyphens since "/" is illegal in filenames).
+ */
+export function quotePdfFilename(
+  clientName: string | null | undefined,
+  isoDate: string | null | undefined,
+) {
+  const safeName =
+    String(clientName ?? "")
+      .replace(/[^A-Za-z0-9 _.-]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 60) || "Quote";
+  const datePart = dateShort(isoDate).replace(/\//g, "-");
+  return `${safeName}${datePart ? ` ${datePart}` : ""}.pdf`;
+}
+
 /** Small uppercase eyebrow label used throughout the documents. */
 export function eyebrow(label: string, color: string) {
   return `<span style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${color};">${escapeHtml(label)}</span>`;

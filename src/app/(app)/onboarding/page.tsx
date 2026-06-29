@@ -43,9 +43,9 @@ const tradeIcons: Record<Trade, Icon> = {
 };
 
 const presetOptions: { value: QuoteTemplatePreset; label: string; detail: string }[] = [
-  { value: "classic", label: "Executive Estimate", detail: "Polished, structured estimate for complete professional quotes." },
-  { value: "modern", label: "Premium Proposal", detail: "Refined, whitespace-led proposal for high-value work." },
-  { value: "compact", label: "Work Order", detail: "Practical, field-service layout for repeat or simple jobs." },
+  { value: "classic", label: "Standard", detail: "Polished, structured layout for complete professional quotes." },
+  { value: "modern", label: "Refined", detail: "Whitespace-led, restrained layout for high-value work." },
+  { value: "compact", label: "Compact", detail: "Practical, field-service layout for repeat or simple jobs." },
 ];
 
 const starterTerms = "Quote valid for 30 days. A deposit may be required before scheduling. Scope changes require written approval.";

@@ -1,5 +1,5 @@
 import type { BusinessSnapshot, Contractor, Quote, QuoteTemplatePreset } from "@/types";
-import { date, escapeHtml, eyebrow, money, multiline } from "./document-format";
+import { dateShort, escapeHtml, eyebrow, money, multiline } from "./document-format";
 
 type BusinessSource = Pick<
   Contractor,
@@ -82,41 +82,32 @@ const NEUTRAL = {
 };
 
 const themes: Record<QuoteTemplatePreset, DocTokens> = {
-  // Direction 1 — Executive Estimate: polished, structured business document.
+  // Direction 1 — Standard: polished, structured business document.
+  // All three directions print the same client-facing label ("Quote") — they
+  // are one document type in different styles, never different document genres.
   classic: {
     ...NEUTRAL,
-    docLabel: "Estimate",
+    docLabel: "Quote",
     accent: "#1E3A5F",
     accentSoft: "#EEF2F7",
   },
-  // Direction 3 — Premium Proposal: refined, whitespace-led, restrained.
+  // Direction 3 — Refined: whitespace-led, restrained.
   modern: {
     ...NEUTRAL,
-    docLabel: "Proposal",
+    docLabel: "Quote",
     accent: "#6B5B4A",
     accentSoft: "#F4F1EC",
     bg: "#FFFFFF",
     panel: "#FAFAF8",
   },
-  // Direction 2 — Contractor Work Order: practical, field-service, lightly boxed.
+  // Direction 2 — Compact: practical, field-service, lightly boxed.
   compact: {
     ...NEUTRAL,
-    docLabel: "Work Order",
+    docLabel: "Quote",
     accent: "#3F4854",
     accentSoft: "#F1F3F5",
   },
 };
-
-function datetime(value: string | null | undefined) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 function contactLine(business: BusinessSnapshot) {
   return [business.business_phone, business.business_website].filter(Boolean).map(escapeHtml).join("  ·  ");
@@ -124,11 +115,6 @@ function contactLine(business: BusinessSnapshot) {
 
 function clientContactLine(quote: QuoteData) {
   return [quote.client_email, quote.client_phone].filter(Boolean).map(escapeHtml).join("  ·  ");
-}
-
-function scheduledLine(quote: QuoteData) {
-  if (!quote.scheduled_start) return "";
-  return `${datetime(quote.scheduled_start)}${quote.scheduled_end ? ` – ${datetime(quote.scheduled_end)}` : ""}`;
 }
 
 /**
@@ -156,7 +142,7 @@ function renderDocumentSummary(
   t: DocTokens,
   opts: { boxed?: boolean; skipClientCells?: boolean } = {},
 ) {
-  const scheduled = scheduledLine(quote);
+  const startDate = dateShort(quote.scheduled_start);
   const contact = clientContactLine(quote);
 
   const cell = (label: string, value: string) => `
@@ -180,8 +166,8 @@ function renderDocumentSummary(
     <div class="quote-document-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 22px;${containerStyle}margin-bottom:18px;">
       ${clientCells}
       ${cell("Client contact", contact)}
-      ${cell("Quote date", date(quote.created_at))}
-      ${scheduled ? cell("Scheduled", scheduled) : ""}
+      ${cell("Quote Date", dateShort(quote.created_at))}
+      ${startDate ? cell("Start Date", startDate) : ""}
     </div>
   `;
 }
@@ -246,7 +232,7 @@ function renderLineItems(quote: QuoteData, t: DocTokens, scopeHeading = "Scope o
           <div style="min-width:0;">
             ${renderLineItemCopy(item.description, t)}
           </div>
-          <div class="quote-line-quantity" style="text-align:right;color:${t.muted};font-size:12.5px;line-height:1.5;">
+          <div class="quote-line-quantity" style="text-align:right;color:${t.muted};font-size:12.5px;line-height:1.5;font-variant-numeric:tabular-nums;">
             <span style="display:block;color:${t.ink};font-weight:600;">${item.quantity} ${escapeHtml(item.unit ?? "")}</span>
             <span class="quote-line-unit-price" style="display:block;color:${t.muted};">${money(item.unit_price)} <span style="color:${t.faint};">/ unit</span></span>
           </div>
@@ -285,7 +271,7 @@ function renderTotal(quote: QuoteData, t: DocTokens) {
         <div style="margin-top:10px;padding-top:12px;border-top:2px solid ${t.ink};">
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:24px;">
             <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${t.accent};">Total due</span>
-            <span style="color:${t.ink};font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;">${money(quote.total)}</span>
+            <span style="color:${t.ink};font-size:26px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1;">${money(quote.total)}</span>
           </div>
         </div>
       </div>
@@ -357,14 +343,14 @@ function renderClose(quote: QuoteData, business: BusinessSnapshot, t: DocTokens)
 /** The page shell — a single white sheet with a hairline frame. */
 function shell(t: DocTokens, inner: string, maxWidth = 760) {
   return `
-    <div style="font-family:${FONT_STACK};box-sizing:border-box;width:100%;max-width:${maxWidth}px;margin:0 auto;background:${t.bg};color:${t.ink};padding:clamp(18px,4vw,30px);border-radius:10px;border:1px solid ${t.border};overflow-wrap:anywhere;-webkit-font-smoothing:antialiased;">
+    <div style="font-family:${FONT_STACK};box-sizing:border-box;width:100%;max-width:${maxWidth}px;margin:0 auto;background:${t.bg};color:${t.ink};padding:clamp(18px,4vw,30px);border-radius:10px;border:1px solid ${t.border};overflow-wrap:anywhere;-webkit-font-smoothing:antialiased;font-kerning:normal;text-rendering:optimizeLegibility;">
       ${inner}
     </div>
   `;
 }
 
 /* ------------------------------------------------------------------ */
-/* Direction 1 — Executive Estimate                                    */
+/* Direction 1 — Standard (formal, structured)                         */
 /* ------------------------------------------------------------------ */
 function renderClassic({ quote, business }: QuoteDocumentInput) {
   const t = themes.classic;
@@ -373,14 +359,14 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px 28px;align-items:flex-start;">
       <div>
         ${renderLogo(business, t)}
-        <h1 style="margin:12px 0 4px;font-size:22px;font-weight:800;line-height:1.15;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
+        <h1 style="margin:12px 0 4px;font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.15;text-wrap:balance;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
         <p style="margin:0;color:${t.muted};font-size:13px;">${contactLine(business)}</p>
         ${business.license_text ? `<p style="margin:4px 0 0;color:${t.faint};font-size:12px;">${escapeHtml(business.license_text)}</p>` : ""}
       </div>
       <div style="text-align:right;">
         <span style="display:inline-block;padding:5px 12px;border:1px solid ${t.accent};border-radius:6px;color:${t.accent};font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">${t.docLabel}</span>
-        <p style="margin:14px 0 0;color:${t.ink};font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;">${money(quote.total)}</p>
-        <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">Dated ${date(quote.created_at)}</p>
+        <p style="margin:14px 0 0;color:${t.ink};font-size:26px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums;">${money(quote.total)}</p>
+        <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">Dated ${dateShort(quote.created_at)}</p>
       </div>
     </div>
 
@@ -396,7 +382,7 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Direction 2 — Contractor Work Order                                 */
+/* Direction 2 — Compact (practical, field-service)                    */
 /* ------------------------------------------------------------------ */
 function renderCompact({ quote, business }: QuoteDocumentInput) {
   const t = themes.compact;
@@ -406,13 +392,13 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
         ${renderLogo(business, t)}
         <div>
-          <h1 style="margin:0;font-size:18px;font-weight:800;line-height:1.2;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
+          <h1 style="margin:0;font-size:18px;font-weight:700;letter-spacing:-.01em;line-height:1.2;text-wrap:balance;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
           <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">${contactLine(business)}</p>
         </div>
       </div>
       <div style="text-align:right;">
         ${eyebrow(t.docLabel, t.accent)}
-        <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">${date(quote.created_at)}</p>
+        <p style="margin:3px 0 0;color:${t.muted};font-size:12.5px;">${dateShort(quote.created_at)}</p>
       </div>
     </div>
 
@@ -439,7 +425,7 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Direction 3 — Premium Proposal                                      */
+/* Direction 3 — Refined (whitespace-led, restrained)                  */
 /* ------------------------------------------------------------------ */
 function renderModern({ quote, business }: QuoteDocumentInput) {
   const t = themes.modern;
@@ -447,7 +433,7 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
   const inner = `
     <div style="text-align:center;padding-bottom:20px;border-bottom:1px solid ${t.border};">
       <div style="display:flex;justify-content:center;">${renderLogo(business, t)}</div>
-      <h1 style="margin:14px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
+      <h1 style="margin:14px 0 0;font-size:24px;font-weight:700;letter-spacing:-.01em;text-wrap:balance;color:${t.ink};">${escapeHtml(business.business_name)}</h1>
       <p style="margin:6px 0 0;color:${t.muted};font-size:13px;">${contactLine(business)}</p>
       <p style="margin:14px 0 0;font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:${t.accent};">${t.docLabel}</p>
     </div>
@@ -459,7 +445,7 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
     </div>
 
     ${renderDocumentSummary(quote, t, { skipClientCells: true })}
-    ${renderLineItems(quote, t, "Included in this proposal")}
+    ${renderLineItems(quote, t, "Included in this quote")}
     ${renderClose(quote, business, t)}
     ${renderFooter(business, t)}
   `;
@@ -491,7 +477,7 @@ export function buildBusinessSnapshot(contractor: BusinessSource): BusinessSnaps
  */
 export const QUOTE_RENDERER_VERSION = "v1";
 
-/** v1 — the three locked directions (Executive / Work Order / Premium). */
+/** v1 — the three locked directions (Standard / Compact / Refined). */
 function renderV1(input: QuoteDocumentInput) {
   switch (input.preset) {
     case "modern":

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { buildBusinessSnapshot, renderQuoteDocumentHtml } from "@/lib/quote-document";
+import { quotePdfFilename } from "@/lib/document-format";
 import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
 import type { BusinessSnapshot, QuoteTemplatePreset } from "@/types";
 
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="quote-${id}.pdf"`,
+        "Content-Disposition": `attachment; filename="${quotePdfFilename(quote.client_name, quote.created_at)}"`,
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "private, no-store, max-age=0",
       },

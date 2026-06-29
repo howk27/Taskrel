@@ -99,9 +99,9 @@ describe("renderQuoteDocumentHtml", () => {
 
       expect(html).toContain("quote-document-summary");
       expect(html).toContain("Prepared for");
-      expect(html).toContain("Quote date");
+      expect(html).toContain("Quote Date");
       expect(html).toContain("Acme Properties");
-      expect(html).toContain("Jun 15, 2026");
+      expect(html).toContain("06/15/2026");
     }
   );
 
