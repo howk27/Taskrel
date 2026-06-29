@@ -10,6 +10,7 @@ import { archiveDocumentPdf } from "@/lib/documents/archive-document";
 import type { QuoteTemplatePreset } from "@/types";
 import twilio from "twilio";
 import { SMS_ENABLED } from "@/lib/feature-flags";
+import { SEND_COOLDOWN_MS, evaluateSendCooldown } from "@/lib/quotes/send-rate-limit";
 
 // PDF archiving launches headless Chromium; needs the Node runtime + headroom.
 export const runtime = "nodejs";
@@ -90,7 +91,46 @@ export async function POST(request: NextRequest) {
   const sent: string[] = [];
   const deliveryAttempts: DeliveryEventAttempt[] = [];
 
-  if (via.includes("email") && quote.client_email) {
+  // Durable per-channel cooldown: block a resend if this quote already had a
+  // successful send on the same channel within the cooldown window. Reads the
+  // persisted delivery_events log, so it holds across instances/tabs/refreshes
+  // (unlike the in-flight button disable). SMS is only considered when enabled.
+  const consideredChannels: string[] = (via as string[]).filter(
+    channel => channel === "email" || (channel === "sms" && SMS_ENABLED),
+  );
+  const lastSuccessByChannel: Record<string, string> = {};
+  if (consideredChannels.length > 0) {
+    const { data: recentSends } = await supabase
+      .from("delivery_events")
+      .select("channel, created_at")
+      .eq("entity_type", "quote")
+      .eq("entity_id", quoteId)
+      .eq("action", "send")
+      .eq("status", "success")
+      .gte("created_at", new Date(Date.now() - SEND_COOLDOWN_MS).toISOString())
+      .order("created_at", { ascending: false });
+    for (const event of recentSends ?? []) {
+      if (!(event.channel in lastSuccessByChannel)) {
+        lastSuccessByChannel[event.channel] = event.created_at;
+      }
+    }
+  }
+  const blockedChannels = evaluateSendCooldown({ channels: consideredChannels, lastSuccessByChannel });
+  const blockedSet = new Map(blockedChannels.map(b => [b.channel, b.retryAfterSeconds]));
+  for (const { channel, retryAfterSeconds } of blockedChannels) {
+    const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
+    errors.push(`${channel}_rate_limited`);
+    details.push({
+      channel,
+      code: "rate_limited",
+      message: `This quote was already sent by ${channel} recently. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+    });
+  }
+
+  const attemptEmail = via.includes("email") && !blockedSet.has("email");
+  const attemptSms = SMS_ENABLED && via.includes("sms") && !blockedSet.has("sms");
+
+  if (attemptEmail && quote.client_email) {
     const missingEmailEnv = getMissingEnv(["SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL"]);
     if (missingEmailEnv.length > 0) {
       errors.push("email_config");
@@ -146,7 +186,7 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-  } else if (via.includes("email")) {
+  } else if (attemptEmail) {
     errors.push("email_missing_client");
     details.push({
       channel: "email",
@@ -163,7 +203,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (SMS_ENABLED && via.includes("sms") && quote.client_phone) {
+  if (attemptSms && quote.client_phone) {
     const missingSmsEnv = getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]);
     if (missingSmsEnv.length > 0) {
       errors.push("sms_config");
@@ -217,7 +257,7 @@ export async function POST(request: NextRequest) {
       });
     }
     }
-  } else if (SMS_ENABLED && via.includes("sms")) {
+  } else if (attemptSms) {
     errors.push("sms_missing_client");
     details.push({
       channel: "sms",
@@ -315,6 +355,17 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error("Quote archive render failed", { quoteId, message: err instanceof Error ? err.message : "unknown" });
     }
+  }
+
+  // Nothing sent and the only reason was cooldown -> 429 with Retry-After.
+  const onlyRateLimited =
+    sent.length === 0 && errors.length > 0 && details.every(d => d.code === "rate_limited");
+  if (onlyRateLimited) {
+    const retryAfter = Math.max(...blockedChannels.map(b => b.retryAfterSeconds));
+    return NextResponse.json(
+      { sent, errors, details, quoteUrl },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
   }
 
   const status = sent.length === 0 && errors.length > 0 ? 503 : 200;
