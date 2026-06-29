@@ -10,6 +10,7 @@ import { renderInvoiceDocumentHtml } from "@/lib/invoice-document";
 import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
 import { archiveDocumentPdf } from "@/lib/documents/archive-document";
 import twilio from "twilio";
+import { SMS_ENABLED } from "@/lib/feature-flags";
 
 // PDF archiving launches headless Chromium; needs the Node runtime + headroom.
 export const runtime = "nodejs";
@@ -178,7 +179,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     });
   }
 
-  if (invoice.client_phone) {
+  if (SMS_ENABLED && invoice.client_phone) {
     const missingSmsEnv = getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]);
     if (missingSmsEnv.length > 0) {
       console.warn(`Invoice SMS skipped: missing ${missingSmsEnv.join(", ")}.`);
@@ -231,7 +232,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         });
       }
     }
-  } else {
+  } else if (SMS_ENABLED) {
     errors.push("sms_missing_client");
     details.push({
       channel: "sms",

@@ -9,6 +9,7 @@ import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
 import { archiveDocumentPdf } from "@/lib/documents/archive-document";
 import type { QuoteTemplatePreset } from "@/types";
 import twilio from "twilio";
+import { SMS_ENABLED } from "@/lib/feature-flags";
 
 // PDF archiving launches headless Chromium; needs the Node runtime + headroom.
 export const runtime = "nodejs";
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (via.includes("sms") && quote.client_phone) {
+  if (SMS_ENABLED && via.includes("sms") && quote.client_phone) {
     const missingSmsEnv = getMissingEnv(["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"]);
     if (missingSmsEnv.length > 0) {
       errors.push("sms_config");
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
       });
     }
     }
-  } else if (via.includes("sms")) {
+  } else if (SMS_ENABLED && via.includes("sms")) {
     errors.push("sms_missing_client");
     details.push({
       channel: "sms",

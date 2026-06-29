@@ -17,7 +17,11 @@ export default function TermsPage() {
         },
         {
           title: "Payments and delivery",
-          body: "Stripe, SendGrid, Twilio, and connected integrations may have their own fees, delivery limits, terms, or account requirements. Taskrel helps coordinate the workflow but does not replace those provider agreements.",
+          body: "Stripe, SendGrid, and connected integrations may have their own fees, delivery limits, terms, or account requirements. Taskrel helps coordinate the workflow but does not replace those provider agreements. SMS delivery is not active in this version.",
+        },
+        {
+          title: "Your data and deletion",
+          body: "You control the business and client records you enter. Taskrel stores those records and the quote and invoice PDFs it generates so you can resend and reference them. You can permanently delete your account and all stored data, including those PDFs, from Settings at any time; deletion is immediate and irreversible. You are responsible for having a lawful basis to store your clients' information in Taskrel and for handling their requests under applicable privacy law.",
         },
       ]}
     />

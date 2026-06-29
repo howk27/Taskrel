@@ -1,4 +1,5 @@
 import type { QuoteTemplatePreset } from "@/types";
+import { SMS_ENABLED } from "./feature-flags";
 
 export type LaunchReadinessKey =
   | "business_identity"
@@ -59,6 +60,11 @@ export function buildLaunchReadiness(input: LaunchReadinessInput): LaunchReadine
   const hasPolicy = hasValue(contractor.quote_policy_text);
   const hasPayment = hasValue(contractor.stripe_connect_account_id);
   const hasFirstQuote = quoteCount > 0;
+  // SMS is pre-launch in v1 (see SMS_ENABLED): delivery readiness depends on
+  // email alone until Twilio + TCPA consent ship.
+  const deliveryReady = SMS_ENABLED
+    ? delivery.emailConfigured && delivery.smsConfigured
+    : delivery.emailConfigured;
 
   const items: LaunchReadinessItem[] = [
     {
@@ -86,13 +92,17 @@ export function buildLaunchReadiness(input: LaunchReadinessInput): LaunchReadine
     {
       key: "delivery_channels",
       label: "Delivery channels",
-      detail: delivery.emailConfigured && delivery.smsConfigured
-        ? "Email and SMS delivery are configured."
-        : "Configure SendGrid and Twilio before public sale.",
+      detail: deliveryReady
+        ? SMS_ENABLED
+          ? "Email and SMS delivery are configured."
+          : "Email delivery is configured."
+        : SMS_ENABLED
+          ? "Configure SendGrid and Twilio before public sale."
+          : "Configure SendGrid email delivery before public sale.",
       impact: "Lets Taskrel send quotes where clients already respond.",
       href: "/settings",
       actionLabel: "Review delivery",
-      complete: delivery.emailConfigured && delivery.smsConfigured,
+      complete: deliveryReady,
     },
     {
       key: "payments",

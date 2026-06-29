@@ -12,6 +12,7 @@ import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricin
 import { formatCurrency } from "@/lib/format";
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 import { getQuoteFormReadiness, todayDateInput } from "@/lib/readiness/setup-readiness";
+import { SMS_ENABLED } from "@/lib/feature-flags";
 
 type Step = "form" | "generating" | "review";
 
@@ -352,7 +353,8 @@ export default function NewQuotePage() {
     });
     const sendChannels = [
       ...(clientEmail ? ["email"] : []),
-      ...(clientPhone ? ["sms"] : []),
+      // SMS is implemented but not launched in v1 (see SMS_ENABLED / TCPA).
+      ...(SMS_ENABLED && clientPhone ? ["sms"] : []),
     ];
     const attentionItems = reviewState.readiness.filter(item => !item.complete);
 

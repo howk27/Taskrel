@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ReadinessChip } from "@/components/ui/readiness";
 import { Surface } from "@/components/ui/surface";
 import { BusinessInformationForm } from "@/components/settings/business-information-form";
+import { DeleteAccount } from "@/components/settings/delete-account";
 import { OverheadSettingsForm } from "@/components/settings/overhead-settings-form";
 import { QuoteDocumentSettingsForm } from "@/components/settings/quote-document-settings-form";
 import { logout } from "@/lib/actions/auth";
@@ -225,6 +226,8 @@ export default async function SettingsPage({
               Sign out
             </Button>
           </form>
+
+          <DeleteAccount email={settingsContractor?.email ?? user.email ?? ""} />
         </div>
       </div>
     </div>

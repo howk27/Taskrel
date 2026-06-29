@@ -11,6 +11,7 @@ import { formatCurrency, formatDate, formatTime } from "@/lib/format";
 import { calculateQuotePricing, determineQuotePricingSource } from "@/lib/pricing";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
 import { deliveryEventSummary } from "@/lib/delivery-events";
+import { SMS_ENABLED } from "@/lib/feature-flags";
 import type { DeliveryEvent, PricingRecommendationSnapshot, PropertyValuationSnapshot, Quote, QuoteLineItem, QuoteTemplatePreset } from "@/types";
 import { getQuoteWorkflowState, type QuoteReadinessItem } from "@/components/quotes/quote-workflow-model";
 
@@ -260,13 +261,14 @@ export default function QuoteDetailPage() {
 
   const sendVia = [
     ...(quote.client_email ? ["email"] : []),
-    ...(quote.client_phone ? ["sms"] : []),
+    // SMS is implemented but not launched in v1 (see SMS_ENABLED / TCPA).
+    ...(SMS_ENABLED && quote.client_phone ? ["sms"] : []),
   ];
   const deliveryChannels = [
     quote.client_email
       ? { key: "email" as const, label: "Email", recipient: quote.client_email, Icon: EnvelopeSimple }
       : null,
-    quote.client_phone
+    SMS_ENABLED && quote.client_phone
       ? { key: "sms" as const, label: "SMS", recipient: quote.client_phone, Icon: DeviceMobile }
       : null,
   ].filter((channel): channel is NonNullable<typeof channel> => channel !== null);

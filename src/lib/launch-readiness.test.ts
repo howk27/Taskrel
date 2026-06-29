@@ -60,4 +60,29 @@ describe("buildLaunchReadiness", () => {
     expect(readiness.readyToSendFirstQuote).toBe(true);
     expect(readiness.items.every(item => item.complete)).toBe(true);
   });
+
+  it("completes delivery readiness on email alone while SMS is pre-launch (v1)", () => {
+    const readiness = buildLaunchReadiness({
+      contractor: {
+        business_name: "Taskrel Painting",
+        business_phone: "(305) 555-0100",
+        business_website: "https://taskrel.com",
+        license_text: "Licensed and insured in Florida",
+        logo_url: "https://example.com/logo.png",
+        quote_default_terms: "Quote valid for 30 days.",
+        quote_policy_text: "One-year workmanship warranty.",
+        quote_template_preset: "modern",
+        stripe_connect_account_id: "acct_123",
+      },
+      delivery: {
+        emailConfigured: true,
+        smsConfigured: false,
+      },
+      quoteCount: 1,
+    });
+
+    const delivery = readiness.items.find(item => item.key === "delivery_channels");
+    expect(delivery?.complete).toBe(true);
+    expect(readiness.readyToSendFirstQuote).toBe(true);
+  });
 });
