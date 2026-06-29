@@ -13,6 +13,34 @@ export const SEND_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes
 
 export type BlockedChannel = { channel: string; retryAfterSeconds: number };
 
+export type SuccessfulSendEvent = {
+  channel: string;
+  recipient: string | null;
+  created_at: string;
+};
+
+/**
+ * Builds the per-channel "last successful send" map used by the cooldown,
+ * counting ONLY events whose recipient matches the address we're about to send
+ * to on that channel. This makes the cooldown recipient-scoped: re-sending to
+ * the same email/phone is throttled, but sending the quote to a *different*
+ * recipient is never blocked. Events must be ordered newest-first; the first
+ * match per channel wins.
+ */
+export function lastSuccessByRecipient(
+  events: SuccessfulSendEvent[],
+  recipientByChannel: Record<string, string | null | undefined>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const event of events) {
+    const target = recipientByChannel[event.channel];
+    if (!target) continue;
+    if (event.recipient !== target) continue;
+    if (!(event.channel in result)) result[event.channel] = event.created_at;
+  }
+  return result;
+}
+
 export function evaluateSendCooldown({
   channels,
   lastSuccessByChannel,

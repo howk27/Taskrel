@@ -76,9 +76,13 @@ describe("POST /api/quotes/send", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 429 with Retry-After when the channel was sent within the cooldown", async () => {
+  it("returns 429 with Retry-After when the same recipient was sent within the cooldown", async () => {
     h.byTable.delivery_events = {
-      await: { data: [{ channel: "email", created_at: new Date().toISOString() }] },
+      await: {
+        data: [
+          { channel: "email", recipient: "client@example.com", created_at: new Date().toISOString() },
+        ],
+      },
     };
     const res = await POST(req({ quoteId: "q-1", via: ["email"] }));
     expect(res.status).toBe(429);

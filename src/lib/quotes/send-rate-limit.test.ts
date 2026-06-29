@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEND_COOLDOWN_MS, evaluateSendCooldown } from "./send-rate-limit";
+import { SEND_COOLDOWN_MS, evaluateSendCooldown, lastSuccessByRecipient } from "./send-rate-limit";
 
 const now = Date.parse("2026-06-29T12:00:00.000Z");
 
@@ -55,5 +55,56 @@ describe("evaluateSendCooldown", () => {
       now,
     });
     expect(blocked[0].retryAfterSeconds).toBe(2);
+  });
+});
+
+describe("lastSuccessByRecipient", () => {
+  const t1 = "2026-06-29T11:50:00.000Z";
+  const t2 = "2026-06-29T11:30:00.000Z";
+
+  it("records a channel only when the event recipient matches the target recipient", () => {
+    const result = lastSuccessByRecipient(
+      [{ channel: "email", recipient: "a@example.com", created_at: t1 }],
+      { email: "a@example.com" },
+    );
+    expect(result).toEqual({ email: t1 });
+  });
+
+  it("ignores a prior send to a DIFFERENT recipient (different email goes through)", () => {
+    const result = lastSuccessByRecipient(
+      [{ channel: "email", recipient: "old@example.com", created_at: t1 }],
+      { email: "new@example.com" },
+    );
+    expect(result).toEqual({});
+  });
+
+  it("keeps the newest matching event (caller orders newest-first)", () => {
+    const result = lastSuccessByRecipient(
+      [
+        { channel: "email", recipient: "a@example.com", created_at: t1 },
+        { channel: "email", recipient: "a@example.com", created_at: t2 },
+      ],
+      { email: "a@example.com" },
+    );
+    expect(result).toEqual({ email: t1 });
+  });
+
+  it("matches per channel independently", () => {
+    const result = lastSuccessByRecipient(
+      [
+        { channel: "email", recipient: "a@example.com", created_at: t1 },
+        { channel: "sms", recipient: "+15551234567", created_at: t2 },
+      ],
+      { email: "a@example.com", sms: "+15551234567" },
+    );
+    expect(result).toEqual({ email: t1, sms: t2 });
+  });
+
+  it("skips a channel with no target recipient", () => {
+    const result = lastSuccessByRecipient(
+      [{ channel: "email", recipient: "a@example.com", created_at: t1 }],
+      { email: null },
+    );
+    expect(result).toEqual({});
   });
 });
