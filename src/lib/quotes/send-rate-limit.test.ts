@@ -22,8 +22,8 @@ describe("evaluateSendCooldown", () => {
     });
     expect(blocked).toHaveLength(1);
     expect(blocked[0].channel).toBe("email");
-    // 60 min cooldown, 10 min elapsed -> ~50 min (3000s) remaining.
-    expect(blocked[0].retryAfterSeconds).toBe(50 * 60);
+    // 30 min cooldown, 10 min elapsed -> ~20 min (1200s) remaining.
+    expect(blocked[0].retryAfterSeconds).toBe(20 * 60);
   });
 
   it("does not block once the cooldown has fully elapsed", () => {

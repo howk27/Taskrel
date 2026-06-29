@@ -9,7 +9,7 @@
  * holds across serverless instances and cold starts.
  */
 
-export const SEND_COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes
+export const SEND_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
 export type BlockedChannel = { channel: string; retryAfterSeconds: number };
 
