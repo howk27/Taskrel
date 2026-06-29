@@ -1,33 +1,36 @@
 /**
- * Best-effort in-memory per-token cooldown for the unauthenticated public
- * quote-PDF route (security review 2026-06-28, MUST-FIX #3). Each PDF render
- * launches Chromium (heavy CPU/memory), and the route is reachable by anyone
- * holding a quote's public token, so rapid repeats are a DoS / cost vector.
+ * Durable per-quote cooldown for the unauthenticated public quote-PDF route
+ * (security review 2026-06-28, MUST-FIX #3 + pre-launch durability follow-up).
  *
- * This caps repeats per token within a single serverless instance. It is NOT
- * durable across instances or cold starts; a durable per-token cooldown
- * (timestamp column) is tracked as a pre-launch blocker in .agentic/debt.md.
+ * Each PDF render launches Chromium (heavy CPU/memory) and the route is
+ * reachable by anyone holding a quote's public token, so rapid repeats are a
+ * DoS / cost vector. The cooldown is backed by quotes.last_pdf_generated_at
+ * (migration 012), so — unlike the previous in-memory Map — it holds across
+ * serverless instances and cold starts.
+ *
+ * This module is the pure decision; the route reads/writes the timestamp via
+ * the admin Supabase client. A benign race remains (two requests reading the
+ * same stale timestamp before either writes); the worst case is a couple of
+ * extra renders, acceptable at launch scale.
  */
 
-const COOLDOWN_MS = 60_000;
-const lastHitByToken = new Map<string, number>();
+const COOLDOWN_MINUTES = 1;
+export const PDF_COOLDOWN_MS = COOLDOWN_MINUTES * 60_000;
 
 /**
- * Records a hit and returns true when the caller is rate-limited (i.e. the
- * previous hit for this token was within the cooldown window).
+ * Returns true when a render must be refused because the last render for this
+ * quote was within the cooldown window. Fails open on a missing or unparseable
+ * timestamp and ignores future timestamps (clock skew), so a bad value can
+ * never permanently trap a token.
  */
-export function checkPdfCooldown(token: string, now: number = Date.now()): boolean {
-  const last = lastHitByToken.get(token);
-  if (last !== undefined && now - last < COOLDOWN_MS) {
-    return true;
-  }
-  lastHitByToken.set(token, now);
-
-  // Bound memory: opportunistically drop entries past their cooldown.
-  if (lastHitByToken.size > 5000) {
-    for (const [key, ts] of lastHitByToken) {
-      if (now - ts > COOLDOWN_MS) lastHitByToken.delete(key);
-    }
-  }
-  return false;
+export function isPdfOnCooldown(
+  lastGeneratedAt: string | null | undefined,
+  now: number = Date.now(),
+  cooldownMs: number = PDF_COOLDOWN_MS,
+): boolean {
+  if (!lastGeneratedAt) return false;
+  const last = Date.parse(lastGeneratedAt);
+  if (Number.isNaN(last)) return false;
+  const elapsed = now - last;
+  return elapsed >= 0 && elapsed < cooldownMs;
 }

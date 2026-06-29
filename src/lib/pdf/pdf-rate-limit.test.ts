@@ -1,24 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { checkPdfCooldown } from "./pdf-rate-limit";
+import { PDF_COOLDOWN_MS, isPdfOnCooldown } from "./pdf-rate-limit";
 
-describe("checkPdfCooldown", () => {
-  it("allows the first hit and blocks a rapid repeat", () => {
-    const token = `tok-${Math.random()}`;
-    expect(checkPdfCooldown(token, 1_000)).toBe(false);
-    expect(checkPdfCooldown(token, 5_000)).toBe(true);
+const now = Date.parse("2026-06-29T12:00:00.000Z");
+
+describe("isPdfOnCooldown", () => {
+  it("allows the first render (no prior timestamp)", () => {
+    expect(isPdfOnCooldown(null, now)).toBe(false);
+    expect(isPdfOnCooldown(undefined, now)).toBe(false);
   });
 
-  it("allows again once the cooldown window has elapsed", () => {
-    const token = `tok-${Math.random()}`;
-    expect(checkPdfCooldown(token, 1_000)).toBe(false);
-    expect(checkPdfCooldown(token, 1_000 + 60_000)).toBe(false);
+  it("blocks a render within the cooldown window", () => {
+    const last = new Date(now - 10_000).toISOString();
+    expect(isPdfOnCooldown(last, now)).toBe(true);
   });
 
-  it("tracks tokens independently", () => {
-    const a = `tok-a-${Math.random()}`;
-    const b = `tok-b-${Math.random()}`;
-    expect(checkPdfCooldown(a, 1_000)).toBe(false);
-    expect(checkPdfCooldown(b, 1_000)).toBe(false);
-    expect(checkPdfCooldown(a, 1_500)).toBe(true);
+  it("allows a render once the cooldown window has fully elapsed", () => {
+    const last = new Date(now - PDF_COOLDOWN_MS).toISOString();
+    expect(isPdfOnCooldown(last, now)).toBe(false);
+  });
+
+  it("treats an unparseable timestamp as not on cooldown (fail open, never trap a token)", () => {
+    expect(isPdfOnCooldown("not-a-date", now)).toBe(false);
+  });
+
+  it("does not block on a future timestamp (clock skew)", () => {
+    const future = new Date(now + 5_000).toISOString();
+    expect(isPdfOnCooldown(future, now)).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderQuoteDocumentHtml } from "@/lib/quote-document";
 import { renderDocumentPdf } from "@/lib/pdf/generate-quote-pdf";
-import { checkPdfCooldown } from "@/lib/pdf/pdf-rate-limit";
+import { PDF_COOLDOWN_MS, isPdfOnCooldown } from "@/lib/pdf/pdf-rate-limit";
 import type { BusinessSnapshot, QuoteTemplatePreset } from "@/types";
 
 export const runtime = "nodejs";
@@ -16,21 +16,12 @@ function num(value: unknown): number {
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  // MUST-FIX #3: per-token cooldown — this route launches Chromium and is
-  // reachable by anyone holding the token.
-  if (checkPdfCooldown(token)) {
-    return NextResponse.json(
-      { error: "Please wait a moment before downloading this quote again." },
-      { status: 429, headers: { "Retry-After": "60" } },
-    );
-  }
-
   const supabase = createAdminClient();
   // Scoped strictly to the token; only the fields the document needs.
   const { data: quote } = await supabase
     .from("quotes")
     .select(
-      "client_name, client_address, client_email, client_phone, line_items, subtotal, tax_rate, tax_amount, total, notes, scheduled_start, scheduled_end, created_at, business_snapshot, template_preset",
+      "id, client_name, client_address, client_email, client_phone, line_items, subtotal, tax_rate, tax_amount, total, notes, scheduled_start, scheduled_end, created_at, business_snapshot, template_preset, last_pdf_generated_at",
     )
     .eq("public_access_token", token)
     .single();
@@ -38,6 +29,23 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   if (!quote || !quote.business_snapshot) {
     return NextResponse.json({ error: "Quote not found" }, { status: 404 });
   }
+
+  // MUST-FIX #3 (durable): this route launches Chromium and is reachable by
+  // anyone holding the token. The cooldown is backed by last_pdf_generated_at
+  // so it survives across serverless instances and cold starts.
+  if (isPdfOnCooldown(quote.last_pdf_generated_at)) {
+    return NextResponse.json(
+      { error: "Please wait a moment before downloading this quote again." },
+      { status: 429, headers: { "Retry-After": String(PDF_COOLDOWN_MS / 1000) } },
+    );
+  }
+
+  // Claim the cooldown slot before rendering so concurrent/rapid requests see
+  // it immediately and a failed render still consumes the slot (fail-safe).
+  await supabase
+    .from("quotes")
+    .update({ last_pdf_generated_at: new Date().toISOString() })
+    .eq("id", quote.id);
 
   try {
     const html = renderQuoteDocumentHtml({
