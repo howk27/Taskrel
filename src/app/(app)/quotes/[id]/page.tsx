@@ -293,7 +293,17 @@ export default function QuoteDetailPage() {
           <h1 className="truncate text-2xl font-semibold text-[var(--tr-text)] md:text-3xl">{quote.client_name}</h1>
           <p className="mt-1 text-base text-[var(--tr-text-muted)]">{workflowState.nextActionDetail}</p>
         </div>
-        <Badge variant={statusVariant(quote.status)}>{quote.status}</Badge>
+        {(() => {
+          const isExpired =
+            quote.status === "sent" &&
+            quote.valid_until !== null &&
+            new Date() > new Date(quote.valid_until);
+          return (
+            <Badge variant={isExpired ? "warning" : statusVariant(quote.status)}>
+              {isExpired ? "Expired" : quote.status}
+            </Badge>
+          );
+        })()}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
@@ -337,6 +347,11 @@ export default function QuoteDetailPage() {
                   Save pricing changes
                 </Button>
               )}
+              {quote.status === "approved" && quote.approved_at && (
+                <p className="rounded-lg bg-[var(--tr-success-bg)] p-3 text-sm font-semibold text-[var(--tr-green)] shadow-[inset_0_0_0_1px_var(--tr-badge-success-ring)]">
+                  Approved by {quote.client_name} on {formatDate(quote.approved_at)}.
+                </p>
+              )}
               {["draft", "sent", "approved"].includes(quote.status) && (
                 <Button className="w-full" onClick={handleConvertToInvoice} loading={converting} disabled={dirty}>
                   <Receipt size={18} weight="duotone" />
@@ -349,12 +364,24 @@ export default function QuoteDetailPage() {
                   Send Quote
                 </Button>
               )}
-              {quote.status === "sent" && (
-                <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={dirty || sendVia.length === 0}>
-                  <EnvelopeSimple size={18} weight="duotone" />
-                  Resend Quote
-                </Button>
-              )}
+              {quote.status === "sent" && (() => {
+                const isExpired =
+                  quote.valid_until !== null &&
+                  new Date() > new Date(quote.valid_until);
+                return (
+                  <>
+                    <Button variant="secondary" className="w-full" onClick={() => handleSend(sendVia)} loading={sending} disabled={dirty || sendVia.length === 0}>
+                      <EnvelopeSimple size={18} weight="duotone" />
+                      {isExpired ? "Resend" : "Resend Quote"}
+                    </Button>
+                    {isExpired && (
+                      <p className="text-sm text-[var(--tr-text-muted)]">
+                        Quote expired — resending resets the expiry 30 days.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               {quote.status === "sent" && (
                 <Button variant="secondary" className="w-full" onClick={handleMarkFollowedUp} loading={followingUp} disabled={dirty}>
                   <SealCheck size={18} weight="duotone" />
