@@ -91,4 +91,44 @@ describe("POST /api/quotes/send", () => {
     expect(body.sent).toEqual([]);
     expect(body.details[0].code).toBe("rate_limited");
   });
+
+  it("skips cooldown when quote valid_until is in the past", async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    h.byTable.quotes = {
+      single: {
+        data: {
+          id: "q-1",
+          contractor_id: "c-1",
+          client_email: "client@example.com",
+          business_snapshot: { renderer_version: "v1" },
+          template_preset: "classic",
+          public_access_token: "tok-1",
+          total: 100,
+          valid_until: yesterday,
+        },
+      },
+      await: { error: null },
+    };
+    // A recent successful send that would normally trigger a 429
+    h.byTable.delivery_events = {
+      await: {
+        data: [
+          {
+            channel: "email",
+            recipient: "client@example.com",
+            status: "success",
+            created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+          },
+        ],
+      },
+    };
+    const sgMail = await import("@sendgrid/mail");
+    vi.spyOn(sgMail.default, "send").mockResolvedValue([{ statusCode: 202 }] as never);
+    vi.spyOn(sgMail.default, "setApiKey").mockImplementation(() => undefined);
+    process.env.SENDGRID_API_KEY = "SG.test";
+    process.env.SENDGRID_FROM_EMAIL = "noreply@taskrel.com";
+    const res = await POST(req({ quoteId: "q-1", via: ["email"] }));
+    // Expired quote bypasses cooldown — should NOT be 429
+    expect(res.status).not.toBe(429);
+  });
 });

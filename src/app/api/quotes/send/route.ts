@@ -57,6 +57,11 @@ export async function POST(request: NextRequest) {
 
   if (!quote) return NextResponse.json({ error: "Quote not found" }, { status: 404 });
 
+  const quoteIsExpired =
+    quote.valid_until !== null &&
+    quote.valid_until !== undefined &&
+    new Date() > new Date(quote.valid_until as string);
+
   // Freeze the renderer version on FIRST send only; a resend reuses the
   // existing snapshot so the client keeps seeing the exact document they got.
   const businessSnapshot = quote.business_snapshot ?? {
@@ -66,12 +71,14 @@ export async function POST(request: NextRequest) {
   const templatePreset = (quote.template_preset ?? quoteContractor.quote_template_preset ?? "classic") as QuoteTemplatePreset;
   const publicAccessToken = quote.public_access_token ?? generatePublicQuoteToken();
   const quoteUrl = buildPublicQuoteUrl(process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin, publicAccessToken);
+  const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   const { error: publicLinkError } = await supabase
     .from("quotes")
     .update({
       business_snapshot: businessSnapshot,
       template_preset: templatePreset,
       public_access_token: publicAccessToken,
+      ...(quoteIsExpired ? { valid_until: thirtyDaysFromNow } : {}),
     })
     .eq("id", quoteId)
     .eq("contractor_id", quoteContractor.id);
@@ -116,7 +123,9 @@ export async function POST(request: NextRequest) {
       .order("created_at", { ascending: false });
     lastSuccessByChannel = lastSuccessByRecipient(recentSends ?? [], recipientByChannel);
   }
-  const blockedChannels = evaluateSendCooldown({ channels: consideredChannels, lastSuccessByChannel });
+  const blockedChannels = quoteIsExpired
+    ? [] // expired quotes bypass the cooldown — contractor is resending deliberately
+    : evaluateSendCooldown({ channels: consideredChannels, lastSuccessByChannel });
   const blockedSet = new Map(blockedChannels.map(b => [b.channel, b.retryAfterSeconds]));
   for (const { channel, retryAfterSeconds } of blockedChannels) {
     const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
