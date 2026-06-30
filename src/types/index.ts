@@ -181,6 +181,7 @@ export interface Quote {
   last_followed_up_at: string | null;
   sent_via: ("email" | "sms")[];
   delivery_events?: DeliveryEvent[];
+  archived_document?: Document | null;
   created_at: string;
   updated_at: string;
 }

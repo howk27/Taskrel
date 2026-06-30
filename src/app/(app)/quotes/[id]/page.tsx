@@ -449,6 +449,17 @@ export default function QuoteDetailPage() {
                     Save pricing changes before sending so the client document matches your latest totals.
                   </p>
                 )}
+                {quote.archived_document && (
+                  <a
+                    href={`/api/quotes/${id}/sent-document`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-sm text-[var(--tr-text-muted)] hover:text-[var(--tr-text)] transition-colors"
+                  >
+                    <FileText size={15} weight="duotone" />
+                    View sent document
+                  </a>
+                )}
               </div>
             )}
           </Surface>
