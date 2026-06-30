@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPublicQuoteUrl, canApprovePublicQuoteStatus, generatePublicQuoteToken, renderPublicQuoteEmailHtml } from "./public-quote";
+import { buildPublicQuoteUrl, canApprovePublicQuoteStatus, generatePublicQuoteToken, renderPublicQuoteEmailHtml, renderApprovalNotificationHtml, renderResendRequestHtml } from "./public-quote";
 
 describe("public quote helpers", () => {
   it("generates url-safe quote tokens", () => {
@@ -33,5 +33,48 @@ describe("public quote helpers", () => {
     expect(canApprovePublicQuoteStatus("approved")).toBe(true);
     expect(canApprovePublicQuoteStatus("rejected")).toBe(false);
     expect(canApprovePublicQuoteStatus("expired")).toBe(false);
+  });
+});
+
+describe("renderApprovalNotificationHtml", () => {
+  it("contains the client name and quote URL", () => {
+    const html = renderApprovalNotificationHtml({
+      clientName: "Jane Doe",
+      quoteUrl: "https://app.example.com/quotes/abc",
+    });
+    expect(html).toContain("Jane Doe");
+    expect(html).toContain("https://app.example.com/quotes/abc");
+  });
+
+  it("escapes HTML in client name", () => {
+    const html = renderApprovalNotificationHtml({
+      clientName: '<script>alert("xss")</script>',
+      quoteUrl: "https://app.example.com/quotes/abc",
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("renderResendRequestHtml", () => {
+  it("contains the client name and quote URL", () => {
+    const html = renderResendRequestHtml({
+      clientName: "John Smith",
+      clientAddress: "123 Main St",
+      quoteUrl: "https://app.example.com/quotes/abc",
+    });
+    expect(html).toContain("John Smith");
+    expect(html).toContain("123 Main St");
+    expect(html).toContain("https://app.example.com/quotes/abc");
+  });
+
+  it("omits address line when clientAddress is null", () => {
+    const html = renderResendRequestHtml({
+      clientName: "John Smith",
+      clientAddress: null,
+      quoteUrl: "https://app.example.com/quotes/abc",
+    });
+    expect(html).not.toContain("null");
+    expect(html).toContain("John Smith");
   });
 });
