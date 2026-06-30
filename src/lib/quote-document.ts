@@ -131,12 +131,18 @@ function renderLogo(business: BusinessSnapshot, t: DocTokens) {
   `;
 }
 
+/** Renders the client / project summary block for a given renderer version. */
+type SummaryRenderer = (
+  quote: QuoteData,
+  t: DocTokens,
+  opts?: { boxed?: boolean; skipClientCells?: boolean },
+) => string;
+
 /**
- * Fixed client / project block. Identity slots (who it is for, job location,
- * contact, quote date) always render in a stable order so every document has
- * the same shape; the schedule only appears when the work is scheduled.
+ * v1 summary — the original auto-fit grid. Frozen: quotes sent under renderer
+ * version "v1" re-render through this so their appearance never changes.
  */
-function renderDocumentSummary(
+function renderDocumentSummaryV1(
   quote: QuoteData,
   t: DocTokens,
   opts: { boxed?: boolean; skipClientCells?: boolean } = {},
@@ -150,8 +156,6 @@ function renderDocumentSummary(
     </div>
   `;
 
-  // Client contact spans the full row so a long email renders on one line; the
-  // phone follows on its own line in the shared "(123) 456 7890" format.
   const email = quote.client_email ? escapeHtml(quote.client_email) : "";
   const phone = quote.client_phone ? escapeHtml(formatPhone(quote.client_phone)) : "";
   const contactValue = [
@@ -163,8 +167,6 @@ function renderDocumentSummary(
     ? `background:${t.panel};border:1px solid ${t.border};border-radius:8px;padding:16px;`
     : `padding:14px 0;border-top:1px solid ${t.border};border-bottom:1px solid ${t.border};`;
 
-  // The premium direction shows the client + job location in a centered hero,
-  // so the summary omits those cells to avoid repeating them.
   const clientCells = opts.skipClientCells
     ? ""
     : `${cell("Prepared for", escapeHtml(quote.client_name))}${cell("Job location", escapeHtml(quote.client_address))}`;
@@ -175,6 +177,77 @@ function renderDocumentSummary(
       ${cell("Client contact", contactValue, true)}
       ${cell("Quote Date", dateShort(quote.created_at))}
       ${startDate ? cell("Start Date", startDate) : ""}
+    </div>
+  `;
+}
+
+/**
+ * v2 summary — a balanced two-column block (Standard/Compact) or a centered
+ * stack (Refined). Identity slots still render in a stable order; the schedule
+ * only appears when the work is scheduled.
+ */
+function renderDocumentSummaryV2(
+  quote: QuoteData,
+  t: DocTokens,
+  opts: { boxed?: boolean; skipClientCells?: boolean } = {},
+) {
+  const startDate = dateShort(quote.scheduled_start);
+  const quoteDate = dateShort(quote.created_at);
+
+  const labelValue = (label: string, value: string, marginTop = 0) => `
+    <div${marginTop ? ` style="margin-top:${marginTop}px;"` : ""}>
+      ${eyebrow(label, t.muted)}
+      <p style="margin:4px 0 0;color:${t.ink};font-size:14px;font-weight:600;line-height:1.45;">${value || `<span style="color:${t.faint};font-weight:500;">—</span>`}</p>
+    </div>
+  `;
+
+  // Email and phone both render bold with clear vertical spacing between them.
+  // overflow-wrap guards a long email from overflowing a narrower column.
+  const email = quote.client_email ? escapeHtml(quote.client_email) : "";
+  const phone = quote.client_phone ? escapeHtml(formatPhone(quote.client_phone)) : "";
+  const contactStack = [
+    email ? `<span style="display:block;color:${t.ink};font-weight:600;overflow-wrap:anywhere;">${email}</span>` : "",
+    phone ? `<span style="display:block;margin-top:8px;color:${t.ink};font-weight:600;font-variant-numeric:tabular-nums;">${phone}</span>` : "",
+  ].filter(Boolean).join("") || `<span style="color:${t.faint};font-weight:500;">—</span>`;
+  const contactBlock = (marginTop = 0) => `
+    <div${marginTop ? ` style="margin-top:${marginTop}px;"` : ""}>
+      ${eyebrow("Client contact", t.muted)}
+      <div style="margin-top:6px;">${contactStack}</div>
+    </div>
+  `;
+
+  // Refined direction: client + job render in a centered hero above, so here we
+  // just center the remaining elements (contact, quote date, start date).
+  if (opts.skipClientCells) {
+    return `
+      <div class="quote-document-summary" style="text-align:center;padding:16px 0 0;margin-bottom:18px;">
+        ${contactBlock()}
+        <div style="margin-top:14px;display:inline-flex;justify-content:center;gap:48px;flex-wrap:wrap;text-align:center;">
+          ${labelValue("Quote Date", quoteDate)}
+          ${startDate ? labelValue("Start Date", startDate) : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  // Standard + Compact: one balanced block. The left column carries the client,
+  // job location, and (when scheduled) the start date directly beneath it; the
+  // right edge pins the quote date to the top corner with the contact below.
+  const containerStyle = opts.boxed
+    ? `background:${t.panel};border:1px solid ${t.border};border-radius:8px;padding:18px 20px;`
+    : `padding:16px 0;border-top:1px solid ${t.border};border-bottom:1px solid ${t.border};`;
+
+  return `
+    <div class="quote-document-summary" style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px 40px;${containerStyle}margin-bottom:18px;">
+      <div style="flex:1 1 auto;min-width:0;">
+        ${labelValue("Prepared for", escapeHtml(quote.client_name))}
+        ${labelValue("Job location", escapeHtml(quote.client_address), 14)}
+        ${startDate ? labelValue("Start Date", startDate, 14) : ""}
+      </div>
+      <div style="flex:0 1 auto;min-width:0;text-align:right;">
+        ${labelValue("Quote Date", quoteDate)}
+        ${contactBlock(14)}
+      </div>
     </div>
   `;
 }
@@ -359,7 +432,7 @@ function shell(t: DocTokens, inner: string, maxWidth = 760) {
 /* ------------------------------------------------------------------ */
 /* Direction 1 — Standard (formal, structured)                         */
 /* ------------------------------------------------------------------ */
-function renderClassic({ quote, business }: QuoteDocumentInput) {
+function renderClassic({ quote, business }: QuoteDocumentInput, summary: SummaryRenderer) {
   const t = themes.classic;
 
   const inner = `
@@ -378,7 +451,7 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
 
     <div style="height:2px;background:${t.accent};margin:22px 0 24px;border-radius:2px;"></div>
 
-    ${renderDocumentSummary(quote, t)}
+    ${summary(quote, t)}
     ${renderLineItems(quote, t, "Scope of work")}
     ${renderClose(quote, business, t)}
     ${renderFooter(business, t)}
@@ -390,7 +463,7 @@ function renderClassic({ quote, business }: QuoteDocumentInput) {
 /* ------------------------------------------------------------------ */
 /* Direction 2 — Compact (practical, field-service)                    */
 /* ------------------------------------------------------------------ */
-function renderCompact({ quote, business }: QuoteDocumentInput) {
+function renderCompact({ quote, business }: QuoteDocumentInput, summary: SummaryRenderer) {
   const t = themes.compact;
 
   const inner = `
@@ -408,7 +481,7 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
     </div>
 
     <div style="margin-top:20px;">
-      ${renderDocumentSummary(quote, t, { boxed: true })}
+      ${summary(quote, t, { boxed: true })}
     </div>
 
     ${renderLineItems(quote, t, "Work to be performed")}
@@ -432,7 +505,7 @@ function renderCompact({ quote, business }: QuoteDocumentInput) {
 /* ------------------------------------------------------------------ */
 /* Direction 3 — Refined (whitespace-led, restrained)                  */
 /* ------------------------------------------------------------------ */
-function renderModern({ quote, business }: QuoteDocumentInput) {
+function renderModern({ quote, business }: QuoteDocumentInput, summary: SummaryRenderer) {
   const t = themes.modern;
 
   const inner = `
@@ -449,7 +522,7 @@ function renderModern({ quote, business }: QuoteDocumentInput) {
       ${quote.client_address ? `<p style="margin:4px 0 0;color:${t.muted};font-size:13px;">${escapeHtml(quote.client_address)}</p>` : ""}
     </div>
 
-    ${renderDocumentSummary(quote, t, { skipClientCells: true })}
+    ${summary(quote, t, { skipClientCells: true })}
     ${renderLineItems(quote, t, "Included in this quote")}
     ${renderClose(quote, business, t)}
     ${renderFooter(business, t)}
@@ -480,19 +553,29 @@ export function buildBusinessSnapshot(contractor: BusinessSource): BusinessSnaps
  * are sent. When a future version ships, add a `renderVN` branch below and keep
  * the older `renderV*` functions untouched.
  */
-export const QUOTE_RENDERER_VERSION = "v1";
+export const QUOTE_RENDERER_VERSION = "v2";
 
-/** v1 — the three locked directions (Standard / Compact / Refined). */
-function renderV1(input: QuoteDocumentInput) {
+/** Picks the template for a preset and renders it with the given summary. */
+function renderDirections(input: QuoteDocumentInput, summary: SummaryRenderer) {
   switch (input.preset) {
     case "modern":
-      return renderModern(input);
+      return renderModern(input, summary);
     case "compact":
-      return renderCompact(input);
+      return renderCompact(input, summary);
     case "classic":
     default:
-      return renderClassic(input);
+      return renderClassic(input, summary);
   }
+}
+
+/** v1 — original summary layout (auto-fit grid). Frozen for sent v1 quotes. */
+function renderV1(input: QuoteDocumentInput) {
+  return renderDirections(input, renderDocumentSummaryV1);
+}
+
+/** v2 — balanced two-column / centered summary layout. */
+function renderV2(input: QuoteDocumentInput) {
+  return renderDirections(input, renderDocumentSummaryV2);
 }
 
 export function renderQuoteDocumentHtml(input: QuoteDocumentInput) {
@@ -501,7 +584,9 @@ export function renderQuoteDocumentHtml(input: QuoteDocumentInput) {
   const version = input.business.renderer_version ?? QUOTE_RENDERER_VERSION;
   switch (version) {
     case "v1":
-    default:
       return renderV1(input);
+    case "v2":
+    default:
+      return renderV2(input);
   }
 }

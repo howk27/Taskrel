@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
+import { TaskrelLogo } from "@/components/brand/taskrel-logo";
 import { publicLaunch } from "@/lib/public-launch";
 import {
   ArrowRight,
@@ -67,7 +68,8 @@ export default function Home() {
 function SiteNav() {
   return (
     <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 md:px-8">
-      <Link href="/" aria-label="Taskrel home">
+      <Link href="/" aria-label="Taskrel home" className="flex items-center gap-2.5">
+        <TaskrelLogo className="h-8 w-8 text-[var(--tr-text)]" />
         <TaskrelWordmark size="sm" />
       </Link>
       <div className="flex items-center gap-2">
@@ -541,7 +543,10 @@ function CloseSection() {
     <section className="border-t border-[var(--tr-border-soft)] bg-[var(--tr-bg-soft)] px-5 py-16 md:px-8 md:py-24">
       <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1fr_360px] md:items-center">
         <div className="max-w-xl">
-          <TaskrelWordmark size="md" />
+          <span className="flex items-center gap-3">
+            <TaskrelLogo className="h-10 w-10 text-[var(--tr-text)]" />
+            <TaskrelWordmark size="md" />
+          </span>
           <h2 className="tr-h2 mt-6 text-3xl font-semibold leading-tight tracking-[-0.01em] text-[var(--tr-text)] md:text-4xl">
             {publicLaunch.proofHeading}
           </h2>

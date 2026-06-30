@@ -139,4 +139,21 @@ describe("renderQuoteDocumentHtml", () => {
 
     expect(html).not.toContain("Ready after approval");
   });
+
+  it("freezes a sent v1 quote to the original grid summary layout", () => {
+    const v1 = renderQuoteDocumentHtml({
+      quote,
+      business: { ...business, renderer_version: "v1" },
+      preset: "classic",
+    });
+    // v1 used an auto-fit grid for the summary.
+    expect(v1).toContain("repeat(auto-fit,minmax(180px,1fr))");
+  });
+
+  it("renders new (unversioned) quotes with the current v2 summary layout", () => {
+    const current = renderQuoteDocumentHtml({ quote, business, preset: "classic" });
+    // v2 replaced the grid with a balanced two-column flex block.
+    expect(current).not.toContain("repeat(auto-fit,minmax(180px,1fr))");
+    expect(current).toContain("justify-content:space-between");
+  });
 });

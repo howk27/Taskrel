@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/icons";
 import type { Trade } from "@/types";
 import { TaskrelWordmark } from "@/components/brand/taskrel-wordmark";
+import { TaskrelLogo } from "@/components/brand/taskrel-logo";
 
 type ShellContractor = {
   business_name: string | null;
@@ -170,7 +171,7 @@ export function AppShell({
       <header className="sticky top-0 z-30 border-b border-[var(--tr-border)] bg-[var(--tr-bg)]/95 px-4 backdrop-blur-xl safe-top xl:hidden">
         <div className="mx-auto grid h-14 max-w-lg grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
           <Link href="/dashboard" className="flex min-w-0 items-center">
-            <TaskrelWordmark size="sm" />
+            <TaskrelLogo className="h-8 w-8 text-[var(--tr-text)]" />
             <span className="sr-only">Taskrel dashboard</span>
           </Link>
           <ThemeToggle mode={themeMode} onChange={setThemeMode} />
