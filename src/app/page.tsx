@@ -70,7 +70,7 @@ function SiteNav() {
     <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 md:px-8">
       <Link href="/" aria-label="Taskrel home" className="flex items-center gap-2.5">
         <TaskrelLogo className="h-8 w-8 text-[var(--tr-text)]" />
-        <TaskrelWordmark size="sm" />
+        <span className="hidden md:block"><TaskrelWordmark size="sm" /></span>
       </Link>
       <div className="flex items-center gap-2">
         <Link
