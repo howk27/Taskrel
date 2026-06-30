@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
   getUser: vi.fn(),
   byTable: {} as Record<string, { single?: unknown; await?: unknown }>,
+  sgSend: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => {
@@ -29,6 +30,24 @@ vi.mock("@/lib/supabase/server", () => {
   };
 });
 
+vi.mock("@sendgrid/mail", () => ({
+  default: { setApiKey: vi.fn(), send: (...args: unknown[]) => h.sgSend(...args) },
+}));
+
+// Render functions pull in the full document pipeline; stub them so the test
+// focuses on rate-limit and delivery logic rather than template rendering.
+vi.mock("@/lib/quote-document", () => ({
+  buildBusinessSnapshot: vi.fn(() => ({ renderer_version: "v2" })),
+  renderQuoteDocumentHtml: vi.fn(() => "<p>quote</p>"),
+  QUOTE_RENDERER_VERSION: "v2",
+}));
+
+vi.mock("@/lib/public-quote", () => ({
+  buildPublicQuoteUrl: vi.fn(() => "https://app.test/q/tok-1"),
+  generatePublicQuoteToken: vi.fn(() => "tok-1"),
+  renderPublicQuoteEmailHtml: vi.fn(() => "<p>email</p>"),
+}));
+
 // Not reached on the auth/cooldown paths; mocked so importing the route does
 // not pull in Chromium.
 vi.mock("@/lib/pdf/generate-quote-pdf", () => ({ renderDocumentPdf: vi.fn() }));
@@ -49,6 +68,7 @@ function req(body: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   h.getUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+  h.sgSend.mockResolvedValue([{ statusCode: 202 }]);
   h.byTable = {
     contractors: { single: { data: { id: "c-1", business_name: "Acme" }, error: null } },
     quotes: {
@@ -122,13 +142,10 @@ describe("POST /api/quotes/send", () => {
         ],
       },
     };
-    const sgMail = await import("@sendgrid/mail");
-    vi.spyOn(sgMail.default, "send").mockResolvedValue([{ statusCode: 202 }] as never);
-    vi.spyOn(sgMail.default, "setApiKey").mockImplementation(() => undefined);
     process.env.SENDGRID_API_KEY = "SG.test";
     process.env.SENDGRID_FROM_EMAIL = "noreply@taskrel.com";
     const res = await POST(req({ quoteId: "q-1", via: ["email"] }));
-    // Expired quote bypasses cooldown — should NOT be 429
-    expect(res.status).not.toBe(429);
+    // Expired quote bypasses cooldown — should send and return 200
+    expect(res.status).toBe(200);
   });
 });

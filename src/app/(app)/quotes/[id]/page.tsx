@@ -366,6 +366,7 @@ export default function QuoteDetailPage() {
               )}
               {quote.status === "sent" && (() => {
                 const isExpired =
+                  quote.status === "sent" &&
                   quote.valid_until !== null &&
                   new Date() > new Date(quote.valid_until);
                 return (

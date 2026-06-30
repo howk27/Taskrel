@@ -64,6 +64,7 @@ export default async function PublicQuotePage({
   const isExpired =
     !approved &&
     quote.valid_until !== null &&
+    quote.valid_until !== undefined &&
     new Date() > new Date(quote.valid_until);
 
   const quoteHtml = renderQuoteDocumentHtml({

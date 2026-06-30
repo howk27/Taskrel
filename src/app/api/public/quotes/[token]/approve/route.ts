@@ -8,32 +8,45 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: quote } = await supabase
     .from("quotes")
-    .select("id, status, client_name, contractor_id, contractors(email, business_name)")
+    .select("id, status, client_name, contractor_id, valid_until, contractors(email, business_name)")
     .eq("public_access_token", token)
     .single<{
       id: string;
       status: string;
       client_name: string;
       contractor_id: string;
+      valid_until: string | null;
       contractors: { email: string; business_name: string } | null;
     }>();
 
   if (!quote) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/", request.url), { status: 303 });
   }
 
   if (!canApprovePublicQuoteStatus(quote.status)) {
-    return NextResponse.redirect(new URL(`/q/${token}`, request.url));
+    return NextResponse.redirect(new URL(`/q/${token}`, request.url), { status: 303 });
+  }
+
+  const isExpired =
+    quote.valid_until !== null &&
+    new Date() > new Date(quote.valid_until);
+  if (isExpired) {
+    return NextResponse.redirect(new URL(`/q/${token}`, request.url), { status: 303 });
   }
 
   const alreadyApproved = quote.status === "approved";
 
   if (!alreadyApproved) {
-    await supabase
+    const { error: approvalError } = await supabase
       .from("quotes")
       .update({ status: "approved", approved_at: new Date().toISOString() })
       .eq("id", quote.id)
       .eq("contractor_id", quote.contractor_id);
+
+    if (approvalError) {
+      console.error("Approval DB update failed", { quoteId: quote.id, message: approvalError.message });
+      return NextResponse.redirect(new URL(`/q/${token}`, request.url), { status: 303 });
+    }
 
     // Best-effort contractor notification
     if (quote.contractors?.email) {

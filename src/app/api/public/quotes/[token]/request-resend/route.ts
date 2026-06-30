@@ -38,7 +38,7 @@ export async function POST(
     }
   }
 
-  // Claim the slot before sending so concurrent requests see it immediately
+  // Best-effort slot claim — concurrent submits within the same millisecond may slip through.
   await supabase
     .from("quotes")
     .update({ last_resend_requested_at: new Date().toISOString() })

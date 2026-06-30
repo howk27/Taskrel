@@ -41,6 +41,7 @@ const baseQuote = {
   status: "sent",
   client_name: "Jane Doe",
   contractor_id: "ctr-1",
+  valid_until: null,
   contractors: { email: "contractor@example.com", business_name: "Acme Co" },
 };
 
@@ -54,10 +55,10 @@ beforeEach(() => {
 });
 
 describe("POST /api/public/quotes/[token]/approve", () => {
-  it("redirects to home for unknown token", async () => {
+  it("redirects to home (303) for unknown token", async () => {
     h.quoteSingle.mockResolvedValue({ data: null });
     const res = await POST(mockRequest(), params("bad-token"));
-    expect(res.status).toBe(307);
+    expect(res.status).toBe(303);
     expect(res.headers.get("location")).toContain("/");
   });
 
@@ -89,5 +90,14 @@ describe("POST /api/public/quotes/[token]/approve", () => {
     h.quoteSingle.mockResolvedValue({ data: { ...baseQuote, status: "approved" } });
     await POST(mockRequest(), params("tok"));
     expect(h.sgSend).not.toHaveBeenCalled();
+  });
+
+  it("redirects to /q/[token] (303) for expired quote without updating the DB", async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    h.quoteSingle.mockResolvedValue({ data: { ...baseQuote, valid_until: yesterday } });
+    const res = await POST(mockRequest(), params("tok"));
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toContain("/q/tok");
+    expect(h.quoteUpdate).not.toHaveBeenCalled();
   });
 });
