@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canApprovePublicQuoteStatus } from "@/lib/public-quote";
+import { canApprovePublicQuoteStatus, renderApprovalNotificationHtml } from "@/lib/public-quote";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -8,9 +8,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: quote } = await supabase
     .from("quotes")
-    .select("id, status")
+    .select("id, status, client_name, contractor_id, contractors(email, business_name)")
     .eq("public_access_token", token)
-    .single<{ id: string; status: string }>();
+    .single<{
+      id: string;
+      status: string;
+      client_name: string;
+      contractor_id: string;
+      contractors: { email: string; business_name: string } | null;
+    }>();
 
   if (!quote) {
     return NextResponse.redirect(new URL("/", request.url));
@@ -20,14 +26,38 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.redirect(new URL(`/q/${token}`, request.url));
   }
 
-  if (quote.status !== "approved") {
+  const alreadyApproved = quote.status === "approved";
+
+  if (!alreadyApproved) {
     await supabase
       .from("quotes")
-      .update({
-        status: "approved",
-        approved_at: new Date().toISOString(),
-      })
-      .eq("id", quote.id);
+      .update({ status: "approved", approved_at: new Date().toISOString() })
+      .eq("id", quote.id)
+      .eq("contractor_id", quote.contractor_id);
+
+    // Best-effort contractor notification
+    if (quote.contractors?.email) {
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+        const quoteUrl = `${appUrl}/quotes/${quote.id}`;
+        const sgMail = (await import("@sendgrid/mail")).default;
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+        await sgMail.send({
+          to: quote.contractors.email,
+          from: process.env.SENDGRID_FROM_EMAIL!,
+          subject: `Quote approved by ${quote.client_name}`,
+          html: renderApprovalNotificationHtml({
+            clientName: quote.client_name,
+            quoteUrl,
+          }),
+        });
+      } catch (err) {
+        console.error("Approval notification failed", {
+          quoteId: quote.id,
+          message: err instanceof Error ? err.message : "unknown",
+        });
+      }
+    }
   }
 
   return NextResponse.redirect(new URL(`/q/${token}?approved=1`, request.url), { status: 303 });
