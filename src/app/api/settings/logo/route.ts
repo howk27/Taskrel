@@ -69,3 +69,23 @@ export async function POST(request: NextRequest) {
   revalidatePath("/quotes");
   return NextResponse.json({ logo_url: logoUrl });
 }
+
+export async function DELETE() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { error } = await supabase
+    .from("contractors")
+    .update({ logo_url: null })
+    .eq("user_id", user.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  revalidatePath("/settings");
+  revalidatePath("/quotes");
+  return NextResponse.json({ ok: true });
+}

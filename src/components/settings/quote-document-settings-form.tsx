@@ -31,6 +31,7 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
   const [state, formAction, pending] = useActionState<SettingsActionState, FormData>(updateQuoteSettings, undefined);
   const [logoUrl, setLogoUrl] = useState(contractor.logo_url ?? "");
   const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const safeLogoPreviewUrl = logoUrl.replace(/["\\\n\r]/g, "");
@@ -60,6 +61,19 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
     }
 
     setLogoUrl(data.logo_url);
+  }
+
+  async function removeLogo() {
+    setUploadError("");
+    setRemoving(true);
+    const response = await fetch("/api/settings/logo", { method: "DELETE" });
+    setRemoving(false);
+    if (!response.ok) {
+      const data = await response.json();
+      setUploadError(data.error ?? "Failed to remove logo.");
+      return;
+    }
+    setLogoUrl("");
   }
 
   return (
@@ -92,11 +106,21 @@ export function QuoteDocumentSettingsForm({ contractor }: Props) {
             <p className="mt-1 text-sm leading-6 text-[var(--tr-text-muted)]">Shown in the quote header.</p>
           </div>
           {logoUrl ? (
-            <div
-              aria-label="Current quote logo"
-              className="h-14 w-24 shrink-0 rounded-lg bg-white bg-contain bg-center bg-no-repeat p-2"
-              style={{ backgroundImage: `url("${safeLogoPreviewUrl}")` }}
-            />
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <div
+                aria-label="Current quote logo"
+                className="h-14 w-24 rounded-lg bg-white bg-contain bg-center bg-no-repeat p-2"
+                style={{ backgroundImage: `url("${safeLogoPreviewUrl}")` }}
+              />
+              <button
+                type="button"
+                onClick={() => void removeLogo()}
+                disabled={removing}
+                className="text-xs font-medium text-[var(--tr-red)] hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {removing ? "Removing…" : "Remove logo"}
+              </button>
+            </div>
           ) : (
             <div className="grid h-14 w-24 shrink-0 place-items-center rounded-lg border border-dashed border-[var(--tr-primary-edge)] bg-[var(--tr-primary-fill)] text-sm font-semibold text-[var(--tr-primary)]">
               Logo

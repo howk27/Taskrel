@@ -48,7 +48,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     presetParam && ALLOWED_PRESETS.has(presetParam)
       ? presetParam
       : (quote.template_preset ?? "classic") as QuoteTemplatePreset;
-  const business = (quote.business_snapshot ?? buildBusinessSnapshot(contractor)) as BusinessSnapshot;
+  // Use the frozen snapshot for client/terms consistency but always apply the
+  // contractor's current logo — the snapshot was saved before the logo may have
+  // been uploaded, so the frozen logo_url is commonly stale.
+  const snapshot = (quote.business_snapshot ?? buildBusinessSnapshot(contractor)) as BusinessSnapshot;
+  const business: BusinessSnapshot = { ...snapshot, logo_url: contractor.logo_url };
 
   try {
     const html = renderQuoteDocumentHtml({ quote, business, preset });
