@@ -6,6 +6,71 @@ Update before long pauses or risky work.
 
 ## Current State
 
+SESSION-END SYNC (2026-06-30, later): main pushed through `f582b34`
+("fix: always render current contractor logo in PDF, add logo removal"),
+tree clean, 160/160 tests pass, tsc clean. APP IS NOT LAUNCH-READY YET —
+see "NEXT SESSION — START HERE" below.
+
+DONE this session:
+1. Migration 013 marked applied to production (founder-confirmed).
+2. Quote PDF logo bug fixed: the authenticated PDF route
+   (`/api/quotes/[id]/pdf`) rendered `quote.business_snapshot.logo_url`,
+   frozen at quote-creation time — so a logo uploaded AFTER a quote was
+   created never appeared on its PDF. Now overlays the contractor's
+   CURRENT `logo_url` onto the snapshot at render time.
+3. Added logo removal: `DELETE /api/settings/logo` (nulls
+   `contractors.logo_url`) + a "Remove logo" control in
+   `quote-document-settings-form.tsx` — there was previously no way to
+   clear an uploaded logo once set.
+4. Stripe webhook: confirmed ALL 5 Stripe env vars (`STRIPE_SECRET_KEY`,
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
+   `STRIPE_PRICE_ID`, `STRIPE_CONNECT_WEBHOOK_SECRET`) are set in
+   `.env.local`. Founder confirmed these are ALSO added to Vercel
+   Production env vars — NOT independently verified (no Vercel MCP
+   access in this environment; same caveat pattern as migration 012/013).
+   `/api/stripe/webhook` route reviewed: handles
+   `customer.subscription.created/updated/deleted` (updates
+   `contractors.subscription_status`) and `payment_intent.succeeded`
+   (marks invoice paid + logs a delivery_event). Local testing path:
+   `stripe listen --forward-to localhost:3000/api/stripe/webhook` then
+   `stripe trigger <event>`.
+
+## NEXT SESSION — START HERE
+
+Two NEW issues found by founder while testing production Stripe flows
+(not yet fixed — pick up first):
+
+1. **BUG — uncaught Stripe checkout error.** Founder hit this in the
+   browser console on Settings > Billing:
+   `Uncaught (in promise) SyntaxError: Failed to execute 'json' on
+   'Response': Unexpected end of JSON input`, traced to
+   `src/app/(app)/settings/billing/billing-client.tsx` `handleConnect()`
+   (the "Client payments are not enabled..." fallback path, line ~69) —
+   same pattern likely also affects `handleSubscribe()`. ROOT CAUSE
+   CONFIRMED via code read: neither `/api/stripe/connect/route.ts` nor
+   `/api/stripe/subscribe/route.ts` wraps its `stripe.*.create(...)`
+   calls in try/catch. Any Stripe SDK exception (bad/restricted API key,
+   Connect not enabled on the account, invalid price ID, etc.) becomes
+   an unhandled Next.js route error → a non-JSON error response → the
+   client's `await res.json()` throws instead of showing `data.error`.
+   FIX: wrap the Stripe calls in both routes in try/catch, log
+   server-side, return `NextResponse.json({ error: ... }, { status: 502
+   })` on failure so the client's existing `data.error ?? "..."` fallback
+   actually renders. Also worth checking the Stripe dashboard for WHY the
+   call is failing (Connect likely not activated on this Stripe account
+   yet, or a price/key mismatch between test/live mode).
+2. **UX — Settings > Billing/Premium area needs a redesign pass.**
+   Founder flagged `billing-client.tsx` as visually rough — three
+   disconnected boxy panels (Subscribe / Connect / redeem-code) with
+   ad-hoc amber "message" banners for both success and error states.
+   Route through Impeccable critique (audit → shape) before touching
+   code; this is a UI task so `@critic` UX review applies per CLAUDE.md.
+
+Do NOT tell the founder the app is launch-ready until both are resolved
+and re-tested. Combined with the still-open items below (Stripe Connect
+account activation status unconfirmed, CHROMIUM_PACK_URL prod
+verification, full smoke path), Stripe billing is the current blocker.
+
 SESSION-END SYNC (2026-06-30): main = origin/main @ 5b68893, tree clean. 160/160 tests pass.
 
 Public quote approval flow SHIPPED (10 commits, 6eaf756..5b68893):
@@ -19,7 +84,7 @@ Public quote approval flow SHIPPED (10 commits, 6eaf756..5b68893):
 - Mobile landing nav: wordmark hidden on mobile (logo mark only), visible md+
 
 OPEN FOUNDER ACTIONS:
-1. Apply migration 013 to production (`supabase/migrations/013_quote_resend_requested.sql`)
+1. ~~Apply migration 013 to production~~ — MARKED APPLIED 2026-06-30 (founder confirmed)
 2. Smoke test on production: expired quote badge → "Request resend" → contractor notification; approved quote → green banner on contractor detail
 
 SESSION-END SYNC (2026-06-29): main = origin/main @ 713cbc1, tree clean. Production

@@ -51,10 +51,10 @@ export function BillingClient({
     setMessage("");
     setLoadingSubscribe(true);
     const res = await fetch("/api/stripe/subscribe", { method: "POST" });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (data.url) window.location.href = data.url;
     else {
-      setMessage(data.error ?? "Subscription billing is not enabled for this closed test.");
+      setMessage(data.error ?? "Something went wrong starting checkout. Please try again.");
       setLoadingSubscribe(false);
     }
   }
@@ -63,10 +63,10 @@ export function BillingClient({
     setMessage("");
     setLoadingConnect(true);
     const res = await fetch("/api/stripe/connect", { method: "POST" });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (data.url) window.location.href = data.url;
     else {
-      setMessage(data.error ?? "Client payments are not enabled for this closed test.");
+      setMessage(data.error ?? "Something went wrong starting Connect setup. Please try again.");
       setLoadingConnect(false);
     }
   }
@@ -81,7 +81,7 @@ export function BillingClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: accessCode }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
       setAccessCode("");

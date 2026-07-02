@@ -27,6 +27,22 @@ export async function POST() {
 
   let customerId = contractor.stripe_customer_id;
 
+  // Verify the stored customer exists in the current Stripe mode (live vs test).
+  // A customer ID created in the other mode returns resource_missing; recreate
+  // and re-persist so the account self-heals after any mode switch.
+  if (customerId) {
+    try {
+      const existing = await stripe.customers.retrieve(customerId);
+      if ((existing as { deleted?: boolean }).deleted) customerId = null;
+    } catch (err) {
+      console.warn("Stored Stripe customer not found in current mode; recreating.", {
+        contractorId: contractor.id,
+        message: err instanceof Error ? err.message : "unknown",
+      });
+      customerId = null;
+    }
+  }
+
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: contractor.email,
